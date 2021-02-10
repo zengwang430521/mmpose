@@ -10,6 +10,11 @@ from .top_down_base_head import TopDownBaseHead
 
 @HEADS.register_module()
 class RootNetHead(TopDownBaseHead):
+    """RootNet.
+
+    paper ref: Gyeongsik Moon, et al. ``Camera Distance-aware Top-down Approach
+    for 3D Multi-person  Pose Estimation from a Single RGB Image.''.
+    """
 
     def __init__(self,
                  in_channels=2048,
