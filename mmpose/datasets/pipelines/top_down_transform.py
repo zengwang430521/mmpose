@@ -5,6 +5,7 @@ from mmpose.core.post_processing import (affine_transform, fliplr_joints,
                                          get_affine_transform)
 from mmpose.datasets.pipelines import get_warp_matrix, warp_affine_joints
 from mmpose.datasets.registry import PIPELINES
+from .processors import *  # noqa
 
 
 @PIPELINES.register_module()
@@ -16,12 +17,19 @@ class TopDownRandomFlip:
     'center'.
 
     Args:
-        flip (bool): Option to perform random flip.
         flip_prob (float): Probability of flip.
+        flip_processor (list(dict) | dict | None)
     """
 
-    def __init__(self, flip_prob=0.5):
+    def __init__(self, flip_prob=0.5, flip_processor_cfg=None):
         self.flip_prob = flip_prob
+        self.flip_processor = []
+        if flip_processor_cfg is not None:
+            flip_processor_cfg = flip_processor_cfg if isinstance(
+                flip_processor_cfg, list) else [flip_processor_cfg]
+            for processor_cfg in flip_processor_cfg:
+                processor = eval(processor_cfg.pop('type'))(**processor_cfg)
+                self.flip_processor.append(processor(**processor_cfg))
 
     def __call__(self, results):
         """Perform data augmentation with random image flip."""
@@ -37,6 +45,9 @@ class TopDownRandomFlip:
                 joints_3d, joints_3d_visible, img.shape[1],
                 results['ann_info']['flip_pairs'])
             center[0] = img.shape[1] - center[0] - 1
+
+            for processor in self.flip_processor:
+                results = processor(results)
 
         results['img'] = img
         results['joints_3d'] = joints_3d
