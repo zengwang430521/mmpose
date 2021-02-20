@@ -49,11 +49,11 @@ class RootNet(BasePose):
 
     def forward(self,
                 img,
+                k_value,
                 target=None,
                 target_weight=None,
                 img_metas=None,
                 return_loss=True,
-                return_heatmap=False,
                 **kwargs):
         """Calls either forward_train or forward_test depending on whether
         return_loss=True. Note this setting will change the expected inputs.
@@ -73,6 +73,7 @@ class RootNet(BasePose):
 
         Args:
             img (torch.Tensor[NxCximgHximgW]): Input images.
+            k_value (torch.Tensor[N, 1]): Rough estimate of depth value
             target (torch.Tensor[NxKxHxW]): Target heatmaps.
             target_weight (torch.Tensor[NxKx1]): Weights across
                 different joint types.
@@ -93,18 +94,18 @@ class RootNet(BasePose):
                   and heatmaps.
         """
         if return_loss:
-            return self.forward_train(img, target, target_weight, img_metas,
-                                      **kwargs)
-        return self.forward_test(
-            img, img_metas, return_heatmap=return_heatmap, **kwargs)
+            return self.forward_train(img, k_value, target, target_weight,
+                                      img_metas, **kwargs)
+        return self.forward_test(img, k_value, img_metas, **kwargs)
 
-    def forward_train(self, img, target, target_weight, img_metas, **kwargs):
+    def forward_train(self, img, k_value, target, target_weight, img_metas,
+                      **kwargs):
         """Defines the computation performed at every call when training."""
         output = self.backbone(img)
         if self.with_neck:
             output = self.neck(output)
         if self.with_head:
-            output = self.head(output)
+            output = self.head(output, k_value)
 
         # if return loss
         losses = dict()
@@ -116,7 +117,7 @@ class RootNet(BasePose):
 
         return losses
 
-    def forward_test(self, img, img_metas, return_heatmap=False, **kwargs):
+    def forward_test(self, img, k_value, img_metas, **kwargs):
         """Defines the computation performed at every call when testing."""
         assert img.size(0) == len(img_metas)
         batch_size, _, img_height, img_width = img.shape
@@ -129,7 +130,7 @@ class RootNet(BasePose):
         if self.with_neck:
             features = self.neck(features)
         if self.with_head:
-            result = self.head.inference_model(features, flip_pairs=None)
+            result = self.head(features, k_value)
 
         return result
 
