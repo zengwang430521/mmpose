@@ -5,7 +5,11 @@ from .base import BasePose
 
 @POSENETS.register_module()
 class RootNet(BasePose):
-    """
+    """RootNet.
+
+    paper ref: Gyeongsik Moon, et al. ``Camera Distance-aware Top-down Approach
+    for 3D Multi-person  Pose Estimation from a Single RGB Image.''.
+
     Args:
         backbone (dict): Backbone modules to extract feature.
         keypoint_head (dict): Keypoint head to process feature.
