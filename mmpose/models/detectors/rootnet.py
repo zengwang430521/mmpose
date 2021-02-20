@@ -55,7 +55,6 @@ class RootNet(BasePose):
                 img,
                 k_value,
                 target=None,
-                target_weight=None,
                 img_metas=None,
                 return_loss=True,
                 **kwargs):
@@ -79,8 +78,6 @@ class RootNet(BasePose):
             img (torch.Tensor[NxCximgHximgW]): Input images.
             k_value (torch.Tensor[N, 1]): Rough estimate of depth value
             target (torch.Tensor[NxKxHxW]): Target heatmaps.
-            target_weight (torch.Tensor[NxKx1]): Weights across
-                different joint types.
             img_metas (list(dict)): Information about data augmentation
                 By default this includes:
                 - "image_file: path to the image file
@@ -98,12 +95,11 @@ class RootNet(BasePose):
                   and heatmaps.
         """
         if return_loss:
-            return self.forward_train(img, k_value, target, target_weight,
-                                      img_metas, **kwargs)
+            return self.forward_train(img, k_value, target, img_metas,
+                                      **kwargs)
         return self.forward_test(img, k_value, img_metas, **kwargs)
 
-    def forward_train(self, img, k_value, target, target_weight, img_metas,
-                      **kwargs):
+    def forward_train(self, img, k_value, target, img_metas, **kwargs):
         """Defines the computation performed at every call when training."""
         output = self.backbone(img)
         if self.with_neck:
@@ -114,10 +110,8 @@ class RootNet(BasePose):
         # if return loss
         losses = dict()
         if self.with_head:
-            loss = self.head.get_loss(output, target, target_weight)
+            loss = self.head.get_loss(output, target)
             losses.update(loss)
-            accuracy = self.head.get_accuracy(output, target, target_weight)
-            losses.update(accuracy)
 
         return losses
 

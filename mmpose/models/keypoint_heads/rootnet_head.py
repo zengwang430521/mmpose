@@ -120,6 +120,20 @@ class RootNetHead(TopDownBaseHead):
         coord = torch.cat((coord_x, coord_y, depth), dim=1)
         return coord
 
+    def get_loss(self, output, target):
+        target_coord = target['coord']
+        target_vis = target['vis']
+        target_have_depth = target['have_depth']
+
+        losses = dict()
+        # coordrinate loss
+        coord_loss = torch.abs(output - target_coord) * target_vis
+        losses['coord_loss'] = (
+            coord_loss[:, 0] + coord_loss[:, 1] +
+            coord_loss[:, 2] * target_have_depth.view(-1)) / 3.
+
+        return losses
+
     def init_weights(self):
         for _, m in self.deconv_layers.named_modules():
             if isinstance(m, nn.ConvTranspose2d):
