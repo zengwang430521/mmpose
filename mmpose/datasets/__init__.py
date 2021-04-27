@@ -6,8 +6,9 @@ from .samplers import DistributedSampler
 from .datasets import (  # isort:skip
     AnimalFlyDataset, AnimalATRWDataset, AnimalHorse10Dataset,
     AnimalLocustDataset, AnimalMacaqueDataset, AnimalZebraDataset,
-    BottomUpCocoDataset, BottomUpCrowdPoseDataset, BottomUpMhpDataset,
-    DeepFashionDataset, Face300WDataset, FreiHandDataset, InterHand2DDataset,
+    BottomUpCocoDataset, BottomUpCocoWholeBodyDataset,
+    BottomUpCrowdPoseDataset, BottomUpMhpDataset, DeepFashionDataset,
+    Face300WDataset, FreiHandDataset, InterHand2DDataset,
     MeshAdversarialDataset, MeshH36MDataset, MeshMixDataset, MoshDataset,
     OneHand10KDataset, PanopticDataset, TopDownAicDataset, TopDownCocoDataset,
     TopDownCocoWholeBodyDataset, TopDownCrowdPoseDataset,
@@ -18,16 +19,17 @@ from .datasets import (  # isort:skip
 
 __all__ = [
     'AnimalATRWDataset', 'TopDownCocoDataset', 'BottomUpCocoDataset',
-    'BottomUpMhpDataset', 'TopDownMpiiDataset', 'TopDownMpiiTrbDataset',
-    'OneHand10KDataset', 'PanopticDataset', 'FreiHandDataset',
-    'InterHand2DDataset', 'TopDownOCHumanDataset', 'TopDownAicDataset',
-    'TopDownCocoWholeBodyDataset', 'DeepFashionDataset', 'MeshH36MDataset',
-    'MeshMixDataset', 'MoshDataset', 'MeshAdversarialDataset',
-    'TopDownCrowdPoseDataset', 'BottomUpCrowdPoseDataset',
-    'TopDownFreiHandDataset', 'TopDownOneHand10KDataset',
-    'TopDownPanopticDataset', 'TopDownPoseTrack18Dataset',
-    'TopDownJhmdbDataset', 'TopDownMhpDataset', 'Face300WDataset',
-    'AnimalHorse10Dataset', 'AnimalMacaqueDataset', 'AnimalFlyDataset',
-    'AnimalLocustDataset', 'AnimalZebraDataset', 'build_dataloader',
-    'build_dataset', 'Compose', 'DistributedSampler', 'DATASETS', 'PIPELINES'
+    'BottomUpCocoWholeBodyDataset', 'BottomUpMhpDataset', 'TopDownMpiiDataset',
+    'TopDownMpiiTrbDataset', 'OneHand10KDataset', 'PanopticDataset',
+    'FreiHandDataset', 'InterHand2DDataset', 'TopDownOCHumanDataset',
+    'TopDownAicDataset', 'TopDownCocoWholeBodyDataset', 'DeepFashionDataset',
+    'MeshH36MDataset', 'MeshMixDataset', 'MoshDataset',
+    'MeshAdversarialDataset', 'TopDownCrowdPoseDataset',
+    'BottomUpCrowdPoseDataset', 'TopDownFreiHandDataset',
+    'TopDownOneHand10KDataset', 'TopDownPanopticDataset',
+    'TopDownPoseTrack18Dataset', 'TopDownJhmdbDataset', 'TopDownMhpDataset',
+    'Face300WDataset', 'AnimalHorse10Dataset', 'AnimalMacaqueDataset',
+    'AnimalFlyDataset', 'AnimalLocustDataset', 'AnimalZebraDataset',
+    'build_dataloader', 'build_dataset', 'Compose', 'DistributedSampler',
+    'DATASETS', 'PIPELINES'
 ]
