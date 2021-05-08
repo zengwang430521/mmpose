@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from mmpose.models import Interhand3DHead
+from mmpose.models import GCNInterhand3DHead, Interhand3DHead
 
 
 def test_interhand_3d_head():
@@ -85,3 +85,50 @@ def test_interhand_3d_head():
     assert 'preds' in result
     assert 'rel_root_depth' in result
     assert 'hand_type' in result
+
+    # test Interhand3DHead
+    head = GCNInterhand3DHead(
+        keypoint_head_cfg=dict(
+            in_channels=2048,
+            out_channels=21 * 64,
+            depth_size=64,
+            num_deconv_layers=3,
+            num_deconv_filters=(256, 256, 256),
+            num_deconv_kernels=(4, 4, 4),
+            loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+        root_head_cfg=dict(
+            in_channels=2048,
+            heatmap_size=64,
+            hidden_dims=(512, ),
+            loss_value=dict(type='L1Loss')),
+        hand_type_head_cfg=dict(
+            in_channels=2048,
+            num_labels=2,
+            hidden_dims=(512, ),
+            loss_classification=dict(type='BCELoss', use_target_weight=True)),
+        refine_net_cfg=dict(
+            in_channels=2048,
+            planes=512,
+            adjmat_file='data/adjmat_interhand.npy',
+            num_blocks=3,
+        ),
+        keypoint2d_head_cfg=dict(
+            in_channels=2048,
+            out_channels=42,
+            num_deconv_layers=2,
+            num_deconv_filters=(256, 256),
+            num_deconv_kernels=(4, 4),
+            loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+        train_cfg={},
+        test_cfg={},
+    )
+    head.init_weights()
+
+    # test forward
+    output = head(inputs)
+    assert isinstance(output, list)
+    assert len(output) == 4
+    assert output[0].shape == (N, 42, 64, 64, 64)
+    assert output[1].shape == (N, 1)
+    assert output[2].shape == (N, 2)
+    assert output[3].shape == (N, 42, 32, 32)

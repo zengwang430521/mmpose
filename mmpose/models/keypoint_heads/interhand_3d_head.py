@@ -1,13 +1,17 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from mmcv.cnn import constant_init, normal_init
 
 from mmpose.core.post_processing import flip_back
+from mmpose.models.backbones.resnet import Bottleneck
 from mmpose.models.necks import GlobalAveragePooling
 from ..registry import HEADS
 from .heatmap_1d_head import Heatmap1DHead
 from .heatmap_3d_head import Heatmap3DHead
 from .multilabel_classification_head import MultilabelClassificationHead
+from .top_down_simple_head import TopDownSimpleHead
 
 
 @HEADS.register_module()
@@ -191,3 +195,198 @@ class Interhand3DHead(nn.Module):
                                                       **kwargs)
         result['hand_type'] = result_hand_type['labels']
         return result
+
+
+class GraphConvolution(nn.Module):
+    """Simple GCN layer, similar to https://arxiv.org/abs/1609.02907."""
+
+    def __init__(self, in_channels, out_channels, adjmat, bias=True):
+        super().__init__()
+        # self.adjmat = adjmat
+        self.register_buffer('adjmat', adjmat)
+        self.proj_layer = torch.nn.Conv1d(
+            in_channels, out_channels, 1, bias=bias)
+
+    # X in shape
+    def forward(self, x):
+        x = self.proj_layer(x)
+        x = torch.matmul(x, self.adjmat)
+        return x
+
+
+class GraphBottleneck(nn.Module):
+    expansion = 4
+
+    def __init__(self, inplanes, planes, adjmat, downsample=None):
+        super().__init__()
+        self.conv1 = nn.Conv1d(inplanes, planes, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(planes)
+        self.conv2 = GraphConvolution(planes, planes, adjmat, bias=False)
+        self.bn2 = nn.BatchNorm1d(planes)
+        self.conv3 = nn.Conv1d(
+            planes, planes * self.expansion, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm1d(planes * self.expansion)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv1d):
+                normal_init(m, std=0.001, bias=0)
+            elif isinstance(m, nn.BatchNorm2d):
+                constant_init(m, 1)
+            elif isinstance(m, GraphConvolution):
+                normal_init(m.proj_layer, std=0.001, bias=0)
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+class GCNRefineNet(nn.Module):
+
+    def __init__(self, in_channels, planes, adjmat, num_blocks):
+        super().__init__()
+        gcn = []
+        gcn.append(nn.Conv1d(in_channels, planes * 4, kernel_size=1))
+        for _ in range(num_blocks):
+            gcn.append(GraphBottleneck(planes * 4, planes, adjmat))
+        gcn.append(nn.Conv1d(planes * 4, in_channels, kernel_size=1))
+        self.gcn = nn.Sequential(*gcn)
+
+        self.conv = Bottleneck(
+            in_channels=in_channels * 2 + 1,
+            out_channels=in_channels,
+            downsample=nn.Conv2d(
+                in_channels * 2 + 1, in_channels, kernel_size=1))
+
+    def init_weights(self):
+        for m in self.gcn.modules():
+            if isinstance(m, nn.Conv1d):
+                normal_init(m, std=0.001, bias=0)
+            elif isinstance(m, nn.BatchNorm2d):
+                constant_init(m, 1)
+            elif isinstance(m, GraphBottleneck):
+                m.init_weights()
+
+        for m in self.conv.modules():
+            if isinstance(m, nn.Conv2d):
+                normal_init(m, std=0.001, bias=0)
+            elif isinstance(m, nn.BatchNorm2d):
+                constant_init(m, 1)
+
+    def extract_feature(self, feature_map, heatmap):
+        B, C, H, W = feature_map.shape
+        K = heatmap.shape[1]
+        x = torch.matmul(
+            feature_map.reshape(B, C, H * W),
+            heatmap.reshape(B, K, H * W).permute(0, 2, 1))
+        return x
+
+    def distribute_feature(self, x, heatmap):
+        B, K, H, W = heatmap.shape
+        _, C, _ = x.shape
+        heatmap = heatmap / heatmap.sum(dim=1, keepdim=True)
+        y = torch.matmul(x, heatmap.reshape(B, K, H * W))
+        return y.reshape(B, C, H, W)
+
+    def forward(self, feature_map, heatmap):
+        B, C, H, W = feature_map.shape
+        K = heatmap.shape[1]
+        heatmap = F.interpolate(heatmap, [H, W], mode='bilinear')
+        heatmap = F.softmax(
+            heatmap.reshape(B, K, -1), dim=-1).reshape((B, K, H, W))
+
+        x = self.extract_feature(feature_map, heatmap)
+        x = self.gcn(x)
+        x = self.distribute_feature(x, heatmap)
+        x = torch.cat([feature_map, x,
+                       heatmap.sum(dim=1, keepdim=True)],
+                      dim=1)
+        x = self.conv(x)
+        x = x + feature_map
+        return x
+
+
+@HEADS.register_module()
+class GCNInterhand3DHead(Interhand3DHead):
+    """Interhand 3D head of paper ref: Gyeongsik Moon. "InterHand2.6M: A
+    Dataset and Baseline for 3D Interacting Hand Pose Estimation from a Single
+    RGB Image".
+
+    Args:
+        keypoint_head_cfg (dict): Configs of Heatmap3DHead for hand
+        keypoints estimation.
+        root_head_cfg (dict): Configs of Heatmap1DHead for relative
+        hand root depth estimation.
+        hand_type_head_cfg (dict): Configs of MultilabelClassificationHead
+        for hand type classification.
+    """
+
+    def __init__(self,
+                 keypoint_head_cfg,
+                 root_head_cfg,
+                 hand_type_head_cfg,
+                 refine_net_cfg,
+                 keypoint2d_head_cfg,
+                 train_cfg=None,
+                 test_cfg=None):
+        super().__init__(keypoint_head_cfg, root_head_cfg, hand_type_head_cfg,
+                         train_cfg, test_cfg)
+
+        adjmat = np.load(refine_net_cfg.pop('adjmat_file'))
+        adjmat = torch.FloatTensor(adjmat)
+        # normalize for each column
+        adjmat = adjmat / adjmat.sum(dim=0, keepdim=True)
+        refine_net_cfg['adjmat'] = adjmat
+        self.refine_net = GCNRefineNet(**refine_net_cfg)
+        self.hand2d_head = TopDownSimpleHead(**keypoint2d_head_cfg)
+
+    def init_weights(self):
+        self.left_hand_head.init_weights()
+        self.right_hand_head.init_weights()
+        self.root_head.init_weights()
+        self.hand_type_head.init_weights()
+        self.refine_net.init_weights()
+        self.hand2d_head.init_weights()
+
+    def forward(self, x):
+        """Forward function."""
+        heatmap = self.hand2d_head(x)
+        x = self.refine_net(x, heatmap)
+        output = super().forward(x)
+        output.append(heatmap)
+        return output
+
+    def get_loss(self, output, target, target_weight):
+        """Calculate loss for hand keypoint heatmaps, relative root depth and
+        hand type.
+
+        Args:
+            output (list[Tensor]): a list of outputs from multiple heads.
+            target (list[Tensor]): a list of targets for multiple heads.
+            target_weight (list[Tensor]): a list of targets weight for
+            multiple heads.
+        """
+        losses = super().get_loss(output, target, target_weight)
+        losses['hand2d_loss'] = self.hand2d_head.get_loss(
+            output[3], target[3], target_weight[3])['mse_loss']
+        return losses
