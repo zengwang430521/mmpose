@@ -57,7 +57,7 @@ model = dict(
             loss_classification=dict(type='BCELoss', use_target_weight=True)),
         refine_net_cfg=dict(
             in_channels=2048,
-            planes=512,
+            planes=256,
             adjmat_file='data/adjmat_interhand.npy',
             num_blocks=3,
         ),
