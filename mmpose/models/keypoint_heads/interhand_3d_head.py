@@ -1079,7 +1079,7 @@ class GraphInterhand3DHead(nn.Module):
 
         # transform keypoint depth to camera space
         keypoints_3d[:, :, 2] = \
-            (keypoints_3d[:, :, 2] / self.right_hand_head.depth_size - 0.5) \
+            (keypoints_3d[:, :, 2] / self.hand_head.depth_size - 0.5) \
             * heatmap3d_depth_bound[:, np.newaxis]
 
         result['preds'] = keypoints_3d
