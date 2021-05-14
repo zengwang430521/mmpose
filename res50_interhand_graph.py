@@ -3,9 +3,9 @@ load_from = None
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
-checkpoint_config = dict(interval=1)
+checkpoint_config = dict(interval=2)
 evaluation = dict(
-    interval=1,
+    interval=2,
     metric=['MRRPE', 'MPJPE', 'Handedness_acc'],
     key_indicator='MPJPE_all')
 
