@@ -322,7 +322,7 @@ class Generate3DHeatmapTarget:
         joints_3d_visible = results['joints_3d_visible']
         cfg = results['ann_info']
         image_size = cfg['image_size']
-        W, H, D = cfg['heatmap_size']
+        W, H, D = cfg['heatmap3d_size']
         heatmap3d_depth_bound = cfg['heatmap3d_depth_bound']
         joint_weights = cfg['joint_weights']
         use_different_joint_weights = cfg['use_different_joint_weights']
