@@ -68,7 +68,7 @@ model = dict(
             num_blocks=3,
             out_node=[20, 41]),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True),
-        loss_root_depth=dict(type='L1Loss'),
+        loss_root_depth=dict(type='L1Loss',  use_target_weight=True),
         loss_hand_type=dict(type='BCELoss', use_target_weight=True),
         loss_keypoint2d=dict(
             type='JointsMSELoss', use_target_weight=True, loss_weight=1000.0)),
@@ -192,6 +192,7 @@ data = dict(
         rootnet_result_file=None,
         pipeline=val_pipeline),
 )
+
 
 # data_root = 'data/interhand2.6m'
 # data = dict(
