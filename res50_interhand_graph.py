@@ -148,83 +148,83 @@ val_pipeline = [
 ]
 test_pipeline = val_pipeline
 
-# data_root = 'data/interhand2.6m'
-# data = dict(
-#     samples_per_gpu=16,
-#     workers_per_gpu=2,
-#     train=dict(
-#         type='InterHand3DDataset',
-#         ann_file=f'{data_root}/annotations/all/'
-#         'InterHand2.6M_train_data.json',
-#         camera_file=f'{data_root}/annotations/all/'
-#         'InterHand2.6M_train_camera.json',
-#         joint_file=f'{data_root}/annotations/all/'
-#         'InterHand2.6M_train_joint_3d.json',
-#         img_prefix=f'{data_root}/images/train/',
-#         data_cfg=data_cfg,
-#         use_gt_root_depth=True,
-#         rootnet_result_file=None,
-#         pipeline=train_pipeline),
-#     val=dict(
-#         type='InterHand3DDataset',
-#         ann_file=f'{data_root}/annotations/machine_annot/'
-#         'InterHand2.6M_val_data.json',
-#         camera_file=f'{data_root}/annotations/machine_annot/'
-#         'InterHand2.6M_val_camera.json',
-#         joint_file=f'{data_root}/annotations/machine_annot/'
-#         'InterHand2.6M_val_joint_3d.json',
-#         img_prefix=f'{data_root}/images/val/',
-#         data_cfg=data_cfg,
-#         use_gt_root_depth=True,
-#         rootnet_result_file=None,
-#         pipeline=val_pipeline),
-#     test=dict(
-#         type='InterHand3DDataset',
-#         ann_file=f'{data_root}/annotations/all/'
-#         'InterHand2.6M_test_data.json',
-#         camera_file=f'{data_root}/annotations/all/'
-#         'InterHand2.6M_test_camera.json',
-#         joint_file=f'{data_root}/annotations/all/'
-#         'InterHand2.6M_test_joint_3d.json',
-#         img_prefix=f'{data_root}/images/test/',
-#         data_cfg=data_cfg,
-#         use_gt_root_depth=True,
-#         rootnet_result_file=None,
-#         pipeline=val_pipeline),
-# )
-
 data_root = 'data/interhand2.6m'
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=0,
+    samples_per_gpu=16,
+    workers_per_gpu=2,
     train=dict(
         type='InterHand3DDataset',
-        ann_file='tests/data/interhand2.6m/test_interhand2.6m_data.json',
-        camera_file='tests/data/interhand2.6m/test_interhand2.6m_camera.json',
-        joint_file='tests/data/interhand2.6m/test_interhand2.6m_joint_3d.json',
-        img_prefix='tests/data/interhand2.6m/',
+        ann_file=f'{data_root}/annotations/all/'
+        'InterHand2.6M_train_data.json',
+        camera_file=f'{data_root}/annotations/all/'
+        'InterHand2.6M_train_camera.json',
+        joint_file=f'{data_root}/annotations/all/'
+        'InterHand2.6M_train_joint_3d.json',
+        img_prefix=f'{data_root}/images/train/',
         data_cfg=data_cfg,
         use_gt_root_depth=True,
         rootnet_result_file=None,
         pipeline=train_pipeline),
     val=dict(
         type='InterHand3DDataset',
-        ann_file='tests/data/interhand2.6m/test_interhand2.6m_data.json',
-        camera_file='tests/data/interhand2.6m/test_interhand2.6m_camera.json',
-        joint_file='tests/data/interhand2.6m/test_interhand2.6m_joint_3d.json',
-        img_prefix='tests/data/interhand2.6m/',
+        ann_file=f'{data_root}/annotations/machine_annot/'
+        'InterHand2.6M_val_data.json',
+        camera_file=f'{data_root}/annotations/machine_annot/'
+        'InterHand2.6M_val_camera.json',
+        joint_file=f'{data_root}/annotations/machine_annot/'
+        'InterHand2.6M_val_joint_3d.json',
+        img_prefix=f'{data_root}/images/val/',
         data_cfg=data_cfg,
         use_gt_root_depth=True,
         rootnet_result_file=None,
         pipeline=val_pipeline),
     test=dict(
         type='InterHand3DDataset',
-        ann_file='tests/data/interhand2.6m/test_interhand2.6m_data.json',
-        camera_file='tests/data/interhand2.6m/test_interhand2.6m_camera.json',
-        joint_file='tests/data/interhand2.6m/test_interhand2.6m_joint_3d.json',
-        img_prefix='tests/data/interhand2.6m/',
+        ann_file=f'{data_root}/annotations/all/'
+        'InterHand2.6M_test_data.json',
+        camera_file=f'{data_root}/annotations/all/'
+        'InterHand2.6M_test_camera.json',
+        joint_file=f'{data_root}/annotations/all/'
+        'InterHand2.6M_test_joint_3d.json',
+        img_prefix=f'{data_root}/images/test/',
         data_cfg=data_cfg,
         use_gt_root_depth=True,
         rootnet_result_file=None,
         pipeline=val_pipeline),
 )
+
+# data_root = 'data/interhand2.6m'
+# data = dict(
+#     samples_per_gpu=2,
+#     workers_per_gpu=0,
+#     train=dict(
+#         type='InterHand3DDataset',
+#         ann_file='tests/data/interhand2.6m/test_interhand2.6m_data.json',
+#         camera_file='tests/data/interhand2.6m/test_interhand2.6m_camera.json',
+#         joint_file='tests/data/interhand2.6m/test_interhand2.6m_joint_3d.json',
+#         img_prefix='tests/data/interhand2.6m/',
+#         data_cfg=data_cfg,
+#         use_gt_root_depth=True,
+#         rootnet_result_file=None,
+#         pipeline=train_pipeline),
+#     val=dict(
+#         type='InterHand3DDataset',
+#         ann_file='tests/data/interhand2.6m/test_interhand2.6m_data.json',
+#         camera_file='tests/data/interhand2.6m/test_interhand2.6m_camera.json',
+#         joint_file='tests/data/interhand2.6m/test_interhand2.6m_joint_3d.json',
+#         img_prefix='tests/data/interhand2.6m/',
+#         data_cfg=data_cfg,
+#         use_gt_root_depth=True,
+#         rootnet_result_file=None,
+#         pipeline=val_pipeline),
+#     test=dict(
+#         type='InterHand3DDataset',
+#         ann_file='tests/data/interhand2.6m/test_interhand2.6m_data.json',
+#         camera_file='tests/data/interhand2.6m/test_interhand2.6m_camera.json',
+#         joint_file='tests/data/interhand2.6m/test_interhand2.6m_joint_3d.json',
+#         img_prefix='tests/data/interhand2.6m/',
+#         data_cfg=data_cfg,
+#         use_gt_root_depth=True,
+#         rootnet_result_file=None,
+#         pipeline=val_pipeline),
+# )
