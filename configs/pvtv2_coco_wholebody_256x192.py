@@ -42,7 +42,7 @@ model = dict(
     backbone=dict(type='pvt_v2_b2', pretrained='data/pretrained/pvt_v2_b2.pth'),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        in_channels=2048,
+        in_channels=512,
         out_channels=channel_cfg['num_output_channels'],
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
