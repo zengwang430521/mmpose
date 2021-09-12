@@ -21,10 +21,11 @@ from .tcn import TCN
 from .vgg import VGG
 from .vipnas_resnet import ViPNAS_ResNet
 from .pvt_v2 import pvt_v2_b2
+from .pvt_v2_20_2 import mypvt20_2_small
 
 __all__ = [
     'AlexNet', 'HourglassNet', 'HRNet', 'MobileNetV2', 'MobileNetV3', 'RegNet',
     'ResNet', 'ResNetV1d', 'ResNeXt', 'SCNet', 'SEResNet', 'SEResNeXt',
     'ShuffleNetV1', 'ShuffleNetV2', 'CPM', 'RSN', 'MSPN', 'ResNeSt', 'VGG',
-    'TCN', 'ViPNAS_ResNet', 'LiteHRNet', 'pvt_v2_b2'
+    'TCN', 'ViPNAS_ResNet', 'LiteHRNet', 'pvt_v2_b2', 'mypvt20_2_small'
 ]
