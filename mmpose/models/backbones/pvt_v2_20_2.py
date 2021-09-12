@@ -430,7 +430,7 @@ class MyPVT(nn.Module):
             outs.append((x, loc, [H, W]))
             show_tokens(img, outs, N_grid)
 
-        return token2map(x, loc, H, W, sigma=2, kernel_size=1)
+        return token2map(x, loc, [H, W], kernel_size=1, sigma=2)
         # return x.mean(dim=1)
 
     def forward(self, x):
