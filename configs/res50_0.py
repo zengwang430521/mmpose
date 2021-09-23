@@ -1,4 +1,5 @@
-_base_ = ['../../../../_base_/datasets/coco_wholebody.py']
+# _base_ = ['../../../../_base_/datasets/coco_wholebody.py']
+_base_ = ['_base_/datasets/coco_wholebody.py']
 log_level = 'INFO'
 load_from = None
 resume_from = None

@@ -6,7 +6,7 @@ srun -p mm_human --ntasks=8 \
     --work-dir=work_dirs/pvtv2 --resume-from=work_dirs/pvtv2/latest.pth --launcher="slurm"
 
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
-srun -p mm_human
+srun -p mm_human \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=res50_0 python -u tools/train.py \
     configs/res50_0.py --work-dir=work_dirs/res50_0  --resume-from=work_dirs/res50_0/latest.pth --launcher="slurm"
