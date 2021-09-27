@@ -39,7 +39,7 @@ channel_cfg = dict(
 model = dict(
     type='TopDown',
     # backbone=dict(type='pvt_v2_b2', pretrained='data/pretrained/pvt_v2_b2.pth'),
-    backbone=dict(type='pvt_v2_b2'),
+    backbone=dict(type='pvt_v2_b2', pretrained=None),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         in_channels=512,
