@@ -11,7 +11,6 @@ from mmpose.models.utils.ops import resize
 from ..builder import HEADS
 from .topdown_heatmap_base_head import TopdownHeatmapBaseHead
 
-
 @HEADS.register_module()
 class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
     """Top-down heatmap simple head. paper ref: Bin Xiao et al. ``Simple
@@ -335,3 +334,69 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                 normal_init(m, std=0.001, bias=0)
             elif isinstance(m, nn.BatchNorm2d):
                 constant_init(m, 1)
+
+
+@HEADS.register_module()
+class TestSimpleHead(TopdownHeatmapSimpleHead):
+    """Top-down heatmap simple head. paper ref: Bin Xiao et al. ``Simple
+    Baselines for Human Pose Estimation and Tracking``.
+
+    TopdownHeatmapSimpleHead is consisted of (>=0) number of deconv layers
+    and a simple conv2d layer.
+
+    Args:
+        in_channels (int): Number of input channels
+        out_channels (int): Number of output channels
+        num_deconv_layers (int): Number of deconv layers.
+            num_deconv_layers should >= 0. Note that 0 means
+            no deconv layers.
+        num_deconv_filters (list|tuple): Number of filters.
+            If num_deconv_layers > 0, the length of
+        num_deconv_kernels (list|tuple): Kernel sizes.
+        in_index (int|Sequence[int]): Input feature index. Default: -1
+        input_transform (str|None): Transformation type of input features.
+            Options: 'resize_concat', 'multiple_select', None.
+            'resize_concat': Multiple feature maps will be resize to the
+                same size as first one and than concat together.
+                Usually used in FCN head of HRNet.
+            'multiple_select': Multiple feature maps will be bundle into
+                a list and passed into decode head.
+            None: Only one select feature map is allowed.
+            Default: None.
+        align_corners (bool): align_corners argument of F.interpolate.
+            Default: False.
+        loss_keypoint (dict): Config for keypoint loss. Default: None.
+    """
+
+    def _make_deconv_layer(self, num_layers, num_filters, num_kernels):
+        """Make deconv layers."""
+        if num_layers != len(num_filters):
+            error_msg = f'num_layers({num_layers}) ' \
+                        f'!= length of num_filters({len(num_filters)})'
+            raise ValueError(error_msg)
+        if num_layers != len(num_kernels):
+            error_msg = f'num_layers({num_layers}) ' \
+                        f'!= length of num_kernels({len(num_kernels)})'
+            raise ValueError(error_msg)
+
+        layers = []
+        for i in range(num_layers):
+            kernel, padding, output_padding = \
+                self._get_deconv_cfg(num_kernels[i])
+
+            planes = num_filters[i]
+            layers.append(
+                build_conv_layer(
+                    cfg=dict(type='Conv2d'),
+                    in_channels=self.in_channels,
+                    out_channels=planes,
+                    kernel_size=kernel,
+                    stride=1,
+                    padding=padding))
+
+            layers.append(nn.BatchNorm2d(planes))
+            layers.append(nn.ReLU(inplace=True))
+            self.in_channels = planes
+
+        return nn.Sequential(*layers)
+

@@ -8,7 +8,7 @@ from .temporal_regression_head import TemporalRegressionHead
 from .topdown_heatmap_base_head import TopdownHeatmapBaseHead
 from .topdown_heatmap_multi_stage_head import (TopdownHeatmapMSMUHead,
                                                TopdownHeatmapMultiStageHead)
-from .topdown_heatmap_simple_head import TopdownHeatmapSimpleHead
+from .topdown_heatmap_simple_head import TopdownHeatmapSimpleHead, TestSimpleHead
 from .vipnas_heatmap_simple_head import ViPNASHeatmapSimpleHead
 
 __all__ = [
@@ -16,5 +16,5 @@ __all__ = [
     'TopdownHeatmapMSMUHead', 'TopdownHeatmapBaseHead',
     'AEHigherResolutionHead', 'AESimpleHead', 'DeepposeRegressionHead',
     'TemporalRegressionHead', 'Interhand3DHead', 'HMRMeshHead',
-    'ViPNASHeatmapSimpleHead'
+    'ViPNASHeatmapSimpleHead', 'TestSimpleHead'
 ]
