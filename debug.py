@@ -51,15 +51,118 @@ channel_cfg = dict(
 #         shift_heatmap=True,
 #         modulate_kernel=11))
 
+# model = dict(
+#     type='TopDown',
+#     backbone=dict(type='mypvt3f12_1_small', pretrained=None),
+#     neck=dict(type='TokenInterNeck2', scale_factor=8),
+#     keypoint_head=dict(
+#         type='TestSimpleHead',
+#         in_channels=512,
+#         out_channels=channel_cfg['num_output_channels'],
+#         num_deconv_kernels=(3, 3, 3),
+#         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         flip_test=True,
+#         post_process='default',
+#         shift_heatmap=True,
+#         modulate_kernel=11))
+
+
+# model = dict(
+#     type='TopDown',
+#     backbone=dict(type='mypvt3f12_1_small', pretrained=None),
+#     neck=dict(
+#         type='TokenFPN',
+#         in_channels=[64, 128, 320, 512],
+#         out_channels=256,
+#         start_level=0,
+#         add_extra_convs='on_input',
+#         num_outs=4),
+#     keypoint_head=dict(
+#         type='TopdownHeatmapSimpleHead',
+#         input_transform='resize_concat',
+#         in_channels=(256, 256, 256, 256),
+#         in_index=(0, 1, 2, 3),
+#         out_channels=channel_cfg['num_output_channels'],
+#         num_deconv_layers=0,
+#         extra=dict(final_conv_kernel=1, ),
+#         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         flip_test=True,
+#         post_process='default',
+#         shift_heatmap=True,
+#         modulate_kernel=11))
+
+
+# model = dict(
+#     type='TopDown',
+#     pretrained='https://download.openmmlab.com/mmpose/'
+#     'pretrain_models/hrnet_w32-36af842e.pth',
+#     backbone=dict(
+#         type='HRNet',
+#         in_channels=3,
+#         extra=dict(
+#             stage1=dict(
+#                 num_modules=1,
+#                 num_branches=1,
+#                 block='BOTTLENECK',
+#                 num_blocks=(4, ),
+#                 num_channels=(64, )),
+#             stage2=dict(
+#                 num_modules=1,
+#                 num_branches=2,
+#                 block='BASIC',
+#                 num_blocks=(4, 4),
+#                 num_channels=(32, 64)),
+#             stage3=dict(
+#                 num_modules=4,
+#                 num_branches=3,
+#                 block='BASIC',
+#                 num_blocks=(4, 4, 4),
+#                 num_channels=(32, 64, 128)),
+#             stage4=dict(
+#                 num_modules=3,
+#                 num_branches=4,
+#                 block='BASIC',
+#                 num_blocks=(4, 4, 4, 4),
+#                 num_channels=(32, 64, 128, 256))),
+#     ),
+#     keypoint_head=dict(
+#         type='TopdownHeatmapSimpleHead',
+#         in_channels=32,
+#         out_channels=channel_cfg['num_output_channels'],
+#         num_deconv_layers=0,
+#         extra=dict(final_conv_kernel=1, ),
+#         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         flip_test=True,
+#         post_process='default',
+#         shift_heatmap=True,
+#         modulate_kernel=11))
+
+
+
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3f12_1_small', pretrained=None),
-    neck=dict(type='TokenInterNeck2', scale_factor=8),
+    backbone=dict(type='pvt_v2_b2', pretrained=None),
+    neck=dict(
+        type='FPN',
+        in_channels=[64, 128, 320, 512],
+        out_channels=256,
+        start_level=0,
+        add_extra_convs='on_input',
+        num_outs=4),
     keypoint_head=dict(
-        type='TestSimpleHead',
-        in_channels=512,
+        type='TopdownHeatmapSimpleHead',
+        input_transform='resize_concat',
+        in_channels=(256, 256, 256, 256),
+        in_index=(0, 1, 2, 3),
         out_channels=channel_cfg['num_output_channels'],
-        num_deconv_kernels=(3, 3, 3),
+        num_deconv_layers=0,
+        extra=dict(final_conv_kernel=1, ),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
     test_cfg=dict(
