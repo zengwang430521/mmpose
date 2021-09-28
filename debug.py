@@ -145,6 +145,33 @@ channel_cfg = dict(
 
 
 
+# model = dict(
+#     type='TopDown',
+#     backbone=dict(type='pvt_v2_b2', pretrained=None),
+#     neck=dict(
+#         type='FPN',
+#         in_channels=[64, 128, 320, 512],
+#         out_channels=256,
+#         start_level=0,
+#         add_extra_convs='on_input',
+#         num_outs=4),
+#     keypoint_head=dict(
+#         type='TopdownHeatmapSimpleHead',
+#         input_transform='resize_concat',
+#         in_channels=(256, 256, 256, 256),
+#         in_index=(0, 1, 2, 3),
+#         out_channels=channel_cfg['num_output_channels'],
+#         num_deconv_layers=0,
+#         extra=dict(final_conv_kernel=1, ),
+#         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         flip_test=True,
+#         post_process='default',
+#         shift_heatmap=True,
+#         modulate_kernel=11))
+
+
 model = dict(
     type='TopDown',
     backbone=dict(type='pvt_v2_b2', pretrained=None),
@@ -154,12 +181,12 @@ model = dict(
         out_channels=256,
         start_level=0,
         add_extra_convs='on_input',
-        num_outs=4),
+        num_outs=4,
+        resize_add=True,
+    ),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        input_transform='resize_concat',
-        in_channels=(256, 256, 256, 256),
-        in_index=(0, 1, 2, 3),
+        in_channels=256,
         out_channels=channel_cfg['num_output_channels'],
         num_deconv_layers=0,
         extra=dict(final_conv_kernel=1, ),

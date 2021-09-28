@@ -70,8 +70,11 @@ class FPN(BaseModule):
                  act_cfg=None,
                  upsample_cfg=dict(mode='nearest'),
                  init_cfg=dict(
-                     type='Xavier', layer='Conv2d', distribution='uniform')):
+                     type='Xavier', layer='Conv2d', distribution='uniform'),
+                 resize_add=False
+                 ):
         super(FPN, self).__init__(init_cfg)
+        self.resize_add = resize_add
         assert isinstance(in_channels, list)
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -198,6 +201,13 @@ class FPN(BaseModule):
                     else:
                         outs.append(self.fpn_convs[i](outs[-1]))
         # return tuple(outs)
+
+        if self.resize_add:
+            out = outs[0]
+            for i in range(1, len(outs)):
+                out += F.interpolate(outs[i], size=out.shape[2:])
+            return out
+
         return outs
 
 
@@ -263,6 +273,12 @@ class TokenFPN(FPN):
                         outs.append(self.fpn_convs[i](F.relu(outs[-1])))
                     else:
                         outs.append(self.fpn_convs[i](outs[-1]))
+
+        if self.resize_add:
+            out = outs[0]
+            for i in range(1, len(outs)):
+                out += F.interpolate(outs[i], size=out.shape[2:])
+            return out
 
         return outs
 
