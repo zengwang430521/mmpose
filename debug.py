@@ -171,25 +171,45 @@ channel_cfg = dict(
 #         shift_heatmap=True,
 #         modulate_kernel=11))
 
+#
+# model = dict(
+#     type='TopDown',
+#     backbone=dict(type='pvt_v2_b2', pretrained=None),
+#     neck=dict(
+#         type='FPN',
+#         in_channels=[64, 128, 320, 512],
+#         out_channels=256,
+#         start_level=0,
+#         add_extra_convs='on_input',
+#         num_outs=4,
+#         resize_add=True,
+#     ),
+#     keypoint_head=dict(
+#         type='TopdownHeatmapSimpleHead',
+#         in_channels=256,
+#         out_channels=channel_cfg['num_output_channels'],
+#         num_deconv_layers=0,
+#         extra=dict(final_conv_kernel=1, ),
+#         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         flip_test=True,
+#         post_process='default',
+#         shift_heatmap=True,
+#         modulate_kernel=11))
+
+
+
 
 model = dict(
     type='TopDown',
-    backbone=dict(type='pvt_v2_b2', pretrained=None),
-    neck=dict(
-        type='FPN',
-        in_channels=[64, 128, 320, 512],
-        out_channels=256,
-        start_level=0,
-        add_extra_convs='on_input',
-        num_outs=4,
-        resize_add=True,
-    ),
+    backbone=dict(type='mypvt3g_small', pretrained=None),
+    neck=dict(type='TokenInterNeck2', scale_factor=8),
     keypoint_head=dict(
-        type='TopdownHeatmapSimpleHead',
-        in_channels=256,
+        type='TestSimpleHead',
+        in_channels=512,
         out_channels=channel_cfg['num_output_channels'],
-        num_deconv_layers=0,
-        extra=dict(final_conv_kernel=1, ),
+        num_deconv_kernels=(3, 3, 3),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
     test_cfg=dict(
@@ -197,6 +217,7 @@ model = dict(
         post_process='default',
         shift_heatmap=True,
         modulate_kernel=11))
+
 
 model = build_posenet(model)
 input = torch.rand([2, 3, 192, 256])
