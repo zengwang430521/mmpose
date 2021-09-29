@@ -488,8 +488,7 @@ class mypvt3g_small(MyPVT):
 # For test
 if __name__ == '__main__':
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = mypvt3f12_1_small(drop_path_rate=0.).to(device)
-    model.reset_drop_path(0.)
+    model = mypvt3g_small(drop_path_rate=0.).to(device)
     # pre_dict = torch.load('work_dirs/my20_s2/my20_300.pth')['model']
     # model.load_state_dict(pre_dict)
     x = torch.rand([2, 3, 112, 112]).to(device)
