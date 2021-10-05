@@ -7,12 +7,12 @@ import math
 from .pvt_v2 import (Block, DropPath, DWConv, OverlapPatchEmbed, trunc_normal_, _cfg, get_root_logger, load_checkpoint)
 from .utils_mine import (
     get_grid_loc,
-    gumble_top_k, get_sample_grid,
-    show_tokens_merge, show_conf_merge, merge_tokens, merge_tokens_agg, token2map_agg_sparse, map2token_agg_mat
+    gumble_top_k,
+    show_tokens_merge, show_conf_merge, merge_tokens, merge_tokens_agg_dist, token2map_agg_sparse, map2token_agg_mat_nearest,
+    farthest_point_sample
 )
 from .utils_mine import get_loc_new as get_loc
 from ..builder import BACKBONES
-
 
 vis = False
 # vis = True
@@ -21,8 +21,10 @@ vis = False
 do not select tokens, merge tokens. weight NOT clamp, conf do not clamp
 merge feature, but not merge locs, reserve all locs.
 inherit weights when map2token, which can regarded as tokens merge
-saliency grid
+farthest_point_sample DOWN, N_grid = 0, feature distance merge
+token2map nearest + skip token conv (this must be used together.)
 '''
+
 
 class MyMlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False):
@@ -70,12 +72,13 @@ class MyDWConv(nn.Module):
     def __init__(self, dim=768):
         super().__init__()
         self.dwconv = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim)
+        self.dwconv_skip = nn.Conv1d(dim, dim, 1, bias=False, groups=dim)
 
     def forward(self, x, loc, loc_orig, idx_agg, agg_weight, H, W):
-        B, N, C = x.shape
-        x, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, [H, W])
-        x = self.dwconv(x)
-        x = map2token_agg_mat(x, loc, loc_orig, idx_agg, agg_weight)
+        x_map, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, [H, W])
+        x_map = self.dwconv(x_map)
+        x = map2token_agg_mat_nearest(x_map, loc, loc_orig, idx_agg, agg_weight) + \
+            self.dwconv_skip(x.permute(0, 2, 1)).permute(0, 2, 1)
         return x
 
 
@@ -249,6 +252,7 @@ class DownLayer(nn.Module):
         self.T_min = 1
         self.T_decay = 0.9998
         self.conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=2, padding=1)
+        self.conv_skip = nn.Linear(embed_dim, dim_out, bias=False)
         # self.conv = PartialConv2d(embed_dim, self.block.dim_out, kernel_size=3, stride=1, padding=1)
         self.norm = nn.LayerNorm(self.dim_out)
         self.conf = nn.Linear(self.dim_out, 1)
@@ -257,10 +261,11 @@ class DownLayer(nn.Module):
         # x, mask = token2map(x, pos, [H, W], 1, 2, return_mask=True)
         # x = self.conv(x, mask)
 
-        x, _ = token2map_agg_sparse(x, pos, pos_orig, idx_agg, [H, W])
-        x = self.conv(x)
-        _, _, H, W = x.shape
-        x = map2token_agg_mat(x, pos, pos_orig, idx_agg, agg_weight)
+        x_map, _ = token2map_agg_sparse(x, pos, pos_orig, idx_agg, [H, W])
+        x_map = self.conv(x_map)
+        _, _, H, W = x_map.shape
+        x = map2token_agg_mat_nearest(x_map, pos, pos_orig, idx_agg, agg_weight) +\
+            self.conv_skip(x)
         B, N, C = x.shape
 
         # sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
@@ -275,20 +280,25 @@ class DownLayer(nn.Module):
         conf = self.conf(self.norm(x))
         conf_ada = conf[:, N_grid:]
 
-        # _, index_down = torch.topk(conf_ada, self.sample_num, 1)
+        # # _, index_down = torch.topk(conf_ada, self.sample_num, 1)
         # index_down = gumble_top_k(conf_ada, sample_num, 1, T=1)
         # pos_down = torch.gather(pos_ada, 1, index_down.expand([B, sample_num, 2]))
         # pos_down = torch.cat([pos_grid, pos_down], 1)
 
-        weight = conf.exp()
+        x_grid = x[:, :N_grid]
+        x_ada = x[:, N_grid:]
+        index_down = farthest_point_sample(x_ada, sample_num).unsqueeze(-1)
+        x_down = torch.gather(x_ada, 1, index_down.expand([B, sample_num, C]))
+        x_down = torch.cat([x_grid, x_down], 1)
 
-        weight_map, mask = token2map_agg_sparse(weight, pos, pos_orig, idx_agg, [H, W])
-        pos_down = get_sample_grid(weight_map).reshape(B, 2, -1).permute(0, 2,  1)
+
+
+        # pos_down = get_grid_loc(B, H, W, x.device)
 
         # conf = conf.clamp(-7, 7)
         # weight = conf.clamp(-7, 7).exp()
-        # weight = conf.exp()
-        x_down, pos_down, idx_agg_down, weight_t = merge_tokens_agg(x, pos, pos_down, idx_agg, weight, True)
+        weight = conf.exp()
+        x_down, pos_down, idx_agg_down, weight_t = merge_tokens_agg_dist(x, pos, index_down, x_down, idx_agg, weight, True)
         agg_weight_down = agg_weight * weight_t
         agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
 
@@ -297,6 +307,7 @@ class DownLayer(nn.Module):
         if vis:
             show_conf_merge(conf, pos, pos_orig, idx_agg)
         return x_down, pos_down, idx_agg_down, agg_weight_down
+
 
 
 class MyPVT(nn.Module):
@@ -408,6 +419,7 @@ class MyPVT(nn.Module):
             if torch.isnan(x).any(): print('x is nan, the stage is 0')
         x = norm(x)
         x, loc, N_grid = get_loc(x, H, W, self.grid_stride)
+        N_grid = 0
 
         B, N, _ = x.shape
         device = x.device
@@ -479,8 +491,9 @@ class MyPVT(nn.Module):
         return x
 
 
+
 @BACKBONES.register_module()
-class mypvt5f_small(MyPVT):
+class mypvt3h2_small(MyPVT):
     def __init__(self, **kwargs):
         super().__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],

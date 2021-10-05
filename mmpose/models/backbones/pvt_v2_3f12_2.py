@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from functools import partial
 import math
 
-from .pvt_v2 import (Block, DropPath, DWConv, OverlapPatchEmbed, trunc_normal_, _cfg)
+from .pvt_v2 import (Block, DropPath, DWConv, OverlapPatchEmbed, trunc_normal_, _cfg, get_root_logger, load_checkpoint)
 from .utils_mine import (
     get_grid_loc,
     gumble_top_k,

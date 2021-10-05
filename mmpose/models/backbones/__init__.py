@@ -27,11 +27,13 @@ from .pvt_v2_3f12_2 import mypvt3f12_2_small
 from .pvt_v2_3g import mypvt3g_small
 from .pvt_v2_3g1 import mypvt3g1_small
 from .pvt_v2_5f import mypvt5f_small
+from .pvt_v2_3h2 import mypvt3h2_small
+
 
 __all__ = [
     'AlexNet', 'HourglassNet', 'HRNet', 'MobileNetV2', 'MobileNetV3', 'RegNet',
     'ResNet', 'ResNetV1d', 'ResNeXt', 'SCNet', 'SEResNet', 'SEResNeXt',
     'ShuffleNetV1', 'ShuffleNetV2', 'CPM', 'RSN', 'MSPN', 'ResNeSt', 'VGG',
     'TCN', 'ViPNAS_ResNet', 'LiteHRNet', 'pvt_v2_b2', 'mypvt20_2_small', 'mypvt3f12_1_small',
-    'mypvt3g_small', 'mypvt3g1_small', 'mypvt5f_small'
+    'mypvt3g_small', 'mypvt3g1_small', 'mypvt5f_small', 'mypvt3h2_small'
 ]
