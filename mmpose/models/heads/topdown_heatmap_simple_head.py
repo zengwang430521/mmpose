@@ -10,6 +10,7 @@ from mmpose.models.builder import build_loss
 from mmpose.models.utils.ops import resize
 from ..builder import HEADS
 from .topdown_heatmap_base_head import TopdownHeatmapBaseHead
+from mmpose.models.backbones.utils_mine import token2map_agg_sparse
 
 @HEADS.register_module()
 class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
@@ -274,14 +275,26 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
 
         if self.input_transform == 'resize_concat':
             inputs = [inputs[i] for i in self.in_index]
-            upsampled_inputs = [
-                resize(
-                    input=x,
-                    size=inputs[0].shape[2:],
-                    mode='bilinear',
-                    align_corners=self.align_corners) for x in inputs
-            ]
-            inputs = torch.cat(upsampled_inputs, dim=1)
+            if isinstance(inputs[0], list) or isinstance(inputs[0], tuple):
+                H, W = inputs[0][2]
+                # resize concat for merged tokens
+                # outs.append((x, loc, [H, W], loc_orig, idx_agg))
+                upsampled_inputs = [
+                    token2map_agg_sparse(tmp[0], tmp[1], tmp[3], tmp[4], [H, W])[0] for tmp in inputs
+                ]
+                inputs = torch.cat(upsampled_inputs, dim=1)
+
+            else:
+                upsampled_inputs = [
+                    resize(
+                        input=x,
+                        size=inputs[0].shape[2:],
+                        mode='bilinear',
+                        align_corners=self.align_corners) for x in inputs
+                ]
+                inputs = torch.cat(upsampled_inputs, dim=1)
+
+
         elif self.input_transform == 'multiple_select':
             inputs = [inputs[i] for i in self.in_index]
         else:
