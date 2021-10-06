@@ -1355,10 +1355,10 @@ def merge_tokens_agg_dist(x, loc, index_down, x_down, idx_agg, weight=None, retu
     # cos_sim = F.cosine_similarity(x[:, :, None, :], x_down[:, None, :, :], dim=-1)
     # idx_agg_t = cos_sim.argmax(axis=2)
 
-    dist = x.unsqueeze(2) - x_down.unsqueeze(1)
-    dist = dist.norm(p=2, dim=-1)
-    idx_agg_t = dist.argmin(axis=2)
-
+    # dist = x.unsqueeze(2) - x_down.unsqueeze(1)
+    # dist = dist.norm(p=2, dim=-1)
+    # idx_agg_t = dist.argmin(axis=2)
+    idx_agg_t = torch.cdist(x, x_down, p=2).argmin(axis=2)
     # make sure selected tokens merge to itself
     idx_batch = torch.arange(B, device=x.device)[:, None].expand(B, Ns)
     idx_tmp = torch.arange(Ns, device=x.device)[None, :].expand(B, Ns)
@@ -1402,6 +1402,7 @@ def merge_tokens_agg_dist(x, loc, index_down, x_down, idx_agg, weight=None, retu
         weight_t = index_points(norm_weight, idx_agg)
         return x_out, loc_out, idx_agg, weight_t
     return x_out, loc_out, idx_agg
+
 
 
 '''merge according to qkv'''
