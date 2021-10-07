@@ -51,6 +51,7 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                  num_deconv_filters=(256, 256, 256),
                  num_deconv_kernels=(4, 4, 4),
                  extra=None,
+                 inter_mode='bilinear',
                  in_index=0,
                  input_transform=None,
                  align_corners=False,
@@ -67,6 +68,7 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
         self.target_type = self.test_cfg.get('target_type', 'GaussianHeatmap')
 
         self._init_inputs(in_channels, in_index, input_transform)
+        self.inter_mode = inter_mode
         self.in_index = in_index
         self.align_corners = align_corners
 
@@ -195,6 +197,15 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
         x = self._transform_inputs(x)
         x = self.deconv_layers(x)
         x = self.final_layer(x)
+
+        # import matplotlib.pyplot as plt
+        # plt.subplot(2, 5, 1)
+        # tmp = x[0, :1, :, :].detach().cpu()
+        # min = tmp.min(dim=-1)[0].min(dim=-1)[0][:, None, None]
+        # max = tmp.max(dim=-1)[0].max(dim=-1)[0][:, None, None]
+        # tmp = (tmp - min) / (max - min)
+        # plt.imshow(tmp.permute(1, 2, 0))
+
         return x
 
     def inference_model(self, x, flip_pairs=None):
@@ -285,14 +296,32 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                 inputs = torch.cat(upsampled_inputs, dim=1)
 
             else:
-                upsampled_inputs = [
-                    resize(
-                        input=x,
-                        size=inputs[0].shape[2:],
-                        mode='bilinear',
-                        align_corners=self.align_corners) for x in inputs
-                ]
+                if self.inter_mode == 'nearest':
+                    upsampled_inputs = [
+                        resize(
+                            input=x,
+                            size=inputs[0].shape[2:],
+                            mode='nearest') for x in inputs
+                    ]
+                else:
+                    upsampled_inputs = [
+                        resize(
+                            input=x,
+                            size=inputs[0].shape[2:],
+                            mode='bilinear',
+                            align_corners=self.align_corners) for x in inputs
+                    ]
                 inputs = torch.cat(upsampled_inputs, dim=1)
+
+            # import matplotlib.pyplot as plt
+            # l = len(upsampled_inputs)
+            # for lv in range(l):
+            #     plt.subplot(2, l + 1, lv + 2)
+            #     tmp = upsampled_inputs[lv][0, :3, :, :].detach().cpu()
+            #     min = tmp.min(dim=-1)[0].min(dim=-1)[0][:, None, None]
+            #     max = tmp.max(dim=-1)[0].max(dim=-1)[0][:, None, None]
+            #     tmp = (tmp - min) / (max - min)
+            #     plt.imshow(tmp.permute(1, 2, 0))
 
 
         elif self.input_transform == 'multiple_select':

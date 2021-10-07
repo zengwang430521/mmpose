@@ -221,12 +221,33 @@ channel_cfg = dict(
 #         modulate_kernel=11))
 
 
+# model = dict(
+#     type='TopDown',
+#     backbone=dict(type='pvt_v2_b2', pretrained=None),
+#     keypoint_head=dict(
+#         type='TestSimpleHead',
+#         input_transform='resize_concat',
+#         in_channels=(64, 128, 320, 512),
+#         in_index=(0, 1, 2, 3),
+#         out_channels=channel_cfg['num_output_channels'],
+#         num_deconv_layers=0,
+#         extra=dict(final_conv_kernel=1, num_conv_layers=1, num_conv_kernels=(1,)),
+#         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         flip_test=True,
+#         post_process='default',
+#         shift_heatmap=True,
+#         modulate_kernel=11))
+
+
 model = dict(
     type='TopDown',
     backbone=dict(type='pvt_v2_b2', pretrained=None),
     keypoint_head=dict(
         type='TestSimpleHead',
         input_transform='resize_concat',
+        inter_mode='nearest',
         in_channels=(64, 128, 320, 512),
         in_index=(0, 1, 2, 3),
         out_channels=channel_cfg['num_output_channels'],
