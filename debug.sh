@@ -6,8 +6,8 @@ srun -p mm_human --ntasks=8 \
     --work-dir=work_dirs/pvtv2 --resume-from=work_dirs/pvtv2/latest.pth --launcher="slurm"
 
 srun -p mm_human \
-srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p pat_earth \
+srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=pvtv2_up_nearest python -u tools/train.py configs/pvtv2_up_nearest.py --work-dir=work_dirs/pvtv2_up_nearest --launcher="slurm"
 
