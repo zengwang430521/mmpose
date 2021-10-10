@@ -10,7 +10,7 @@ from mmpose.models.builder import build_loss
 from mmpose.models.utils.ops import resize
 from ..builder import HEADS
 from .topdown_heatmap_base_head import TopdownHeatmapBaseHead
-from mmpose.models.backbones.utils_mine import token2map_agg_sparse
+from mmpose.models.backbones.utils_mine import token2map_agg_sparse, guassian_filt
 
 @HEADS.register_module()
 class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
@@ -293,6 +293,15 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                 upsampled_inputs = [
                     token2map_agg_sparse(tmp[0], tmp[1], tmp[3], tmp[4], [H, W])[0] for tmp in inputs
                 ]
+
+                # gaussian filter
+                if self.inter_mode == 'gaussian':
+                    sigma = 2
+                    kernels = [1, 3, 5, 5]
+                    upsampled_inputs = [
+                        guassian_filt(up_in, k, sigma) for (up_in, k) in zip(upsampled_inputs, kernels)
+                    ]
+
                 inputs = torch.cat(upsampled_inputs, dim=1)
 
             else:
@@ -313,15 +322,15 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                     ]
                 inputs = torch.cat(upsampled_inputs, dim=1)
 
-            # import matplotlib.pyplot as plt
-            # l = len(upsampled_inputs)
-            # for lv in range(l):
-            #     plt.subplot(2, l + 1, lv + 2)
-            #     tmp = upsampled_inputs[lv][0, :3, :, :].detach().cpu()
-            #     min = tmp.min(dim=-1)[0].min(dim=-1)[0][:, None, None]
-            #     max = tmp.max(dim=-1)[0].max(dim=-1)[0][:, None, None]
-            #     tmp = (tmp - min) / (max - min)
-            #     plt.imshow(tmp.permute(1, 2, 0))
+            import matplotlib.pyplot as plt
+            l = len(upsampled_inputs)
+            for lv in range(l):
+                plt.subplot(2, l + 1, lv + 2)
+                tmp = upsampled_inputs[lv][0, :3, :, :].detach().cpu()
+                min = tmp.min(dim=-1)[0].min(dim=-1)[0][:, None, None]
+                max = tmp.max(dim=-1)[0].max(dim=-1)[0][:, None, None]
+                tmp = (tmp - min) / (max - min)
+                plt.imshow(tmp.permute(1, 2, 0))
 
 
         elif self.input_transform == 'multiple_select':
