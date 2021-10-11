@@ -932,7 +932,7 @@ def merge_tokens_agg(x, loc, loc_down, idx_agg, weight=None, return_weight=False
 #
 
 
-def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None):
+def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None, kernel=1, sigma=2):
     # x = torch.rand(2, 4, 3).half()
     # loc = torch.rand(2, 4, 2)
     # loc_orig = torch.rand(2, 7, 2)
@@ -961,19 +961,29 @@ def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None):
 
     A = torch.sparse.FloatTensor(coor, value, torch.Size([B*H*W, B*N]))
 
-    with torch.cuda.amp.autocast(enabled=False):
-        all_weight = A.type(torch.float32) @ x.new_ones(B*N, 1).type(torch.float32) + 1e-6
-        all_weight = all_weight.type(x.dtype)
-
+    all_weight = A.type(torch.float32) @ x.new_ones(B*N, 1).type(torch.float32) + 1e-6
+    all_weight = all_weight.type(x.dtype)
     value = value / all_weight[idx_HW_orig.reshape(-1), 0]
-    A = torch.sparse.FloatTensor(coor, value, torch.Size([B*H*W, B*N]))
 
-    with torch.cuda.amp.autocast(enabled=False):
+    if kernel > 1 and C > N:
+        A = x.new_zeros(B * H * W, N)
+        A[idx_HW_orig.reshape(-1), idx_agg.reshape(-1)] = value.reshape(-1)
+        A = A.reshape(B, H, W, N).permute(0, 3, 1, 2)
+        A = guassian_filt(A, kernel, sigma)
+        A = A.flatten(2).permute(0, 2, 1)
+        x_out = A @ x
+        x_out = x_out.type(x.dtype)
+        x_out = x_out.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+        all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3, 1, 2).contiguous()
+    else:
+        A = torch.sparse.FloatTensor(coor, value, torch.Size([B * H * W, B * N]))
         x_out = A.type(torch.float32) @ x.reshape(B*N, C).type(torch.float32)
         x_out = x_out.type(x.dtype)
+        x_out = x_out.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+        all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3, 1, 2).contiguous()
+        if kernel > 1:
+            x_out = guassian_filt(x_out, kernel, sigma)
 
-    x_out = x_out.reshape(B, H, W, C).permute(0, 3,  1, 2).contiguous()
-    all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3,  1, 2).contiguous()
     return x_out, all_weight
 
 
@@ -1701,6 +1711,11 @@ def show_tokens_merge(x, out, N_grid=14*14):
             idx_map, _ = token2map_agg_sparse(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4])
             idx_map = idx_map[i].permute(1, 2, 0).detach().cpu()
             ax.imshow(idx_map)
+
+            idx_map, _ = token2map_agg_sparse(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4], kernel=3)
+            idx_map = idx_map[i].permute(1, 2, 0).detach().cpu()
+            ax.imshow(idx_map)
+
 
     return
 

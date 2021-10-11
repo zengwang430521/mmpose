@@ -54,10 +54,12 @@ class TokenInterNeck1(nn.Module):
 class TokenInterNeck2(nn.Module):
     """Token inter to feature map, merge
     """
-    def __init__(self, scale_factor, stage=-1):
+    def __init__(self, scale_factor, stage=-1, kernel=1, sigma=2):
         super().__init__()
         self.scale_factor = scale_factor
         self.stage = stage
+        self.kernel = kernel
+        self.sigma = sigma
 
     def init_weights(self):
         pass
@@ -67,6 +69,6 @@ class TokenInterNeck2(nn.Module):
         x, loc, map_size, loc_orig, idx_agg = input
         h, w = map_size
         h, w = int(h * self.scale_factor), int(w * self.scale_factor)        
-        outs, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, [h, w])
+        outs, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, [h, w], kernel=self.kernel, sigma=self.sigma)
         return outs
 
