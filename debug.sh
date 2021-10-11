@@ -5,9 +5,9 @@ srun -p mm_human --ntasks=8 \
     --job-name=pvtv2   python -u tools/train.py configs/pvtv2_coco_wholebody_256x192.py \
     --work-dir=work_dirs/pvtv2 --resume-from=work_dirs/pvtv2/latest.pth --launcher="slurm"
 
-srun -p mm_human \
 srun -p pat_earth \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+srun -p mm_human \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=pvt3h11_up python -u tools/train.py configs/pvt3h11_up.py --work-dir=work_dirs/my3h11_up --launcher="slurm"
 

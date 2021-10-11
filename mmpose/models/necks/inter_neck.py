@@ -76,6 +76,7 @@ class TokenInterNeck2(nn.Module):
         else:
             h, w = int(h * scale_orig), int(w * scale_orig)
             outs, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, [h, w], kernel=self.kernel, sigma=self.sigma)
+            h, w = map_size
             h, w = int(h * self.scale_factor), int(w * self.scale_factor)
             outs = F.interpolate(outs, [h, w], mode='bilinear')
         return outs
