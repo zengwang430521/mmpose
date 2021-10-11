@@ -1708,13 +1708,13 @@ def show_tokens_merge(x, out, N_grid=14*14):
             # tmp = torch.arange(N, device=loc.device)[None, :, None].expand(B, N, 1).float()
             tmp = torch.rand([N, 3], device=loc.device)[None, :, :].expand(B, N, 3).float()
             H, W, _ = img.shape
-            idx_map, _ = token2map_agg_sparse(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4])
+            idx_map, _ = token2map_agg_sparse(tmp, loc_orig, loc_orig, idx_agg, [H//8, W//8])
             idx_map = idx_map[i].permute(1, 2, 0).detach().cpu()
             ax.imshow(idx_map)
 
-            idx_map, _ = token2map_agg_sparse(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4], kernel=3)
-            idx_map = idx_map[i].permute(1, 2, 0).detach().cpu()
-            ax.imshow(idx_map)
+            # idx_map, _ = token2map_agg_sparse(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4], kernel=3)
+            # idx_map = idx_map[i].permute(1, 2, 0).detach().cpu()
+            # ax.imshow(idx_map)
 
 
     return

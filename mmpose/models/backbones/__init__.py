@@ -29,6 +29,7 @@ from .pvt_v2_3g1 import mypvt3g1_small
 from .pvt_v2_5f import mypvt5f_small
 from .pvt_v2_3h1 import mypvt3h1_small
 from .pvt_v2_3h2 import mypvt3h2_small
+from .pvt_v2_3h11 import mypvt3h11_small
 
 
 __all__ = [
@@ -36,5 +37,5 @@ __all__ = [
     'ResNet', 'ResNetV1d', 'ResNeXt', 'SCNet', 'SEResNet', 'SEResNeXt',
     'ShuffleNetV1', 'ShuffleNetV2', 'CPM', 'RSN', 'MSPN', 'ResNeSt', 'VGG',
     'TCN', 'ViPNAS_ResNet', 'LiteHRNet', 'pvt_v2_b2', 'mypvt20_2_small', 'mypvt3f12_1_small',
-    'mypvt3g_small', 'mypvt3g1_small', 'mypvt5f_small', 'mypvt3h2_small', 'mypvt3h1_small'
+    'mypvt3g_small', 'mypvt3g1_small', 'mypvt5f_small', 'mypvt3h2_small', 'mypvt3h1_small', 'mypvt3h11_small'
 ]

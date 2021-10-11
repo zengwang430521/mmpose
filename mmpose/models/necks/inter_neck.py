@@ -68,7 +68,15 @@ class TokenInterNeck2(nn.Module):
         input = inputs[self.stage]
         x, loc, map_size, loc_orig, idx_agg = input
         h, w = map_size
-        h, w = int(h * self.scale_factor), int(w * self.scale_factor)        
-        outs, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, [h, w], kernel=self.kernel, sigma=self.sigma)
+        scale_orig = (idx_agg.shape[1] // x.shape[1]) ** 0.5
+
+        if self.scale_factor <= scale_orig:
+            h, w = int(h * self.scale_factor), int(w * self.scale_factor)
+            outs, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, [h, w], kernel=self.kernel, sigma=self.sigma)
+        else:
+            h, w = int(h * scale_orig), int(w * scale_orig)
+            outs, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, [h, w], kernel=self.kernel, sigma=self.sigma)
+            h, w = int(h * self.scale_factor), int(w * self.scale_factor)
+            outs = F.interpolate(outs, [h, w], mode='bilinear')
         return outs
 

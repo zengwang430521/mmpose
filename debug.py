@@ -264,8 +264,8 @@ channel_cfg = dict(
 
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_small', pretrained=None),
-    neck=dict(type='TokenInterNeck2', scale_factor=8, kernel=7),
+    backbone=dict(type='mypvt3h11_small', pretrained=None),
+    neck=dict(type='TokenInterNeck2', scale_factor=8),
     keypoint_head=dict(
         type='TestSimpleHead',
         in_channels=512,
