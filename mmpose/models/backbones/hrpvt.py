@@ -23,8 +23,6 @@ from mmpose.models.utils.ops import resize
 from mmpose.utils import get_root_logger
 from ..builder import BACKBONES
 from .modules.bottleneck_block import Bottleneck
-from .modules.transformer_block import GeneralTransformerBlock
-from .resnet import BasicBlock
 
 
 class PVT2Block(nn.Module):
