@@ -572,7 +572,7 @@ class HRPVT(nn.Module):
         blocks,
         stride=1,
         num_heads=1,
-        window_size=7,
+        sr_ratio=1,
         mlp_ratio=4.0,
     ):
         """Make each layer."""
@@ -591,13 +591,13 @@ class HRPVT(nn.Module):
             )
 
         layers = []
-        if isinstance(block, GeneralTransformerBlock):
+        if isinstance(block, PVT2Block):
             layers.append(
                 block(
                     inplanes,
                     planes,
                     num_heads=num_heads,
-                    window_size=window_size,
+                    sr_ratio=sr_ratio,
                     mlp_ratio=mlp_ratio,
                     norm_cfg=self.norm_cfg,
                     conv_cfg=self.conv_cfg,
