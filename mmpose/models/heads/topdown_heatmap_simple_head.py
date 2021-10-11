@@ -297,7 +297,7 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                 # gaussian filter
                 if self.inter_mode == 'gaussian':
                     sigma = 2
-                    kernels = [1, 3, 5, 5]
+                    kernels = [1, 3, 5, 9]
                     upsampled_inputs = [
                         guassian_filt(up_in, k, sigma) for (up_in, k) in zip(upsampled_inputs, kernels)
                     ]
