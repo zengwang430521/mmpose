@@ -332,7 +332,6 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                 tmp = (tmp - min) / (max - min)
                 plt.imshow(tmp.permute(1, 2, 0))
 
-
         elif self.input_transform == 'multiple_select':
             inputs = [inputs[i] for i in self.in_index]
         else:
