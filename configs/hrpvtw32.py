@@ -21,7 +21,7 @@ lr_config = dict(
     step=[170, 200])
 total_epochs = 210
 log_config = dict(
-    interval=50,
+    interval=1,
     hooks=[
         dict(type='TextLoggerHook'),
         # dict(type='TensorboardLoggerHook')
@@ -36,8 +36,8 @@ channel_cfg = dict(
     inference_channel=list(range(133)))
 
 # model settings
-# norm_cfg = dict(type='SyncBN', requires_grad=True)
-norm_cfg = dict(type='BN', requires_grad=True)
+norm_cfg = dict(type='SyncBN', requires_grad=True)
+# norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
     # pretrained='/path/to/hrt_small.pth', # Set the path to pretrained backbone here
