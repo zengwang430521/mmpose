@@ -36,7 +36,8 @@ channel_cfg = dict(
     inference_channel=list(range(133)))
 
 # model settings
-norm_cfg = dict(type='SyncBN', requires_grad=True)
+# norm_cfg = dict(type='SyncBN', requires_grad=True)
+norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
     # pretrained='/path/to/hrt_small.pth', # Set the path to pretrained backbone here

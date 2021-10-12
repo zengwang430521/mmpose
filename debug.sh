@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 
-srun -p mm_human --ntasks=8 \
-    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
-    --job-name=pvtv2   python -u tools/train.py configs/pvtv2_coco_wholebody_256x192.py \
-    --work-dir=work_dirs/pvtv2 --resume-from=work_dirs/pvtv2/latest.pth --launcher="slurm"
+srun -p mm_human --job-name=debug \
+    --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+    python tools/train.py configs/hrpvtw32.py --work-dir=work_dirs/hrpvtw32
 
 srun -p pat_earth \
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
-        --job-name=pvt3h11_up python -u tools/train.py configs/pvt3h11_up.py --work-dir=work_dirs/my3h11_up --launcher="slurm"  --resume-from=work_dirs/my3h11_up/latest.pth
+    --job-name=pvt3h11_up python -u tools/train.py configs/pvt3h11_up.py --work-dir=work_dirs/my3h11_up --launcher="slurm"  --resume-from=work_dirs/my3h11_up/latest.pth
 
     --job-name=pvt3h2_up2 python -u tools/train.py configs/pvt3h2_up2.py --work-dir=work_dirs/my3h2_up2 --launcher="slurm" --resume-from=work_dirs/my3h2_up2/latest.pth
 
