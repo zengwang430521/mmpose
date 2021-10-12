@@ -87,7 +87,7 @@ model = dict(
         in_channels=32,
         out_channels=channel_cfg['num_output_channels'],
         num_deconv_layers=0,
-        norm_cfg=norm_cfg,
+        # norm_cfg=norm_cfg,
         extra=dict(final_conv_kernel=1, ),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
