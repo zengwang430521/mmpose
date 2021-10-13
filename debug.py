@@ -394,6 +394,8 @@ channel_cfg = dict(
 
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 norm_cfg = dict(type='BN', requires_grad=True)
+norm_cfg = dict(type='LN', requires_grad=True)
+norm_cfg = dict(type='GN', num_groups=1, requires_grad=True)
 
 model = dict(
     type='TopDown',
