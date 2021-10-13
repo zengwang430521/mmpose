@@ -23,6 +23,8 @@ from mmpose.models.utils.ops import resize
 from mmpose.utils import get_root_logger
 from ..builder import BACKBONES
 from .modules.bottleneck_block import Bottleneck
+from .modules.transformer_block import MlpDWBN
+
 
 
 class PVT2Block(nn.Module):
@@ -72,6 +74,91 @@ class PVT2Block(nn.Module):
             drop=drop,
             linear=linear
         )
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+    def forward(self, x):
+        B, _, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1)
+        x = x + self.drop_path(self.attn(self.norm1(x), H, W))
+        x = x + self.drop_path(self.mlp(self.norm2(x), H, W))
+        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2)
+        return x
+
+
+class PVT2Block_DWBN(nn.Module):
+    expansion = 1
+
+    def __init__(
+            self,
+            inplanes,
+            planes,
+            num_heads,
+            mlp_ratio=4.,
+            qkv_bias=False,
+            qk_scale=None,
+            drop=0.,
+            attn_drop=0.,
+            drop_path=0.,
+            act_layer=nn.GELU,
+            norm_layer=nn.LayerNorm,
+            sr_ratio=1,
+            linear=False,
+            conv_cfg=None,
+            norm_cfg=dict(type="BN", requires_grad=True),
+    ):
+        super().__init__()
+        self.dim = inplanes
+        self.out_dim = planes
+        self.num_heads = num_heads
+        self.mlp_ratio = mlp_ratio
+        self.conv_cfg = conv_cfg
+        self.norm_cfg = norm_cfg
+
+        self.norm1 = norm_layer(self.dim)
+        self.attn = Attention(
+            self.dim,
+            num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
+            attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio, linear=linear)
+
+        # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.norm2 = norm_layer(self.dim)
+        mlp_hidden_dim = int(self.dim * mlp_ratio)
+        # self.mlp = Mlp(
+        #     in_features=self.dim,
+        #     out_features=self.out_dim,
+        #     hidden_features=mlp_hidden_dim,
+        #     act_layer=act_layer,
+        #     drop=drop,
+        #     linear=linear
+        # )
+
+        self.mlp = MlpDWBN(
+            in_features=self.dim,
+            hidden_features=mlp_hidden_dim,
+            out_features=self.out_dim,
+            act_layer=act_layer,
+            dw_act_layer=act_layer,
+            drop=drop,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
+        )
+
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -387,6 +474,7 @@ class HRPVT(nn.Module):
     blocks_dict = {
         "BOTTLENECK": Bottleneck,
         "PVT2BLOCK": PVT2Block,
+        "PVT2BLOCK_DWBN": PVT2Block_DWBN,
     }
 
     def __init__(
@@ -591,7 +679,7 @@ class HRPVT(nn.Module):
             )
 
         layers = []
-        if isinstance(block, PVT2Block):
+        if isinstance(block, PVT2Block) or isinstance(block, PVT2Block_DWBN):
             layers.append(
                 block(
                     inplanes,

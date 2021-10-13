@@ -8,8 +8,10 @@ srun -p pat_earth \
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
-    --job-name=hrtw32_pre python -u tools/train.py configs/hrtw32_pre.py --work-dir=work_dirs/hrtw32_pre --launcher="slurm"
+    --job-name=hrpvtw32_dwbn python -u tools/train.py configs/hrpvtw32_dwbn.py --work-dir=work_dirs/hrpvtw32_dwbn --launcher="slurm"
 
+
+    --job-name=hrtw32_pre python -u tools/train.py configs/hrtw32_pre.py --work-dir=work_dirs/hrtw32_pre --launcher="slurm"
 
     --job-name=hrpvtw32_gn python -u tools/train.py configs/hrpvtw32_gn.py --work-dir=work_dirs/hrpvtw32_gn --launcher="slurm"
 
