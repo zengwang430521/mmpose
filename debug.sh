@@ -4,11 +4,12 @@ srun -p pat_earth \
     --ntasks=2 --gres=gpu:2 --ntasks-per-node=2 --cpus-per-task=2 --kill-on-bad-exit=1 \
     --job-name=hrpvtw32 python -u tools/train.py configs/hrpvtw32.py --work-dir=work_dirs/hrpvtw32 --launcher="slurm"
 
-srun -p pat_earth \
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+srun -p pat_earth \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=hrpvtw32_dwbn python -u tools/train.py configs/hrpvtw32_dwbn.py --work-dir=work_dirs/hrpvtw32_dwbn --launcher="slurm"
+    --job-name=pvt3h2a_up2 python -u tools/train.py configs/pvt3h2a_up2.py --work-dir=work_dirs/my3h2a_up2 --launcher="slurm"
 
 
     --job-name=hrtw32_pre python -u tools/train.py configs/hrtw32_pre.py --work-dir=work_dirs/hrtw32_pre --launcher="slurm"
