@@ -28,6 +28,7 @@ from .modules.transformer_block import MlpDWBN
 
 from .pvt_v2_3h2 import MyAttention
 
+
 class MyBlock(nn.Module):
     expansion = 1
 
@@ -62,6 +63,7 @@ class MyBlock(nn.Module):
             self.dim,
             num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
             attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio, linear=linear)
+
         # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(self.dim)
@@ -92,37 +94,69 @@ class MyBlock(nn.Module):
             if m.bias is not None:
                 m.bias.data.zero_()
 
-    def forward(self, x, loc, idx_agg, agg_weight, loc_orig, x_source, loc_source, idx_agg_source, agg_weight_source, H, W, conf_source=None):
+    def forward(self, input_dict):
+        x = input_dict['x']
+        loc_orig = input_dict['loc_orig']
+        x_source = input_dict['x_source']
+        idx_agg = input_dict['idx_agg']
+        agg_weight = input_dict['agg_weight']
+        idx_agg_source = input_dict['idx_agg_source']
+        agg_weight_source = input_dict['agg_weight_source']
+        H, W = input_dict['map_size']
+        conf_source = input_dict['conf_source']
+
         x1 = x + self.drop_path(self.attn(self.norm1(x),
                                           loc_orig,
                                           self.norm1(x_source),
-                                          loc_source,
+                                          None,
                                           idx_agg_source,
                                           H, W, conf_source))
 
         x2 = x1 + self.drop_path(self.mlp(self.norm2(x1),
-                                          loc,
+                                          None,
                                           loc_orig,
                                           idx_agg,
                                           agg_weight,
                                           H, W))
-        if torch.isnan(x2).any():
-            save_dict = {
-                'x':x.detach().cpu(),
-                'x_source': x_source,
-                'loc': loc,
-                'loc_source': loc_source,
-                'x1': x1,
-                'x2': x2
-            }
-            if conf_source is not None:
-                save_dict['conf_source'] = conf_source
-            for key in save_dict.keys():
-                save_dict[key] = save_dict[key].detach().cpu()
-            torch.save(save_dict, 'debug_block.pth')
-            exit(1)
-            assert torch.isnan(x2).any() is False
-        return x2
+        out_dict = {
+            'x': x2,
+            'idx_agg': idx_agg,
+            'agg_weight': agg_weight,
+            'x_source': x2,
+            'idx_agg_source': idx_agg,
+            'agg_weight_source': agg_weight,
+            'loc_orig': loc_orig,
+            'map_size': (H, W),
+            'conf_source': None,
+        }
+        return out_dict
+
+
+def DownUp_Layer(target_dict, source_dict):
+    x_s = source_dict['x']
+    x_t = target_dict['x']
+    idx_agg_s = source_dict['idx_agg']
+    idx_agg_t = target_dict['idx_agg']
+    agg_weight_t = target_dict['idx_weight']
+    B, T, C = x_t.shape
+    B, S, C = x_s.shape
+    N0 = idx_agg_s.shape[1]
+
+    idx_batch = torch.range(B)[:, None].expand(B, N0)
+    coor = torch.stack([idx_batch + idx_agg_t, idx_batch + idx_agg_s], dim=0).reshape(2, B*N0)
+    weight = agg_weight_t
+    if weight is None:
+        weight = x_s.new_ones(B, N0, 1)
+    A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
+    # all_weight = A.type(torch.float32) @ x.new_ones(B*N, 1).type(torch.float32) + 1e-6
+    all_weight = A @ x_s.new_ones(B*S, 1) + 1e-6
+    weight = weight / all_weight[(idx_batch + idx_agg_t).reshape(-1), 0]
+
+    A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
+    x_out = A @ x_s.reshape(B*S, C)
+    x_out = x_out.reshape(B, T, C)
+    return x_out
+
 
 
 
