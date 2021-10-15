@@ -132,7 +132,7 @@ class MyBlock(nn.Module):
         return out_dict
 
 
-def DownUp_Layer(target_dict, source_dict):
+def downup(target_dict, source_dict):
     x_s = source_dict['x']
     x_t = target_dict['x']
     idx_agg_s = source_dict['idx_agg']
@@ -157,6 +157,288 @@ def DownUp_Layer(target_dict, source_dict):
     x_out = x_out.reshape(B, T, C)
     return x_out
 
+
+class MyModule(nn.Module):
+    def __init__(
+        self,
+        num_branches,
+        blocks,
+        num_blocks,
+        in_channels,
+        num_channels,
+        multiscale_output,
+        with_cp=False,
+        conv_cfg=None,
+        norm_cfg=dict(type="BN", requires_grad=True),
+        num_heads=None,
+        sr_ratios=None,
+        num_mlp_ratios=None,
+        drop_paths=0.0,
+    ):
+        super().__init__()
+        self._check_branches(num_branches, num_blocks, in_channels, num_channels)
+
+        self.in_channels = in_channels
+        self.num_branches = num_branches
+
+        self.multiscale_output = multiscale_output
+        self.norm_cfg = norm_cfg
+        self.conv_cfg = conv_cfg
+        self.with_cp = with_cp
+        self.branches = self._make_branches(
+            num_branches,
+            blocks,
+            num_blocks,
+            num_channels,
+            num_heads,
+            sr_ratios,
+            num_mlp_ratios,
+            drop_paths,
+        )
+        self.fuse_layers = self._make_fuse_layers()
+        self.relu = nn.ReLU(inplace=True)
+
+        # MHSA parameters
+        self.num_heads = num_heads
+        self.num_mlp_ratios = num_mlp_ratios
+
+    def _check_branches(self, num_branches, num_blocks, in_channels, num_channels):
+        logger = get_root_logger()
+        if num_branches != len(num_blocks):
+            error_msg = "NUM_BRANCHES({}) <> NUM_BLOCKS({})".format(
+                num_branches, len(num_blocks)
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        if num_branches != len(num_channels):
+            error_msg = "NUM_BRANCHES({}) <> NUM_CHANNELS({})".format(
+                num_branches, len(num_channels)
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        if num_branches != len(in_channels):
+            error_msg = "NUM_BRANCHES({}) <> IN_CHANNELS({})".format(
+                num_branches, len(in_channels)
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+    def _make_one_branch(
+        self,
+        branch_index,
+        block,
+        num_blocks,
+        num_channels,
+        num_heads,
+        sr_ratios,
+        num_mlp_ratios,
+        drop_paths,
+        stride=1,
+    ):
+        """Make one branch."""
+        downsample = None
+        if (
+            stride != 1
+            or self.in_channels[branch_index]
+            != num_channels[branch_index] * block.expansion
+        ):
+            downsample = nn.Sequential(
+                build_conv_layer(
+                    self.conv_cfg,
+                    self.in_channels[branch_index],
+                    num_channels[branch_index] * block.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
+                build_norm_layer(
+                    self.norm_cfg, num_channels[branch_index] * block.expansion
+                )[1],
+            )
+
+        layers = []
+
+        layers.append(
+            block(
+                self.in_channels[branch_index],
+                num_channels[branch_index],
+                num_heads=num_heads[branch_index],
+                sr_ratio=sr_ratios[branch_index],
+                mlp_ratio=num_mlp_ratios[branch_index],
+                drop_path=drop_paths[0],
+                norm_cfg=self.norm_cfg,
+                conv_cfg=self.conv_cfg,
+            )
+        )
+        self.in_channels[branch_index] = num_channels[branch_index] * block.expansion
+        for i in range(1, num_blocks[branch_index]):
+            layers.append(
+                block(
+                    self.in_channels[branch_index],
+                    num_channels[branch_index],
+                    num_heads=num_heads[branch_index],
+                    sr_ratio=sr_ratios[branch_index],
+                    mlp_ratio=num_mlp_ratios[branch_index],
+                    drop_path=drop_paths[i],
+                    norm_cfg=self.norm_cfg,
+                    conv_cfg=self.conv_cfg,
+                )
+            )
+
+        return nn.Sequential(*layers)
+
+    def _make_branches(
+        self,
+        num_branches,
+        block,
+        num_blocks,
+        num_channels,
+        num_heads,
+        num_window_sizes,
+        num_mlp_ratios,
+        drop_paths,
+    ):
+        """Make branches."""
+        branches = []
+
+        for i in range(num_branches):
+            branches.append(
+                self._make_one_branch(
+                    i,
+                    block,
+                    num_blocks,
+                    num_channels,
+                    num_heads,
+                    num_window_sizes,
+                    num_mlp_ratios,
+                    drop_paths,
+                )
+            )
+
+        return nn.ModuleList(branches)
+
+    def _make_fuse_layers(self):
+        """Build fuse layer."""
+        if self.num_branches == 1:
+            return None
+
+        num_branches = self.num_branches
+        in_channels = self.in_channels
+        fuse_layers = []
+        num_out_branches = num_branches if self.multiscale_output else 1
+        for i in range(num_out_branches):
+            fuse_layer = []
+            for j in range(num_branches):
+                if j > i:
+                    fuse_layer.append(
+                        nn.Sequential(
+                            nn.Linear(in_channels[j], in_channels[i], bias=False),
+
+                            build_conv_layer(
+                                self.conv_cfg,
+                                in_channels[j],
+                                in_channels[i],
+                                kernel_size=1,
+                                stride=1,
+                                padding=0,
+                                bias=False,
+                            ),
+                            build_norm_layer(self.norm_cfg, in_channels[i])[1],
+                            nn.Upsample(
+                                scale_factor=2 ** (j - i),
+                                mode="bilinear",
+                                align_corners=False,
+                            ),
+                            DownUp_Layer()
+                        )
+                    )
+                elif j == i:
+                    fuse_layer.append(None)
+                else:
+                    conv_downsamples = []
+                    for k in range(i - j):
+                        if k == i - j - 1:
+                            conv_downsamples.append(
+                                nn.Sequential(
+                                    build_conv_layer(
+                                        self.conv_cfg,
+                                        in_channels[j],
+                                        in_channels[j],
+                                        kernel_size=3,
+                                        stride=2,
+                                        padding=1,
+                                        groups=in_channels[j],
+                                        bias=False,
+                                    ),
+                                    build_norm_layer(self.norm_cfg, in_channels[j])[1],
+                                    build_conv_layer(
+                                        self.conv_cfg,
+                                        in_channels[j],
+                                        in_channels[i],
+                                        kernel_size=1,
+                                        stride=1,
+                                        bias=False,
+                                    ),
+                                    build_norm_layer(self.norm_cfg, in_channels[i])[1],
+                                )
+                            )
+                        else:
+                            conv_downsamples.append(
+                                nn.Sequential(
+                                    build_conv_layer(
+                                        self.conv_cfg,
+                                        in_channels[j],
+                                        in_channels[j],
+                                        kernel_size=3,
+                                        stride=2,
+                                        padding=1,
+                                        groups=in_channels[j],
+                                        bias=False,
+                                    ),
+                                    build_norm_layer(self.norm_cfg, in_channels[j])[1],
+                                    build_conv_layer(
+                                        self.conv_cfg,
+                                        in_channels[j],
+                                        in_channels[j],
+                                        kernel_size=1,
+                                        stride=1,
+                                        bias=False,
+                                    ),
+                                    build_norm_layer(self.norm_cfg, in_channels[j])[1],
+                                    nn.ReLU(inplace=True),
+                                )
+                            )
+                    fuse_layer.append(nn.Sequential(*conv_downsamples))
+            fuse_layers.append(nn.ModuleList(fuse_layer))
+        return nn.ModuleList(fuse_layers)
+
+    def forward(self, x):
+        """Forward function."""
+        if self.num_branches == 1:
+            return [self.branches[0](x[0])]
+
+        for i in range(self.num_branches):
+            x[i] = self.branches[i](x[i])
+
+        x_fuse = []
+        for i in range(len(self.fuse_layers)):
+            y = x[0] if i == 0 else self.fuse_layers[i][0](x[0])
+            for j in range(1, self.num_branches):
+                if i == j:
+                    y += x[j]
+                elif j > i:
+                    y = y + resize(
+                        self.fuse_layers[i][j](x[j]),
+                        size=x[i].shape[2:],
+                        mode="bilinear",
+                        align_corners=False,
+                    )
+                else:
+                    y += self.fuse_layers[i][j](x[j])
+            x_fuse.append(self.relu(y))
+        return x_fuse
 
 
 
