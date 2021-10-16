@@ -198,6 +198,56 @@ class MyMlp(nn.Module):
         return x
 
 
+class MyMlpBN(nn.Module):
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False,
+                 norm_cfg=dict(type="BN", requires_grad=True),
+                 dw_act_layer=nn.GELU
+                 ):
+        super().__init__()
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+        self.fc1 = nn.Linear(in_features, hidden_features)
+        self.norm1 = TokenNorm(build_norm_layer(norm_cfg, hidden_features))
+        self.act1 = act_layer()
+
+        self.dwconv = MyDWConv(hidden_features)
+        self.act2 = dw_act_layer()
+        self.norm2 = TokenNorm(build_norm_layer(norm_cfg, hidden_features))
+
+        self.fc2 = nn.Linear(hidden_features, out_features)
+        self.act3 = act_layer()
+        self.norm3 = TokenNorm(build_norm_layer(norm_cfg, out_features))
+
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+    def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
+        x = self.fc1(x)
+        x = self.norm1(x)
+        x = self.act1(x)
+        x = self.dwconv(x, loc_orig, idx_agg, agg_weight, H, W)
+        x = self.norm2(x)
+        x = self.act2(x)
+        x = self.fc2(x)
+        x = self.norm3(x)
+        x = self.act3(x)
+        return x
+
+
 class MyAttention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1, linear=False):
         super().__init__()
@@ -329,6 +379,114 @@ class MyBlock(nn.Module):
             act_layer=act_layer,
             drop=drop,
             linear=linear
+        )
+
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+    def forward(self, input_dict, src_dict=None):
+        if src_dict is None:
+            src_dict = input_dict
+
+        x = input_dict['x']
+        loc_orig = input_dict['loc_orig']
+        idx_agg = input_dict['idx_agg']
+        agg_weight = input_dict['agg_weight']
+        H, W = input_dict['map_size']
+
+        x_source = src_dict['x']
+        idx_agg_source = src_dict['idx_agg']
+        if 'conf_source' in src_dict.keys():
+            conf_source = src_dict['conf_source']
+        else:
+            conf_source=None
+
+        x1 = x + self.drop_path(self.attn(self.norm1(x),
+                                          loc_orig,
+                                          self.norm1(x_source),
+                                          idx_agg_source,
+                                          H, W, conf_source))
+
+        x2 = x1 + self.drop_path(self.mlp(self.norm2(x1),
+                                          loc_orig,
+                                          idx_agg,
+                                          agg_weight,
+                                          H, W))
+        out_dict = {
+            'x': x2,
+            'idx_agg': idx_agg,
+            'agg_weight': agg_weight,
+            'x_source': x2,
+            'idx_agg_source': idx_agg,
+            'agg_weight_source': agg_weight,
+            'loc_orig': loc_orig,
+            'map_size': (H, W),
+            'conf_source': None,
+        }
+        return out_dict
+
+
+class MyBlockBN(nn.Module):
+    expansion = 1
+
+    def __init__(
+            self,
+            inplanes,
+            planes,
+            num_heads,
+            mlp_ratio=4.,
+            qkv_bias=False,
+            qk_scale=None,
+            drop=0.,
+            attn_drop=0.,
+            drop_path=0.,
+            act_layer=nn.GELU,
+            norm_layer=nn.LayerNorm,
+            sr_ratio=1,
+            linear=False,
+            conv_cfg=None,
+            norm_cfg=dict(type="BN", requires_grad=True)
+    ):
+        super().__init__()
+        self.dim = inplanes
+        self.out_dim = planes
+        self.num_heads = num_heads
+        self.mlp_ratio = mlp_ratio
+        self.conv_cfg = conv_cfg
+        self.norm_cfg = norm_cfg
+
+        self.norm1 = norm_layer(self.dim)
+        self.attn = MyAttention(
+            self.dim,
+            num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
+            attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio, linear=linear)
+
+        # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.norm2 = norm_layer(self.dim)
+        mlp_hidden_dim = int(self.dim * mlp_ratio)
+        self.mlp = MyMlpBN(
+            in_features=self.dim,
+            out_features=self.out_dim,
+            hidden_features=mlp_hidden_dim,
+            act_layer=act_layer,
+            drop=drop,
+            linear=linear,
+            norm_cfg=norm_cfg
         )
 
         self.apply(self._init_weights)
@@ -815,7 +973,9 @@ class MyHRPVT(nn.Module):
 
     blocks_dict = {
         "BOTTLENECK": Bottleneck,
-        "MYBLOCK": MyBlock
+        "MYBLOCK": MyBlock,
+        "MYBLOCKBN": MyBlockBN,
+
     }
 
     def __init__(
