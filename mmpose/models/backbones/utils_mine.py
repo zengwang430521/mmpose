@@ -1416,6 +1416,45 @@ def merge_tokens_agg_dist(x, loc, index_down, x_down, idx_agg, weight=None, retu
         return x_out, loc_out, idx_agg, weight_t
     return x_out, loc_out, idx_agg
 
+'''clean merge'''
+def merge_tokens_agg_dist2(x, index_down, x_down, idx_agg, weight=None):
+    B, N, C = x.shape
+    Ns = x_down.shape[1]
+
+    # cos_sim = F.cosine_similarity(x[:, :, None, :], x_down[:, None, :, :], dim=-1)
+    # idx_agg_t = cos_sim.argmax(axis=2)
+
+    # dist = x.unsqueeze(2) - x_down.unsqueeze(1)
+    # dist = dist.norm(p=2, dim=-1)
+    # idx_agg_t = dist.argmin(axis=2)
+    idx_agg_t = torch.cdist(x, x_down, p=2).argmin(axis=2)
+
+    # make sure selected tokens merge to itself
+    if index_down is not None:
+        idx_batch = torch.arange(B, device=x.device)[:, None].expand(B, Ns)
+        idx_tmp = torch.arange(Ns, device=x.device)[None, :].expand(B, Ns)
+        idx_agg_t[idx_batch.reshape(-1), index_down.reshape(-1)] = idx_tmp.reshape(-1)
+
+    idx = idx_agg_t + torch.arange(B)[:, None].to(x.device) * Ns
+
+    if weight is None:
+        weight = x.new_ones(B, N, 1)
+    all_weight = weight.new_zeros(B * Ns, 1)
+    all_weight.index_add_(dim=0, index=idx.reshape(B * N), source=weight.reshape(B * N, 1))
+    all_weight = all_weight + 1e-6
+    norm_weight = weight / all_weight[idx]
+
+    tmp = x.new_zeros(B * Ns, C)
+    source = x * norm_weight
+    source = source.to(x.device).type(x.dtype)
+    tmp.index_add_(dim=0, index=idx.reshape(B * N), source=source.reshape(B * N, C))
+    tmp = tmp.reshape(B, Ns, C)
+    x_out = tmp[..., :C]
+    idx_agg = index_points(idx_agg_t[..., None], idx_agg).squeeze(-1)
+
+    weight_t = index_points(norm_weight, idx_agg)
+    return x_out, idx_agg, weight_t
+
 
 '''merge according to qkv'''
 def merge_tokens_agg_qkv(q, k, v, index_down, idx_agg, weight=None, return_weight=False):
@@ -1731,6 +1770,38 @@ def show_conf_merge(conf, loc, loc_orig, idx_agg):
     ax.clear()
     ax.imshow(conf_map[0, 0].detach().cpu(), vmin=0, vmax=7)
 
+
+def get_merge_way(input_dict, sample_num):
+    x = input_dict['x']
+    idx_agg = input_dict['idx_agg']
+    agg_weight = input_dict['agg_weight']
+
+    index_down = farthest_point_sample(x, sample_num)
+    x_down = index_points(x, index_down)
+
+    B, N, C = x.shape
+    Ns = x_down.shape[1]
+    idx_agg_t = torch.cdist(x, x_down, p=2).argmin(axis=2)
+
+    # make sure selected tokens merge to itself
+    idx_batch = torch.arange(B, device=x.device)[:, None].expand(B, Ns)
+    idx_tmp = torch.arange(Ns, device=x.device)[None, :].expand(B, Ns)
+    idx_agg_t[idx_batch.reshape(-1), index_down.reshape(-1)] = idx_tmp.reshape(-1)
+
+    idx = idx_agg_t + torch.arange(B)[:, None].to(x.device) * Ns
+    weight = x.new_ones(B, N, 1)
+    all_weight = weight.new_zeros(B * Ns, 1)
+    all_weight.index_add_(dim=0, index=idx.reshape(B * N), source=weight.reshape(B * N, 1))
+    all_weight = all_weight + 1e-4
+    norm_weight = weight / all_weight[idx]
+
+    idx_agg = index_points(idx_agg_t[..., None], idx_agg).squeeze(-1)
+    weight_t = index_points(norm_weight, idx_agg)
+
+    agg_weight_down = agg_weight * weight_t
+    agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+
+    return idx_agg, agg_weight_down
 
 
 
