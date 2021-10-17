@@ -41,6 +41,9 @@ def token2map_agg_sparse(x, loc_orig, idx_agg, map_size, weight=None, kernel=1, 
     H, W = map_size
     B, N, C = x.shape
     N0 = loc_orig.shape[1]
+    if N0 == N and N  == H * W:
+        return x.reshape(B, H, W, C).permute(0, 3, 1, 2), None
+
     device = x.device
     loc_orig = loc_orig.clamp(-1, 1)
     loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
@@ -155,6 +158,9 @@ def map2token_agg_sparse_nearest(feature_map, N, loc_orig, idx_agg, weight=None)
     B, C, H, W = feature_map.shape
     device = feature_map.device
     N0 = loc_orig.shape[1]
+
+    if N0 == N and N  == H * W:
+        return feature_map.flatten(2).permute(0, 2, 1)
 
     loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
     x = loc_orig[:, :, 0].reshape(-1)
