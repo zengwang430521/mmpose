@@ -321,15 +321,15 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                     ]
                 inputs = torch.cat(upsampled_inputs, dim=1)
 
-            import matplotlib.pyplot as plt
-            l = len(upsampled_inputs)
-            for lv in range(l):
-                plt.subplot(2, l + 1, lv + 2)
-                tmp = upsampled_inputs[lv][0, :3, :, :].detach().cpu()
-                min = tmp.min(dim=-1)[0].min(dim=-1)[0][:, None, None]
-                max = tmp.max(dim=-1)[0].max(dim=-1)[0][:, None, None]
-                tmp = (tmp - min) / (max - min)
-                plt.imshow(tmp.permute(1, 2, 0))
+            # import matplotlib.pyplot as plt
+            # l = len(upsampled_inputs)
+            # for lv in range(l):
+            #     plt.subplot(2, l + 1, lv + 2)
+            #     tmp = upsampled_inputs[lv][0, :3, :, :].detach().cpu()
+            #     min = tmp.min(dim=-1)[0].min(dim=-1)[0][:, None, None]
+            #     max = tmp.max(dim=-1)[0].max(dim=-1)[0][:, None, None]
+            #     tmp = (tmp - min) / (max - min)
+            #     plt.imshow(tmp.permute(1, 2, 0))
 
         elif self.input_transform == 'multiple_select':
             inputs = [inputs[i] for i in self.in_index]
