@@ -1530,7 +1530,8 @@ def farthest_point_sample(xyz, npoint):
     for i in range(npoint):
         centroids[:, i] = farthest
         centroid = xyz[batch_indices, farthest, :].view(B, 1, C)
-        dist = torch.sum((xyz - centroid) ** 2, -1)
+        dist = torch.cdist(xyz, centroid).squeeze(-1)
+        # dist = torch.sum((xyz - centroid) ** 2, -1)
         mask = dist < distance
         distance[mask] = dist[mask]
         farthest = torch.max(distance, -1)[1]
@@ -1775,8 +1776,8 @@ def get_merge_way(input_dict, sample_num):
     x = input_dict['x']
     idx_agg = input_dict['idx_agg']
     agg_weight = input_dict['agg_weight']
-
-    index_down = farthest_point_sample(x, sample_num)
+    with torch.no_grad():
+        index_down = farthest_point_sample(x, sample_num)
     x_down = index_points(x, index_down)
 
     B, N, C = x.shape
