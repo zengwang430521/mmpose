@@ -170,9 +170,9 @@ def map2token_agg_sparse_nearest(feature_map, N, loc_orig, idx_agg, weight=None)
     indices = torch.stack([idx_batch.reshape(-1) + idx_agg.reshape(-1), idx_batch.reshape(-1) + idx_HW_orig.reshape(-1)], dim=0)
 
     with torch.cuda.amp.autocast(enabled=False):
-        value = torch.new_ones(B * N0, device=feature_map.device, dtype=torch.float32)
+        value = torch.ones(B * N0, device=feature_map.device, dtype=torch.float32)
         A = torch.sparse_coo_tensor(indices, value, (B * N, B * H * W))
-        all_weight = A @ torch.new_ones([B * H * W, 1], device=feature_map.device, dtype=torch.float32) + 1e-6
+        all_weight = A @ torch.ones([B * H * W, 1], device=feature_map.device, dtype=torch.float32) + 1e-6
         value = value / all_weight[idx_batch.reshape(-1) + idx_HW_orig.reshape(-1), 0]
 
         A = torch.sparse_coo_tensor(indices, value, (B * N, B*H*W))
