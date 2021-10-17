@@ -88,7 +88,63 @@ def token2map_agg_sparse(x, loc_orig, idx_agg, map_size, weight=None, kernel=1, 
     return x_out, all_weight
 
 
-def map2token_agg_mat_nearest(feature_map, N, loc_orig, idx_agg, weight=None):
+# def map2token_agg_mat_nearest(feature_map, N, loc_orig, idx_agg, weight=None):
+#     ''' realized by 2 attention matrix'''
+#     # feature_map = torch.rand(2, 3, 5, 5)
+#     # loc = torch.rand(2, 4, 2)
+#     # loc_orig = torch.rand(2, 7, 2) - 0.5
+#     # idx_agg = (torch.rand(2, 7) * 3).long()
+#     # weight = None
+#
+#     B, C, H, W = feature_map.shape
+#     device = feature_map.device
+#     N0 = loc_orig.shape[1]
+#
+#     loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
+#     x = loc_orig[:, :, 0].reshape(-1)
+#     y = loc_orig[:, :, 1].reshape(-1)
+#
+#     h, w = H, W
+#     x_grid = x.round().long().clamp(min=0, max=w - 1)
+#     y_grid = y.round().long().clamp(min=0, max=h - 1)
+#     idx_HW_orig = (y_grid * w + x_grid).detach()
+#     idx_batch = torch.arange(B, device=device)[:, None].expand(B, N0)
+#     idx_tokens_orig = torch.arange(N0, device=device)[None, :].expand(B, N0)
+#     value = feature_map.new_ones(B, N0)
+#
+#     # this will cause error on edges where the four pixel is the same one.
+#     # the weight is not the sum but the last one (usually 0)
+#     # A = feature_map.new_zeros(B, N0, H*W)
+#     # A[idx_batch.reshape(-1), idx_tokens_orig.reshape(-1), idx_HW_orig.reshape(-1)] = value.reshape(-1)
+#     #
+#
+#     indices = torch.stack([idx_batch.reshape(-1), idx_tokens_orig.reshape(-1), idx_HW_orig.reshape(-1)], dim=0)
+#     A = torch.sparse_coo_tensor(indices, value.reshape(-1), (B, N0, H*W))
+#     A = A.to_dense()
+#
+#
+#     idx_batch = torch.arange(B, device=device)[:, None].expand(B, N0)
+#     idx_tokens_orig = torch.arange(N0, device=device)[None, :].expand(B, N0)
+#     if weight is None:
+#         weight = feature_map.new_ones(B, N0, 1)
+#
+#     indices = torch.stack([idx_batch.reshape(-1), idx_agg.reshape(-1), idx_tokens_orig.reshape(-1)], dim=0)
+#     A1 = torch.sparse_coo_tensor(indices, weight.reshape(-1).type(feature_map.dtype), (B, N, N0))
+#     A1 = A1.to_dense()
+#     A1 = A1 / (A1.sum(dim=-1, keepdim=True) +1e-6)
+#
+#     # A1 = feature_map.new_zeros(B, N, N0)
+#     # A1[idx_batch.reshape(-1), idx_agg.reshape(-1), idx_tokens_orig.reshape(-1)] = weight.reshape(-1).type(feature_map.dtype)
+#     # A1 = A1 / (A1.sum(dim=-1, keepdim=True) +1e-6)
+#
+#     A = A1 @ A
+#
+#     tokens = A @ feature_map.flatten(2).permute(0, 2, 1)
+#
+#     return tokens
+
+
+def map2token_agg_sparse_nearest(feature_map, N, loc_orig, idx_agg, weight=None):
     ''' realized by 2 attention matrix'''
     # feature_map = torch.rand(2, 3, 5, 5)
     # loc = torch.rand(2, 4, 2)
@@ -110,37 +166,19 @@ def map2token_agg_mat_nearest(feature_map, N, loc_orig, idx_agg, weight=None):
     idx_HW_orig = (y_grid * w + x_grid).detach()
     idx_batch = torch.arange(B, device=device)[:, None].expand(B, N0)
     idx_tokens_orig = torch.arange(N0, device=device)[None, :].expand(B, N0)
-    value = feature_map.new_ones(B, N0)
 
-    # this will cause error on edges where the four pixel is the same one.
-    # the weight is not the sum but the last one (usually 0)
-    # A = feature_map.new_zeros(B, N0, H*W)
-    # A[idx_batch.reshape(-1), idx_tokens_orig.reshape(-1), idx_HW_orig.reshape(-1)] = value.reshape(-1)
-    #
+    indices = torch.stack([idx_batch.reshape(-1) + idx_agg.reshape(-1), idx_batch.reshape(-1) + idx_HW_orig.reshape(-1)], dim=0)
 
-    indices = torch.stack([idx_batch.reshape(-1), idx_tokens_orig.reshape(-1), idx_HW_orig.reshape(-1)], dim=0)
-    A = torch.sparse_coo_tensor(indices, value.reshape(-1), (B, N0, H*W))
-    A = A.to_dense()
+    with torch.cuda.amp.autocast(enabled=False):
+        value = torch.new_ones(B * N0, device=feature_map.device, dtype=torch.float32)
+        A = torch.sparse_coo_tensor(indices, value, (B * N, B * H * W))
+        all_weight = A @ torch.new_ones([B * H * W, 1], device=feature_map.device, dtype=torch.float32) + 1e-6
+        value = value / all_weight[idx_batch.reshape(-1) + idx_HW_orig.reshape(-1), 0]
 
-
-    idx_batch = torch.arange(B, device=device)[:, None].expand(B, N0)
-    idx_tokens_orig = torch.arange(N0, device=device)[None, :].expand(B, N0)
-    if weight is None:
-        weight = feature_map.new_ones(B, N0, 1)
-
-    indices = torch.stack([idx_batch.reshape(-1), idx_agg.reshape(-1), idx_tokens_orig.reshape(-1)], dim=0)
-    A1 = torch.sparse_coo_tensor(indices, weight.reshape(-1).type(feature_map.dtype), (B, N, N0))
-    A1 = A1.to_dense()
-    A1 = A1 / (A1.sum(dim=-1, keepdim=True) +1e-6)
-
-    # A1 = feature_map.new_zeros(B, N, N0)
-    # A1[idx_batch.reshape(-1), idx_agg.reshape(-1), idx_tokens_orig.reshape(-1)] = weight.reshape(-1).type(feature_map.dtype)
-    # A1 = A1 / (A1.sum(dim=-1, keepdim=True) +1e-6)
-
-    A = A1 @ A
-
-    tokens = A @ feature_map.flatten(2).permute(0, 2, 1)
-
+        A = torch.sparse_coo_tensor(indices, value, (B * N, B*H*W))
+        tokens = A @ feature_map.permute(0, 2, 3, 1).reshape(B*H*W, C).type(torch.float32)
+    tokens = tokens.type(x.dtype)
+    tokens = tokens.reshape(B, N, C)
     return tokens
 
 
@@ -154,7 +192,7 @@ class MyDWConv(nn.Module):
         B, N, C = x.shape
         x_map, _ = token2map_agg_sparse(x, loc_orig, idx_agg, [H, W])
         x_map = self.dwconv(x_map)
-        x = map2token_agg_mat_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
+        x = map2token_agg_sparse_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
             self.dwconv_skip(x.permute(0, 2, 1)).permute(0, 2, 1)
         return x
 
@@ -569,7 +607,7 @@ class TokenConv(nn.Conv2d):
 
         x_map, _ = token2map_agg_sparse(x, loc_orig, idx_agg, [H, W])
         x_map = super().forward(x_map)
-        x = map2token_agg_mat_nearest(x_map, x.shape[1], loc_orig, idx_agg, agg_weight) + \
+        x = map2token_agg_sparse_nearest(x_map, x.shape[1], loc_orig, idx_agg, agg_weight) + \
             self.skip(x.permute(0, 2, 1)).permute(0, 2, 1)
         return x
 
