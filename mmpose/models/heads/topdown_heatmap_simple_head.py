@@ -290,17 +290,16 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
                 H, W = inputs[0][2]
                 # resize concat for merged tokens
                 # outs.append((x, loc, [H, W], loc_orig, idx_agg))
-                upsampled_inputs = [
-                    token2map_agg_sparse(tmp[0], tmp[1], tmp[3], tmp[4], [H, W])[0] for tmp in inputs
-                ]
 
-                # gaussian filter
+                sigma = 2
                 if self.inter_mode == 'gaussian':
-                    sigma = 2
                     kernels = [1, 3, 5, 9]
-                    upsampled_inputs = [
-                        guassian_filt(up_in, k, sigma) for (up_in, k) in zip(upsampled_inputs, kernels)
-                    ]
+                else:
+                    kernels = [1, 1, 1, 1]
+
+                upsampled_inputs = [token2map_agg_sparse(
+                    tmp[0], tmp[1], tmp[3], tmp[4], [H, W], kernel=k, sigma=sigma)[0]
+                                    for (tmp, k) in zip(inputs, kernels)]
 
                 inputs = torch.cat(upsampled_inputs, dim=1)
 
