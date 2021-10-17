@@ -622,14 +622,17 @@ def downup(target_dict, source_dict):
         weight = x_s.new_ones(B, N0, 1)
     weight = weight.reshape(-1)
 
-    A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
-    # all_weight = A.type(torch.float32) @ x.new_ones(B*N, 1).type(torch.float32) + 1e-6
-    all_weight = A @ x_s.new_ones(B*S, 1) + 1e-6
-    weight = weight / all_weight[(idx_batch + idx_agg_t).reshape(-1), 0]
+    with torch.cuda.amp.autocast(enabled=False):
+        A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
+        all_weight = A.type(torch.float32) @ x_s.new_ones(B*S, 1).type(torch.float32) + 1e-6
+        # all_weight = A @ x_s.new_ones(B*S, 1) + 1e-6
+        all_weight = all_weight.type(x_s.dtype)
+        weight = weight / all_weight[(idx_batch + idx_agg_t).reshape(-1), 0]
 
-    A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
-    x_out = A @ x_s.reshape(B*S, C)
-    x_out = x_out.reshape(B, T, C)
+    with torch.cuda.amp.autocast(enabled=False):
+        A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
+        x_out = A.type(torch.float32) @ x_s.reshape(B*S, C).type(torch.float32)
+        x_out = x_out.reshape(B, T, C).type(x_s.dtype)
     return x_out
 
 
