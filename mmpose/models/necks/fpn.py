@@ -76,8 +76,8 @@ class FPN(BaseModule):
                  align_corners=False,
                  scale_conv_cfg=None,
                  scale_norm_cfg=None,
-                 scale_act_cfg=None,
-
+                 scale_act_cfg=dict(type='ReLU'),
+                 scale_channels=128,
                  ):
         super(FPN, self).__init__(init_cfg)
         assert isinstance(in_channels, list)
@@ -170,8 +170,8 @@ class FPN(BaseModule):
             for k in range(head_length):
                 scale_head.append(
                     ConvModule(
-                        self.in_channels[i] if k == 0 else self.channels,
-                        self.channels,
+                        self.out_channels if k == 0 else scale_channels,
+                        scale_channels,
                         3,
                         padding=1,
                         conv_cfg=scale_conv_cfg,
