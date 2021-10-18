@@ -6,7 +6,7 @@ from mmcv.runner import BaseModule, auto_fp16
 
 from ..builder import NECKS
 from ..backbones.utils_mine import token2map_agg_sparse
-
+import numpy as np
 
 @NECKS.register_module()
 class FPN(BaseModule):
@@ -60,6 +60,7 @@ class FPN(BaseModule):
                  in_channels,
                  out_channels,
                  num_outs,
+                 feature_strides,
                  start_level=0,
                  end_level=-1,
                  add_extra_convs=False,
@@ -71,10 +72,10 @@ class FPN(BaseModule):
                  upsample_cfg=dict(mode='nearest'),
                  init_cfg=dict(
                      type='Xavier', layer='Conv2d', distribution='uniform'),
-                 resize_add=False
+                 scale_add=False,
+                 align_corners=False
                  ):
         super(FPN, self).__init__(init_cfg)
-        self.resize_add = resize_add
         assert isinstance(in_channels, list)
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -84,6 +85,9 @@ class FPN(BaseModule):
         self.no_norm_on_lateral = no_norm_on_lateral
         self.fp16_enabled = False
         self.upsample_cfg = upsample_cfg.copy()
+        self.norm_cfg = norm_cfg
+        self.conv_cfg = conv_cfg
+        self.act_cfg = act_cfg
 
         if end_level == -1:
             self.backbone_end_level = self.num_ins
@@ -148,6 +152,36 @@ class FPN(BaseModule):
                     inplace=False)
                 self.fpn_convs.append(extra_fpn_conv)
 
+
+        # extra scale layers
+        self.scale_add = scale_add
+        self.feature_strides = feature_strides
+        self.align_corners = align_corners
+        self.scale_heads = nn.ModuleList()
+        for i in range(len(feature_strides)):
+            head_length = max(
+                1,
+                int(np.log2(feature_strides[i]) - np.log2(feature_strides[0])))
+            scale_head = []
+            for k in range(head_length):
+                scale_head.append(
+                    ConvModule(
+                        self.in_channels[i] if k == 0 else self.channels,
+                        self.channels,
+                        3,
+                        padding=1,
+                        conv_cfg=self.conv_cfg,
+                        norm_cfg=self.norm_cfg,
+                        act_cfg=self.act_cfg))
+                if feature_strides[i] != feature_strides[0]:
+                    scale_head.append(
+                        nn.Upsample(
+                            scale_factor=2,
+                            mode='bilinear',
+                            align_corners=self.align_corners))
+            self.scale_heads.append(nn.Sequential(*scale_head))
+
+
     @auto_fp16()
     def forward(self, inputs):
         """Forward function."""
@@ -202,11 +236,16 @@ class FPN(BaseModule):
                         outs.append(self.fpn_convs[i](outs[-1]))
         # return tuple(outs)
 
-        if self.resize_add:
-            out = outs[0]
-            for i in range(1, len(outs)):
-                out += F.interpolate(outs[i], size=out.shape[2:])
-            return out
+        if self.scale_add:
+            output = self.scale_heads[0](outs[0])
+            for i in range(1, len(self.feature_strides)):
+                # non inplace
+                output = output + F.interpolate(
+                    self.scale_heads[i](outs[i]),
+                    size=output.shape[2:],
+                    mode='bilinear',
+                    align_corners=self.align_corners)
+            return output
 
         return outs
 
@@ -217,9 +256,6 @@ class TokenFPN(FPN):
     @auto_fp16()
     def forward(self, inputs):
         """Forward function."""
-        # tmp = inputs[-1]
-        # tmp_out = tmp
-        # inputs = inputs[:-1]
         assert len(inputs) == len(self.in_channels)
 
         tokens = [tmp[0] for tmp in inputs]
