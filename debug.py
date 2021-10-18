@@ -37,9 +37,9 @@ channel_cfg = dict(
 norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='pvt_v2_b2', pretrained=None),
+    backbone=dict(type='mypvt3h2a_small', pretrained=None),
     neck=dict(
-        type='FPN',
+        type='TokenFPN',
         in_channels=[64, 128, 320, 512],
         out_channels=256,
         start_level=0,
