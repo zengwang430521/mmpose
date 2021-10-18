@@ -73,7 +73,11 @@ class FPN(BaseModule):
                  init_cfg=dict(
                      type='Xavier', layer='Conv2d', distribution='uniform'),
                  scale_add=False,
-                 align_corners=False
+                 align_corners=False,
+                 scale_conv_cfg=None,
+                 scale_norm_cfg=None,
+                 scale_act_cfg=None,
+
                  ):
         super(FPN, self).__init__(init_cfg)
         assert isinstance(in_channels, list)
@@ -170,9 +174,9 @@ class FPN(BaseModule):
                         self.channels,
                         3,
                         padding=1,
-                        conv_cfg=self.conv_cfg,
-                        norm_cfg=self.norm_cfg,
-                        act_cfg=self.act_cfg))
+                        conv_cfg=scale_conv_cfg,
+                        norm_cfg=scale_norm_cfg,
+                        act_cfg=scale_act_cfg))
                 if feature_strides[i] != feature_strides[0]:
                     scale_head.append(
                         nn.Upsample(
@@ -310,11 +314,17 @@ class TokenFPN(FPN):
                     else:
                         outs.append(self.fpn_convs[i](outs[-1]))
 
-        if self.resize_add:
-            out = outs[0]
-            for i in range(1, len(outs)):
-                out += F.interpolate(outs[i], size=out.shape[2:])
-            return out
+        if self.scale_add:
+            output = self.scale_heads[0](outs[0])
+            for i in range(1, len(self.feature_strides)):
+                # non inplace
+                output = output + F.interpolate(
+                    self.scale_heads[i](outs[i]),
+                    size=output.shape[2:],
+                    mode='bilinear',
+                    align_corners=self.align_corners)
+            return output
+
 
         return outs
 
