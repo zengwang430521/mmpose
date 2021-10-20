@@ -27,7 +27,7 @@ from .modules.transformer_block import MlpDWBN
 
 from .utils_mine import \
     get_merge_way, farthest_point_sample, index_points, merge_tokens_agg_dist2, \
-    get_grid_loc, guassian_filt, map2token_agg_sparse_nearest, token2map_agg_sparse
+    get_grid_loc, guassian_filt, map2token_agg_fast_nearest, token2map_agg_sparse
 
 
 class MyDWConv(nn.Module):
@@ -40,7 +40,7 @@ class MyDWConv(nn.Module):
         B, N, C = x.shape
         x_map, _ = token2map_agg_sparse(x, None, loc_orig, idx_agg, [H, W])
         x_map = self.dwconv(x_map)
-        x = map2token_agg_sparse_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
+        x = map2token_agg_fast_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
             self.dwconv_skip(x.permute(0, 2, 1)).permute(0, 2, 1)
         return x
 
@@ -455,7 +455,7 @@ class TokenConv(nn.Conv2d):
 
         x_map, _ = token2map_agg_sparse(x, None, loc_orig, idx_agg, [H, W])
         x_map = super().forward(x_map)
-        x = map2token_agg_sparse_nearest(x_map, x.shape[1], loc_orig, idx_agg, agg_weight) + \
+        x = map2token_agg_fast_nearest(x_map, x.shape[1], loc_orig, idx_agg, agg_weight) + \
             self.skip(x.permute(0, 2, 1)).permute(0, 2, 1)
         return x
 
