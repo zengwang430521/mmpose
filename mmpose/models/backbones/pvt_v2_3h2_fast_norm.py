@@ -4,13 +4,14 @@ import torch.nn.functional as F
 from functools import partial
 import math
 
-from .pvt_v2 import (BlockNorm, DropPath, DWConv, OverlapPatchEmbed,
-                    to_2tuple, trunc_normal_, _cfg)
+from .pvt_v2 import (Block, DropPath, DWConv, OverlapPatchEmbed, trunc_normal_, _cfg, get_root_logger, load_checkpoint, BlockNorm)
+
 from .utils_mine import (
     get_grid_loc,
     gumble_top_k, index_points,
-    show_tokens_merge, show_conf_merge, merge_tokens, merge_tokens_agg_dist, token2map_agg_sparse, map2token_agg_mat_nearest,
-    tokenconv_sparse, token_cluster_dist, map2token_agg_sparse_nearest
+    map2token_agg_fast_nearest,  # map2token_agg_mat_nearest, map2token_agg_sparse_nearest
+    show_tokens_merge, show_conf_merge, merge_tokens, merge_tokens_agg_dist, token2map_agg_sparse,
+    tokenconv_sparse, token_cluster_dist,
     # farthest_point_sample
 )
 
@@ -31,7 +32,6 @@ token2map nearest + skip token conv (this must be used together.)
 try to make it faster
 add norm in dwcv
 '''
-
 
 
 
@@ -100,11 +100,8 @@ class MyDWConv(nn.Module):
         B, N, C = x.shape
         x_map, _ = token2map_agg_sparse(x, None, loc_orig, idx_agg, [H, W])
         x_map = self.dwconv(x_map)
-        x = map2token_agg_mat_nearest(x_map, x.new_zeros(B, N, 1), loc_orig, idx_agg, agg_weight) + \
+        x = map2token_agg_fast_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
             self.dwconv_skip(x.permute(0, 2, 1)).permute(0, 2, 1)
-
-        # x = tokenconv_sparse(self.dwconv, loc_orig, x, idx_agg, agg_weight, [H, W]) +\
-        #     self.dwconv_skip(x.permute(0, 2, 1)).permute(0, 2, 1)
         return x
 
 
@@ -247,6 +244,7 @@ class MyBlock(nn.Module):
 class DownLayer(nn.Module):
     """ Down sample
     """
+
     def __init__(self, sample_ratio, embed_dim, dim_out, drop_rate, down_block):
         super().__init__()
         # self.sample_num = sample_num
@@ -278,17 +276,16 @@ class DownLayer(nn.Module):
             x_map, _ = token2map_agg_sparse(x, None, pos_orig, idx_agg, [H, W])
 
         x_map = self.conv(x_map)
-        _, _, H, W = x_map.shape
-        x = map2token_agg_sparse_nearest(x_map, x.shape[1], pos_orig, idx_agg, agg_weight) +\
-            self.conv_skip(x)
-        B, N, C = x.shape
+        x = map2token_agg_fast_nearest(x_map, N, pos_orig, idx_agg, agg_weight) + self.conv_skip(x)
+        x = self.norm(x)
+        conf = self.conf(x)
+        weight = conf.exp()
 
+        _, _, H, W = x_map.shape
+        B, N, C = x.shape
         sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
         if sample_num < N_grid:
             sample_num = N_grid
-
-        conf = self.conf(self.norm(x))
-        weight = conf.exp()
         x_down, idx_agg_down, weight_t = token_cluster_dist(x, sample_num, idx_agg, weight, True)
         agg_weight_down = agg_weight * weight_t
         agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
