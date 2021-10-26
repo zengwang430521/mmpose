@@ -5,7 +5,7 @@ from mmcv.cnn import ConvModule
 from mmcv.runner import BaseModule, auto_fp16
 
 from ..builder import NECKS
-from ..backbones.utils_mine import token2map_agg_sparse
+from ..backbones.utils_mine import token2map_agg_mat, downup
 import numpy as np
 
 @NECKS.register_module()
@@ -273,14 +273,34 @@ class TokenFPN(FPN):
         # build top-down path from token to feature map
         laterals = [None for _ in lateral_tokens]
         used_backbone_levels = len(laterals)
+
+        # for i in range(used_backbone_levels - 1, -1, -1):
+        #     if i > 0:
+        #         tmp_t = inputs[i - 1+self.start_level]
+        #         tar_dict = {'x': lateral_tokens[i-1],
+        #                     'idx_agg': tmp_t[4],
+        #                     'agg_weight': tmp_t[5]
+        #                     }
+        #
+        #         tmp_s = inputs[i+self.start_level]
+        #         src_dict = {'x': lateral_tokens[i],
+        #                     'idx_agg': tmp_s[4],
+        #                     'agg_weight': tmp_s[5]
+        #                     }
+        #         lateral_tokens[i - 1] += downup(tar_dict, src_dict)
+        #
+        #     laterals[i] = token2map_agg_mat(lateral_tokens[i], None, tmp_s[3], tmp_s[4], tmp_s[2])
+
+
         for i in range(used_backbone_levels - 1, -1, -1):
             tmp = inputs[i+self.start_level]
-            _, loc, map_size, loc_orig, idx_agg = tmp
-            laterals[i] = token2map_agg_sparse(lateral_tokens[i], loc, loc_orig, idx_agg, map_size, weight=None)[0]
+            # _, loc, map_size, loc_orig, idx_agg = tmp
+            loc, map_size, loc_orig, idx_agg = tmp[1], tmp[2], tmp[3], tmp[4]
+            laterals[i] = token2map_agg_mat(lateral_tokens[i], loc, loc_orig, idx_agg, map_size, weight=None)[0]
             for j in range(i+1, used_backbone_levels):
                 tmp = inputs[j + self.start_level]
-                _, loc, _, loc_orig, idx_agg = tmp
-                laterals[i] += token2map_agg_sparse(lateral_tokens[j], loc, loc_orig, idx_agg, map_size, weight=None)[0]
+                loc, loc_orig, idx_agg = tmp[1], tmp[3], tmp[4]
+                laterals[i] += token2map_agg_mat(lateral_tokens[j], loc, loc_orig, idx_agg, map_size, weight=None)[0]
 
         # build outputs
         # part 1: from original levels
@@ -300,7 +320,7 @@ class TokenFPN(FPN):
                     src_lv = self.backbone_end_level - 1
                     tmp = inputs[src_lv]
                     x, loc, map_size, loc_orig, idx_agg = tmp
-                    extra_source = token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None)
+                    extra_source = token2map_agg_mat(x, loc, loc_orig, idx_agg, map_size, weight=None)
                 elif self.add_extra_convs == 'on_lateral':
                     extra_source = laterals[-1]
                 elif self.add_extra_convs == 'on_output':

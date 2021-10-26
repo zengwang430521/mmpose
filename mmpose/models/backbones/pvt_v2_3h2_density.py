@@ -404,8 +404,8 @@ class MyPVT(nn.Module):
 
     def forward_features(self, x):
         if vis:
-            outs = []
             img = x
+        outs = []
 
         # stage 1
         i = 0

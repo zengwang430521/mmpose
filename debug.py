@@ -37,22 +37,26 @@ channel_cfg = dict(
 norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_fast_norm_small', pretrained=None),
+    backbone=dict(type='mypvt3h2_density0_small', pretrained=None),
     neck=dict(
-        type='ResizeCat2',
+        type='TokenFPN',
         in_channels=[64, 128, 320, 512],
         out_channels=256,
-        kernels=[1, 3, 5, 9],
-        groups=[64, 128, 320, 512],
-        in_index=[0, 1, 2, 3],
-        norm_cfg=norm_cfg
+        start_level=0,
+        # add_extra_convs='on_input',
+        num_outs=4,
+        scale_add=True,
+        feature_strides=[4, 8, 16, 32],
+        align_corners=False,
+        scale_norm_cfg=norm_cfg,
+        scale_channels=128,
     ),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        in_channels=256,
+        in_channels=128,
         out_channels=channel_cfg['num_output_channels'],
         num_deconv_layers=0,
-        extra=dict(final_conv_kernel=1),
+        extra=dict(final_conv_kernel=1, ),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
     test_cfg=dict(

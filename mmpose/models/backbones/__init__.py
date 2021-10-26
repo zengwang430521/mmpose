@@ -35,7 +35,7 @@ from .pvt_v2_3h11 import mypvt3h11_small
 from .hrt import HRT
 from .hrpvt import HRPVT
 from .myhrpvt import MyHRPVT
-
+from .pvt_v2_3h2_density import mypvt3h2_density0_small, mypvt3h2_densityc_small
 
 __all__ = [
     'AlexNet', 'HourglassNet', 'HRNet', 'MobileNetV2', 'MobileNetV3', 'RegNet',
@@ -43,5 +43,6 @@ __all__ = [
     'ShuffleNetV1', 'ShuffleNetV2', 'CPM', 'RSN', 'MSPN', 'ResNeSt', 'VGG',
     'TCN', 'ViPNAS_ResNet', 'LiteHRNet', 'pvt_v2_b2', 'mypvt20_2_small', 'mypvt3f12_1_small',
     'mypvt3g_small', 'mypvt3g1_small', 'mypvt5f_small', 'mypvt3h2_small', 'mypvt3h1_small',
-    'mypvt3h11_small', 'HRPVT', 'HRT', 'mypvt3h2a_small', 'MyHRPVT', 'mypvt3h2_fast_norm_small'
+    'mypvt3h11_small', 'HRPVT', 'HRT', 'mypvt3h2a_small', 'MyHRPVT', 'mypvt3h2_fast_norm_small',
+    'mypvt3h2_density0_small', 'mypvt3h2_densityc_small'
 ]

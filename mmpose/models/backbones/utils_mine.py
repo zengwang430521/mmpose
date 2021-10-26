@@ -988,7 +988,7 @@ def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None, kerne
     return x_out, all_weight
 
 
-def token2map_agg_mat(x, loc, loc_orig, idx_agg, map_size, weight=None):
+def token2map_agg_mat(x, loc, loc_orig, idx_agg, map_size, weight=None, agg_weight=None):
     # x = torch.rand(2, 4, 3).half()
     # loc = torch.rand(2, 4, 2)
     # loc_orig = torch.rand(2, 7, 2)
@@ -996,10 +996,15 @@ def token2map_agg_mat(x, loc, loc_orig, idx_agg, map_size, weight=None):
     # map_size = [5, 5]
     # weight = None
 
+    dtype = x.dtype
     H, W = map_size
     B, N, C = x.shape
     N0 = loc_orig.shape[1]
     device = x.device
+
+    if N0 == N and N == H * W:
+        return x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous(), x.new_ones(B, 1, H, W)
+
     loc_orig = loc_orig.clamp(-1, 1)
     loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
     loc_orig = loc_orig.round().long()
@@ -1011,6 +1016,8 @@ def token2map_agg_mat(x, loc, loc_orig, idx_agg, map_size, weight=None):
     if weight is None:
         weight = x.new_ones(B, N, 1)
     value = index_points(weight, idx_agg).reshape(B*N0)
+    if agg_weight is not None:
+        value = value * agg_weight.reshape(B*N0).type(x.dtype)
 
     A = x.new_zeros(B, H*W, N)
     A[idx_batch.reshape(-1), idx_HW_orig.reshape(-1), idx_agg.reshape(-1)] = value.reshape(-1)
@@ -2151,6 +2158,37 @@ def token_cluster_density(x, Ns, idx_agg, weight=None, return_weight=False, conf
 
 
 
+def downup(target_dict, source_dict):
+    x_s = source_dict['x']
+    x_t = target_dict['x']
+    idx_agg_s = source_dict['idx_agg']
+    idx_agg_t = target_dict['idx_agg']
+    agg_weight_t = target_dict['agg_weight']
+    B, T, C = x_t.shape
+    B, S, C = x_s.shape
+    N0 = idx_agg_s.shape[1]
+
+    idx_agg_t = idx_agg_t + torch.arange(B, device=x_s.device)[:, None] * T
+    idx_agg_s = idx_agg_s + torch.arange(B, device=x_s.device)[:, None] * S
+
+    coor = torch.stack([idx_agg_t, idx_agg_s], dim=0).reshape(2, B*N0)
+    weight = agg_weight_t
+    if weight is None:
+        weight = x_s.new_ones(B, N0, 1)
+    weight = weight.reshape(-1)
+
+    with torch.cuda.amp.autocast(enabled=False):
+        A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
+        all_weight = A.type(torch.float32) @ x_s.new_ones(B*S, 1).type(torch.float32) + 1e-6
+        # all_weight = A @ x_s.new_ones(B*S, 1) + 1e-6
+        all_weight = all_weight.type(x_s.dtype)
+        weight = weight / all_weight[(idx_agg_t).reshape(-1), 0]
+
+    with torch.cuda.amp.autocast(enabled=False):
+        A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
+        x_out = A.type(torch.float32) @ x_s.reshape(B*S, C).type(torch.float32)
+        x_out = x_out.reshape(B, T, C).type(x_s.dtype)
+    return x_out
 
 
 

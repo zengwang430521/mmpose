@@ -27,7 +27,8 @@ from .modules.transformer_block import MlpDWBN
 
 from .utils_mine import \
     get_merge_way, farthest_point_sample, index_points, merge_tokens_agg_dist2, \
-    get_grid_loc, guassian_filt, map2token_agg_fast_nearest, token2map_agg_sparse
+    get_grid_loc, guassian_filt, map2token_agg_fast_nearest, token2map_agg_sparse, \
+    downup
 
 
 class MyDWConv(nn.Module):
@@ -489,39 +490,6 @@ class TokenNorm(nn.Module):
         else:
             x = self.norm(x.permute(0, 2, 1).unsqueeze(-1)).flatten(2).permute(0, 2, 1)
         return x
-
-
-def downup(target_dict, source_dict):
-    x_s = source_dict['x']
-    x_t = target_dict['x']
-    idx_agg_s = source_dict['idx_agg']
-    idx_agg_t = target_dict['idx_agg']
-    agg_weight_t = target_dict['agg_weight']
-    B, T, C = x_t.shape
-    B, S, C = x_s.shape
-    N0 = idx_agg_s.shape[1]
-
-    idx_agg_t = idx_agg_t + torch.arange(B, device=x_s.device)[:, None] * T
-    idx_agg_s = idx_agg_s + torch.arange(B, device=x_s.device)[:, None] * S
-
-    coor = torch.stack([idx_agg_t, idx_agg_s], dim=0).reshape(2, B*N0)
-    weight = agg_weight_t
-    if weight is None:
-        weight = x_s.new_ones(B, N0, 1)
-    weight = weight.reshape(-1)
-
-    with torch.cuda.amp.autocast(enabled=False):
-        A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
-        all_weight = A.type(torch.float32) @ x_s.new_ones(B*S, 1).type(torch.float32) + 1e-6
-        # all_weight = A @ x_s.new_ones(B*S, 1) + 1e-6
-        all_weight = all_weight.type(x_s.dtype)
-        weight = weight / all_weight[(idx_agg_t).reshape(-1), 0]
-
-    with torch.cuda.amp.autocast(enabled=False):
-        A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
-        x_out = A.type(torch.float32) @ x_s.reshape(B*S, C).type(torch.float32)
-        x_out = x_out.reshape(B, T, C).type(x_s.dtype)
-    return x_out
 
 
 # one step for multi-level sampling
