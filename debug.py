@@ -39,21 +39,18 @@ model = dict(
     type='TopDown',
     backbone=dict(type='mypvt3h2_density0_small', pretrained=None),
     neck=dict(
-        type='TokenFPN',
+        type='AttenNeck',
         in_channels=[64, 128, 320, 512],
         out_channels=256,
         start_level=0,
         # add_extra_convs='on_input',
-        num_outs=4,
-        scale_add=True,
-        feature_strides=[4, 8, 16, 32],
-        align_corners=False,
-        scale_norm_cfg=norm_cfg,
-        scale_channels=128,
+        num_outs=1,
+        num_heads=[4, 4, 4, 4],
+        mlp_ratios=[4, 4, 4, 4],
     ),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        in_channels=128,
+        in_channels=256,
         out_channels=channel_cfg['num_output_channels'],
         num_deconv_layers=0,
         extra=dict(final_conv_kernel=1, ),
@@ -65,8 +62,10 @@ model = dict(
         shift_heatmap=True,
         modulate_kernel=11))
 
+
 device = torch.device('cuda')
 model = build_posenet(model).to(device)
 input = torch.rand([2, 3, 192, 256], device=device)
 out = model(input)
 out = out
+

@@ -2158,7 +2158,7 @@ def token_cluster_density(x, Ns, idx_agg, weight=None, return_weight=False, conf
 
 
 
-def downup(target_dict, source_dict):
+def downup_sparse(target_dict, source_dict):
     x_s = source_dict['x']
     x_t = target_dict['x']
     idx_agg_s = source_dict['idx_agg']
@@ -2191,5 +2191,25 @@ def downup(target_dict, source_dict):
     return x_out
 
 
+def downup(target_dict, source_dict):
+    x_s = source_dict['x']
+    x_t = target_dict['x']
+    idx_agg_s = source_dict['idx_agg']
+    idx_agg_t = target_dict['idx_agg']
+    agg_weight_t = target_dict['agg_weight']
+    B, T, _ = x_t.shape
+    B, S, C = x_s.shape
+    N0 = idx_agg_s.shape[1]
+    idx_batch = torch.arange(B, device=idx_agg_t.device)[:, None].expand(B, N0)
 
+    if agg_weight_t is None:
+        weight = x_s.new_ones(B*N0)
+    else:
+        weight = agg_weight_t.reshape(-1)
 
+    coor = torch.stack([idx_batch, idx_agg_t, idx_agg_s], dim=0).reshape(3, B*N0)
+    A = torch.sparse.FloatTensor(coor, weight, torch.Size([B, T, S]))
+    A = A.to_dense()
+    A = A / (A.sum(dim=-1, keepdim=True) + 1e-6)
+    x_out = A @ x_s
+    return x_out
