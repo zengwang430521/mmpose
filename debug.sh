@@ -8,6 +8,11 @@ srun -p mm_human \
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
     --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=att_coco python -u tools/train.py  --work-dir=work_dirs/att_coco --launcher="slurm" \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/den0_small_coco_256x192.py
+
+
+
     --job-name=denc_fpn python -u tools/train.py configs/pvt3h2_denc_fpn_adamw.py --work-dir=work_dirs/denc_fpn_16 --launcher="slurm"
 
     --job-name=denc_att python -u tools/train.py configs/pvt3h2_denc_att_adamw.py --work-dir=work_dirs/denc_att --launcher="slurm"
