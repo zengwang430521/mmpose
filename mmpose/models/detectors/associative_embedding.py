@@ -39,6 +39,7 @@ class AssociativeEmbedding(BasePose):
 
     def __init__(self,
                  backbone,
+                 neck=None,
                  keypoint_head=None,
                  train_cfg=None,
                  test_cfg=None,
@@ -48,6 +49,9 @@ class AssociativeEmbedding(BasePose):
         self.fp16_enabled = False
 
         self.backbone = builder.build_backbone(backbone)
+
+        if neck is not None:
+            self.neck = builder.build_neck(neck)
 
         if keypoint_head is not None:
 
@@ -66,6 +70,11 @@ class AssociativeEmbedding(BasePose):
         self.use_udp = test_cfg.get('use_udp', False)
         self.parser = HeatmapParser(self.test_cfg)
         self.init_weights(pretrained=pretrained)
+
+    @property
+    def with_neck(self):
+        """Check if has keypoint_head."""
+        return hasattr(self, 'neck')
 
     @property
     def with_keypoint(self):
@@ -167,7 +176,8 @@ class AssociativeEmbedding(BasePose):
         """
 
         output = self.backbone(img)
-
+        if self.with_neck:
+            output = self.neck(output)
         if self.with_keypoint:
             output = self.keypoint_head(output)
 
@@ -192,6 +202,8 @@ class AssociativeEmbedding(BasePose):
             Tensor: Outputs.
         """
         output = self.backbone(img)
+        if self.with_neck:
+            output = self.neck(output)
         if self.with_keypoint:
             output = self.keypoint_head(output)
         return output
@@ -233,6 +245,8 @@ class AssociativeEmbedding(BasePose):
             image_resized = aug_data[idx].to(img.device)
 
             features = self.backbone(image_resized)
+            if self.with_neck:
+                features = self.neck(features)
             if self.with_keypoint:
                 outputs = self.keypoint_head(features)
 
