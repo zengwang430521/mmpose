@@ -7,10 +7,11 @@ srun -p mm_human \
 
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
-    --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=denc_att python -u tools/train.py configs/pvt3h2_denc_att_adamw.py --work-dir=work_dirs/denc_att --launcher="slurm"
+
     --job-name=denc_fpn python -u tools/train.py configs/pvt3h2_denc_fpn_adamw.py --work-dir=work_dirs/denc_fpn_16 --launcher="slurm"
 
-    --job-name=denc_att python -u tools/train.py configs/pvt3h2_denc_att_adamw.py --work-dir=work_dirs/denc_att --launcher="slurm"
 
     --job-name=den0_att python -u tools/train.py configs/pvt3h2_den0_att_adamw.py --work-dir=work_dirs/den0_att --launcher="slurm"
 

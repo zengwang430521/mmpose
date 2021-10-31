@@ -1796,7 +1796,7 @@ def show_tokens_merge(x, out, N_grid=14*14):
             # tmp = map2token_agg_fast_nearest(color_map, N, loc_orig, idx_agg, agg_weight)
 
             H, W, _ = img.shape
-            idx_map, _ = token2map_agg_sparse(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4])
+            idx_map, _ = token2map_agg_mat(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4])
             idx_map = idx_map[i].permute(1, 2, 0).detach().cpu().float()
             ax.imshow(idx_map)
     # plt.show()
