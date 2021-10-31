@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-    --job-name=hrpvtw32_bn python -u tools/test.py  configs/hrpvtw32_bn.py  work_dirs/hrpvtw32_bn/latest.pth --launcher="slurm"
 
 srun -p mm_human \
     --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=test python -u tools/test.py  configs/pvt3h2_den0f_fpn_adamw.py work_dirs/den0_fpn_16/epoch_210.pth --launcher="slurm"
+
 
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
