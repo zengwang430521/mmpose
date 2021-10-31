@@ -2,8 +2,8 @@
 
 
 srun -p mm_human \
-    --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=5 --kill-on-bad-exit=1 \
-    --job-name=test python -u tools/test.py  configs/pvt3h2_den0f_fpn_adamw.py work_dirs/den0_fpn_16/epoch_210.pth --launcher="slurm"
+    --ntasks=4 --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=test python -u tools/test.py  configs/pvt3h2_den0_fpn_adamw.py work_dirs/den0_fpn_16/epoch_210.pth --launcher="slurm"
 
 
 srun -p mm_human \
