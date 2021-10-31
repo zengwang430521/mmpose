@@ -175,3 +175,6 @@ data = dict(
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),
 )
+
+# fp16 settings
+fp16 = dict(loss_scale='dynamic')

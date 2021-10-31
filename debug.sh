@@ -3,7 +3,8 @@
 
 srun -p mm_human \
     --ntasks=4 --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
-    --job-name=test python -u tools/test.py  configs/pvt3h2_den0_fpn_adamw.py work_dirs/den0_fpn_16/epoch_210.pth --launcher="slurm"
+    --job-name=ae_att_coco python -u tools/train.py  --work-dir=work_dirs/ae_att_coco --launcher="slurm" \
+    configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0_small_coco_512x512.py
 
 
 srun -p mm_human \
