@@ -6,8 +6,9 @@ srun -p mm_human \
     --job-name=test python -u tools/test.py  configs/pvt3h2_den0_fpn_adamw.py work_dirs/den0_fpn_16/epoch_210.pth --launcher="slurm"
 
 
-srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
 srun -p mm_human \
+srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
+srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=ae_att_coco python -u tools/train.py  --work-dir=work_dirs/ae_att_coco --launcher="slurm" \
     configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0_small_coco_512x512.py
