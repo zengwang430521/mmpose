@@ -40,7 +40,7 @@ channel_cfg = dict(
 # model settings
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0_small', pretrained='models/3h2_density0_small.pth',),
+    backbone=dict(type='mypvt3h2_density0f_small', pretrained='models/3h2_density0_small.pth',),
     neck=dict(
         type='AttenNeck',
         in_channels=[64, 128, 320, 512],
