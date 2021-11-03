@@ -37,6 +37,49 @@ def single_gpu_test(model, data_loader):
         batch_size = len(next(iter(data.values())))
         for _ in range(batch_size):
             prog_bar.update()
+    return
+
+
+def single_gpu_vis(model, data_loader):
+    """Test model with a single gpu.
+
+    This method tests model with a single gpu and displays test progress bar.
+
+    Args:
+        model (nn.Module): Model to be tested.
+        data_loader (nn.Dataloader): Pytorch data loader.
+
+
+    Returns:
+        list: The prediction results.
+    """
+
+    model.eval()
+    results = []
+    dataset = data_loader.dataset
+    prog_bar = mmcv.ProgressBar(len(dataset))
+
+    for i in [1272, 260, 563,968,974,993,1272,1736,1895, 2280, 2405, 2556, 2570, 2605, 2833, 2850,2950, 3580, 3590, 4710, 4798, 5055, 5248, 6032]:
+        data = data_loader.collate_fn([dataset[i]])
+        model.module.backbone.batch_count = i
+        with torch.no_grad():
+            result = model(return_loss=False, **data)
+        results.append(result)
+
+    for (i, data) in enumerate(data_loader):
+        if i % 1 == 0:
+            scale = data['img_metas'].data[0][0]['scale']
+            if scale[0] > 1 and scale[1] > 1:
+                model.module.backbone.batch_count = i
+                with torch.no_grad():
+                    result = model(return_loss=False, **data)
+                results.append(result)
+
+
+        # use the first key as main key to calculate the batch size
+        batch_size = len(next(iter(data.values())))
+        for _ in range(batch_size):
+            prog_bar.update()
     return results
 
 

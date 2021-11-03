@@ -45,7 +45,7 @@ channel_cfg = dict(
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0_small', pretrained='models/3h2_density0_small.pth',),
+    backbone=dict(type='mypvt3h2_density0v_small', pretrained='models/3h2_density0_small.pth',),
     neck=dict(
         type='TokenFPN',
         in_channels=[64, 128, 320, 512],
@@ -68,15 +68,15 @@ model = dict(
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
     test_cfg=dict(
-        flip_test=True,
+        flip_test=False,
         post_process='default',
         shift_heatmap=True,
         modulate_kernel=11))
 
 
 data_cfg = dict(
-    image_size=[96, 128],
-    heatmap_size=[24, 32],
+    image_size=[192, 256],
+    heatmap_size=[48, 64],
     num_output_channels=channel_cfg['num_output_channels'],
     num_joints=channel_cfg['dataset_joints'],
     dataset_channel=channel_cfg['dataset_channel'],
@@ -85,7 +85,7 @@ data_cfg = dict(
     nms_thr=1.0,
     oks_thr=0.9,
     vis_thr=0.2,
-    use_gt_bbox=False,
+    use_gt_bbox=True,
     det_bbox_thr=0.0,
     bbox_file='data/coco/person_detection_results/'
     'COCO_val2017_detections_AP_H_56_person.json',
@@ -140,7 +140,7 @@ data = dict(
     samples_per_gpu=64,
     workers_per_gpu=2,
     val_dataloader=dict(samples_per_gpu=32),
-    test_dataloader=dict(samples_per_gpu=32),
+    test_dataloader=dict(samples_per_gpu=1),
     train=dict(
         type='TopDownCocoWholeBodyDataset',
         ann_file=f'{data_root}/annotations/coco_wholebody_train_v1.0.json',

@@ -15,7 +15,10 @@ from .utils_mine import (
     # farthest_point_sample
 )
 
-from .utils_mine import token_cluster_density
+# from .utils_mine import token_cluster_density
+
+from .utils_mine import token_cluster_density_fixbug as token_cluster_density
+
 # from utils_mine import token2map_agg_sparse as token2map_agg_mat
 from ..builder import BACKBONES
 
@@ -446,7 +449,7 @@ class MyPVT(nn.Module):
 
         if vis:
             show_tokens_merge(img, outs, N_grid, self.batch_count)
-            self.batch_count += 10
+            # self.batch_count += 1
 
         return outs
 
@@ -458,7 +461,7 @@ class MyPVT(nn.Module):
 
 
 @BACKBONES.register_module()
-class mypvt3h2_density0_small(MyPVT):
+class mypvt3h2_density0v_small(MyPVT):
     def __init__(self, **kwargs):
         super().__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
@@ -468,24 +471,5 @@ class mypvt3h2_density0_small(MyPVT):
             **kwargs)
 
 
-@BACKBONES.register_module()
-class mypvt3h2_density25_small(MyPVT):
-    def __init__(self, **kwargs):
-        super().__init__(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
-            qkv_bias=True,
-            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-            k=3, dist_assign=True, ada_dc=False, use_conf=True, conf_scale=0.25,
-            **kwargs)
-
-
-@BACKBONES.register_module()
-class mypvt3h2_densityc_small(MyPVT):
-    def __init__(self, **kwargs):
-        super().__init__(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-            k=3, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0, conf_density=True,
-            **kwargs)
 
 

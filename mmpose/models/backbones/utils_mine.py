@@ -1743,7 +1743,9 @@ def show_conf_merge_multi(conf, Agg, loc_orig):
     ax.imshow(conf_map[0, 0].detach().cpu().float(), vmin=0, vmax=7)
 
 
-def show_tokens_merge(x, out, N_grid=14*14):
+
+
+def show_tokens_merge_old(x, out, N_grid=14*14, count=0):
     # import matplotlib.pyplot as plt
     IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
     IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
@@ -1821,6 +1823,8 @@ def show_tokens_merge(x, out, N_grid=14*14):
             idx_map = idx_map[i].permute(1, 2, 0).detach().cpu().float()
             ax.imshow(idx_map)
     # plt.show()
+    fname = f'vis/{count}.jpg'
+    plt.savefig(fname)
 
     return
 
@@ -2502,3 +2506,431 @@ def downup(target_dict, source_dict):
     A = A / (A.sum(dim=-1, keepdim=True) + 1e-6)
     x_out = A @ x_s
     return x_out
+
+
+
+def show_tokens_merge(x, out, N_grid=14*14, count=0):
+    # import matplotlib.pyplot as plt
+    IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
+    IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
+    x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+
+    save_dict = {
+        'x': x,
+        'out': out
+    }
+    fname = f'vis/{count}.pth'
+    torch.save(save_dict, fname)
+
+
+    B, _, h, w = x.shape
+    h, w = h // 4, w//4
+    device = x.device
+    # y_g, x_g = torch.arange(h, device=device).float(), torch.arange(w, device=device).float()
+    # y_g = 1 * ((y_g + 0.5) / h) - 0
+    # x_g = 1 * ((x_g + 0.5) / w) - 0
+    # y_map, x_map = torch.meshgrid(y_g, x_g)
+    # color_map = torch.stack((x_map, y_map, x_map*0), dim=-1)
+    # color_map = color_map.permute(2, 0, 1).unsqueeze(0).expand(B, 3, h, w).float()
+    # color_map = 0.5*color_map + torch.rand([B, 3, h, w], device=x.device)*0.5
+
+    color_map = torch.rand([B, 3, h, w], device=x.device)
+
+    # color_map = F.avg_pool2d(x, kernel_size=4)
+
+
+    N0 = h*w
+    color_token_orig = torch.rand([N0, 3], device=x.device)[None, :, :].expand(B, N0, 3).float()
+
+
+
+    # color_map = torch.rand([1, 3, h, w], device=x.device).expand(B, 3, h, w).float()
+
+
+
+    # for i in range(x.shape[0]):
+    for i in range(1):
+        img = x[i].permute(1, 2, 0).detach().cpu()
+        ax = plt.subplot(1, 5, 1)
+        ax.clear()
+        ax.imshow(img)
+        # ax = plt.subplot(2, 5, 6)
+        # ax.clear()
+        # ax.imshow(img)
+
+
+        for lv in range(len(out)):
+            ax = plt.subplot(1, 5, lv+2)
+            ax.clear()
+            # ax.imshow(img, extent=[0, 1, 0, 1])
+            # loc = out[lv][1]
+            # loc = 0.5 * loc + 0.5
+            # loc_grid = loc[i, :N_grid].detach().cpu().numpy()
+            # ax.scatter(loc_grid[:, 0], 1 - loc_grid[:, 1], c='blue', s=0.4+lv*0.1)
+            # loc_ada = loc[i, N_grid:].detach().cpu().numpy()
+            # ax.scatter(loc_ada[:, 0], 1 - loc_ada[:, 1], c='red', s=0.4+lv*0.1)
+            loc_orig = out[lv][3]
+            idx_agg = out[lv][4]
+            agg_weight = out[lv][5]
+            x = out[lv][0]
+            B, N, _ = x.shape
+
+            # idx_batch = torch.arange(B, device=x.device)[:, None].expand(B, N0)
+            # idx_sort = agg_weight.argsort(dim=1)[:, :, 0]
+            # idx_agg_sort = index_points(idx_agg[:, :, None], idx_sort)
+            # color_sort = index_points(color_token_orig, idx_sort)
+            # color_token = x.new_zeros(B, N, 3).float()
+            # for t in range(N0):
+            #     color_token[idx_batch[:, t], idx_agg_sort[:, t, 0], :] = color_sort[:, t, :]
+            # tmp = color_token
+
+
+
+            # tmp = torch.arange(N, device=loc.device)[None, :, None].expand(B, N, 1).float()
+            tmp = torch.rand([N, 3], device=x.device)[None, :, :].expand(B, N, 3).float()
+            # tmp = map2token_agg_fast_nearest(color_map, N, loc_orig, idx_agg, agg_weight)
+
+            H, W, _ = img.shape
+            idx_map, _ = token2map_agg_mat(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4])
+            idx_map = idx_map[i].permute(1, 2, 0).detach().cpu().float()
+            ax.imshow(idx_map)
+    # plt.show()
+    fname = f'vis/{count}.jpg'
+    plt.savefig(fname)
+
+
+    return
+
+
+def vis_tokens_merge1(count=18880):
+    color_begin = torch.rand(1, 10000, 3)
+    color_begin = index_points(color_begin, farthest_point_sample(color_begin, 48))
+
+    fname = f'vis/{count}.pth'
+
+    data = torch.load(fname)
+    x = data['x']
+    out = data['out']
+    B, _, h, w = x.shape
+    h, w = h // 4, w // 4
+    device = x.device
+    N0 = h * w
+
+    img = x[0].permute(1, 2, 0).detach().cpu()
+    ax = plt.subplot(1, 6, 1)
+    ax.clear()
+    ax.imshow(img)
+
+
+    lv = len(out) - 1
+    ax = plt.subplot(1, 6, 6)
+    ax.clear()
+    loc_orig = out[lv][3]
+    idx_agg = out[lv][4]
+    agg_weight = out[lv][5]
+    x = out[lv][0]
+    B, N, _ = x.shape
+
+    tmp = torch.arange(N, device=x.device)[None, :, None].expand(B, N, 1).float()
+    H, W, _ = img.shape
+    idx_map, _ = token2map_agg_mat(tmp, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
+    idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
+    ax.imshow(idx_map)
+
+    # pixel_num = x.new_ones(N)
+    # pixel_num.index_add_(0, idx_agg[0], x.new_ones(N0))
+
+    token_c = color_begin.to(x.device)
+    src_dict = {
+        'x': token_c,
+        'idx_agg': idx_agg,
+        'agg_weight': agg_weight,
+        'loc_orig': loc_orig
+    }
+
+    factors = [.3, .3, .3]
+    for lv in range(len(out)-1, -1, -1):
+
+        loc_orig = out[lv][3]
+        idx_agg = out[lv][4]
+        agg_weight = out[lv][5]
+        x = out[lv][0]
+        B, N, _ = x.shape
+
+        if lv < len(out) - 1:
+            dst_dict = {
+                'x': x,
+                'idx_agg': idx_agg,
+                'agg_weight': agg_weight,
+                'loc_orig': loc_orig
+            }
+
+            token_c = downup(dst_dict, src_dict)
+            factor = factors[lv]
+            token_c = token_c + (torch.rand([B, N, 3], device=x.device) - 0.5) * factor * (token_c.sum(dim=-1, keepdim=True) > 0).float()
+            token_c = token_c.clamp(0, 1)
+
+        src_dict = {
+            'x': token_c,
+            'idx_agg': idx_agg,
+            'agg_weight': agg_weight,
+            'loc_orig': loc_orig
+        }
+
+        H, W, _ = img.shape
+        idx_map, _ = token2map_agg_mat(token_c, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
+        idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
+        ax = plt.subplot(1, 6, lv+2)
+        ax.imshow(idx_map)
+
+
+
+
+
+
+
+
+    fname = f'vis/{count}.jpg'
+    plt.savefig(fname)
+
+    return
+
+
+def vis_tokens_merge0(count=18880):
+    idx_dict={
+        18880: [0, 10, 6]
+    }
+
+    fname = f'vis/{count}.pth'
+
+    data = torch.load(fname)
+    x = data['x']
+    out = data['out']
+    B, _, h, w = x.shape
+    h, w = h // 4, w // 4
+    device = x.device
+    N0 = h * w
+
+    img = x[0].permute(1, 2, 0).detach().cpu()
+    ax = plt.subplot(1, 6, 1)
+    ax.clear()
+    ax.imshow(img)
+
+
+    lv = len(out) - 1
+    ax = plt.subplot(1, 6, 6)
+    ax.clear()
+    loc_orig = out[lv][3]
+    idx_agg = out[lv][4]
+    agg_weight = out[lv][5]
+    x = out[lv][0]
+    B, N, _ = x.shape
+
+    tmp = torch.arange(N, device=x.device)[None, :, None].expand(B, N, 1).float()
+    H, W, _ = img.shape
+    idx_map, _ = token2map_agg_mat(tmp, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
+    idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
+    ax.imshow(idx_map)
+
+    # pixel_num = x.new_ones(N)
+    # pixel_num.index_add_(0, idx_agg[0], x.new_ones(N0))
+
+
+    idx_begin = idx_dict[count]
+    color_begin = torch.tensor([[1, 0, 0],
+                                [0, 1, 0],
+                                [0, 0, 1]]).float().to(x.device)
+    token_c = x.new_zeros(B, N, 3)
+    token_c[0, idx_begin] = color_begin
+    src_dict = {
+        'x': token_c,
+        'idx_agg': idx_agg,
+        'agg_weight': agg_weight,
+        'loc_orig': loc_orig
+    }
+
+    factors = [.1, .2, .3]
+    for lv in range(len(out)-1, -1, -1):
+
+        loc_orig = out[lv][3]
+        idx_agg = out[lv][4]
+        agg_weight = out[lv][5]
+        x = out[lv][0]
+        B, N, _ = x.shape
+
+        if lv < len(out) - 1:
+            dst_dict = {
+                'x': x,
+                'idx_agg': idx_agg,
+                'agg_weight': agg_weight,
+                'loc_orig': loc_orig
+            }
+
+            token_c = downup(dst_dict, src_dict)
+            factor = factors[lv]
+            token_c = token_c + torch.rand([B, N, 3], device=x.device) * factor * (token_c.sum(dim=-1, keepdim=True) > 0).float()
+            token_c = token_c.clamp(0, 1)
+
+        src_dict = {
+            'x': token_c,
+            'idx_agg': idx_agg,
+            'agg_weight': agg_weight,
+            'loc_orig': loc_orig
+        }
+
+        H, W, _ = img.shape
+        idx_map, _ = token2map_agg_mat(token_c, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
+        idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
+        ax = plt.subplot(1, 6, lv+2)
+        ax.imshow(idx_map)
+
+
+
+
+
+
+
+
+    fname = f'vis/{count}.jpg'
+    plt.savefig(fname)
+
+    return
+
+
+def vis_tokens_merge(count=18880):
+    idx_dict={
+        # 18880: [0, 10, 11],
+        # 260:[0, 17, 2],
+        # 563: [0, 22, 8],
+        993:[17, 27, 13],
+        1272: [31, 37, 18],
+        1736:[0, 35, 14],
+        2405: [0, 12, 15],
+        2950:[0, 16, 14],
+        3590:[27, 43, 7],
+        4710:[0, 12, 21],
+
+    }
+    for count in idx_dict.keys():
+
+
+        fname = f'vis/{count}.pth'
+
+        data = torch.load(fname)
+        x = data['x']
+        out = data['out']
+        B, _, h, w = x.shape
+        h, w = h // 4, w // 4
+        device = x.device
+        N0 = h * w
+
+        img = x[0].permute(1, 2, 0).detach().cpu()
+        ax = plt.subplot(1, 6, 1)
+        ax.clear()
+        ax.imshow(img)
+
+        fname = f'vis/{count}_img.png'
+        import cv2
+        cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
+
+
+        lv = len(out) - 1
+        ax = plt.subplot(1, 6, 6)
+        ax.clear()
+        loc_orig = out[lv][3]
+        idx_agg = out[lv][4]
+        agg_weight = out[lv][5]
+        x = out[lv][0]
+        B, N, _ = x.shape
+
+        tmp = torch.arange(N, device=x.device)[None, :, None].expand(B, N, 1).float()
+        H, W, _ = img.shape
+        idx_map, _ = token2map_agg_mat(tmp, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
+        idx_map = F.interpolate(idx_map, [H, W], mode='nearest')
+        idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
+        ax.imshow(idx_map)
+        # ax.imshow(idx_map / 48 * 0.5 + img * 0.5)
+        # tmp_map = img.clone()
+        # tmp_map[:, :, 2] = idx_map[:, :, 0] / 48
+        # ax.imshow(tmp_map)
+
+
+        pixel_num = x.new_zeros(N)
+        pixel_num.index_add_(0, idx_agg[0], x.new_ones(N0))
+
+
+
+
+
+        idx_begin = idx_dict[count]
+        color_begin = torch.tensor([[0, 0, 1],
+                                    [1, 0, 0],
+                                    [0, 1, 0]]).float().to(x.device)
+        # token_c = x.new_zeros(B, N, 3)
+        token_c = x.new_ones(B, N, 3) * 0.8
+        token_c[0, idx_begin] = color_begin
+        src_dict = {
+            'x': token_c,
+            'idx_agg': idx_agg,
+            'agg_weight': agg_weight,
+            'loc_orig': loc_orig
+        }
+
+        factors = [.2, .4, .6]
+        for lv in range(len(out)-1, -1, -1):
+
+            loc_orig = out[lv][3]
+            idx_agg = out[lv][4]
+            agg_weight = out[lv][5]
+            x = out[lv][0]
+            B, N, _ = x.shape
+
+            if lv < len(out) - 1:
+                dst_dict = {
+                    'x': x,
+                    'idx_agg': idx_agg,
+                    'agg_weight': agg_weight,
+                    'loc_orig': loc_orig
+                }
+
+                idx_begin_new = []
+                for idx in idx_begin:
+                    mask = src_dict['idx_agg'] == idx
+                    weight = x.new_zeros(N)
+                    # weight.index_add_(0, idx_agg[0], agg_weight[0, :, 0] * mask[0].float())
+                    weight.index_add_(0, idx_agg[0], mask[0].float())
+                    idx_begin_new.append(weight.argmax().item())
+                idx_begin = idx_begin_new
+                token_c = x.new_ones(B, N, 3) * 0.8
+                token_c[0, idx_begin] = color_begin
+
+
+            src_dict = {
+                'x': token_c,
+                'idx_agg': idx_agg,
+                'agg_weight': agg_weight,
+                'loc_orig': loc_orig
+            }
+
+            H, W, _ = img.shape
+            idx_map, _ = token2map_agg_mat(token_c, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
+            idx_map = F.interpolate(idx_map, [H, W], mode='nearest')
+            idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
+            ax = plt.subplot(1, 6, lv+2)
+            ax.imshow(idx_map*0.5 + img*0.5)
+
+            fname = f'vis/{count}_{lv}.png'
+            import cv2
+            cv2.imwrite(fname, idx_map.numpy()[:, :, ::-1]*255)
+
+
+
+
+
+
+
+
+        fname = f'vis/{count}.jpg'
+        plt.savefig(fname)
+
+    return
