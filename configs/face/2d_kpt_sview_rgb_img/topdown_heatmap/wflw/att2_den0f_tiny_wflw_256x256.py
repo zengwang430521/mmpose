@@ -47,7 +47,8 @@ model = dict(
         # add_extra_convs='on_input',
         num_outs=1,
         num_heads=[4, 4, 4, 4],
-        mlp_ratios=[4, 4, 4, 4],
+        mlp_ratios=[2, 2, 2, 2],
+
     ),
 
     keypoint_head=dict(
