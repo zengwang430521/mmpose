@@ -5,6 +5,7 @@ from .fpn import FPN, TokenFPN
 from .resize_cat import ResizeCat, ResizeCat2
 from .atten_neck import AttenNeck
 from .atten_neck_sparse import AttenNeckS
+from .atten_neck2 import AttenNeck2
 
 __all__ = ['GlobalAveragePooling', 'UpSampleNeck', 'TokenInterNeck1', 'TokenInterNeck2',
            'FPN', 'TokenFPN', 'ResizeCat', 'ResizeCat2', 'AttenNeck', 'AttenNeckS']
