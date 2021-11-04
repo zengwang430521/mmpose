@@ -66,20 +66,20 @@ def single_gpu_vis(model, data_loader):
             result = model(return_loss=False, **data)
         results.append(result)
 
-    for (i, data) in enumerate(data_loader):
-        if i % 1 == 0:
-            scale = data['img_metas'].data[0][0]['scale']
-            if scale[0] > 1 and scale[1] > 1:
-                model.module.backbone.batch_count = i
-                with torch.no_grad():
-                    result = model(return_loss=False, **data)
-                results.append(result)
-
-
-        # use the first key as main key to calculate the batch size
-        batch_size = len(next(iter(data.values())))
-        for _ in range(batch_size):
-            prog_bar.update()
+    # for (i, data) in enumerate(data_loader):
+    #     if i % 1 == 0:
+    #         scale = data['img_metas'].data[0][0]['scale']
+    #         if scale[0] > 1 and scale[1] > 1:
+    #             model.module.backbone.batch_count = i
+    #             with torch.no_grad():
+    #                 result = model(return_loss=False, **data)
+    #             results.append(result)
+    #
+    #
+    #     # use the first key as main key to calculate the batch size
+    #     batch_size = len(next(iter(data.values())))
+    #     for _ in range(batch_size):
+    #         prog_bar.update()
     return results
 
 

@@ -960,30 +960,30 @@ def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None, kerne
         weight = x.new_ones(B, N, 1)
     value = index_points(weight, idx_agg).reshape(B*N0)
 
-    A = torch.sparse.FloatTensor(coor, value, torch.Size([B*H*W, B*N]))
+    with torch.cuda.amp.autocast(enabled=False):
+        A = torch.sparse.FloatTensor(coor, value.detach(), torch.Size([B*H*W, B*N]))
+        all_weight = A.type(torch.float32) @ x.new_ones(B*N, 1).type(torch.float32) + 1e-6
+        all_weight = all_weight.type(x.dtype)
+        value = value / all_weight[idx_HW_orig.reshape(-1), 0]
 
-    all_weight = A.type(torch.float32) @ x.new_ones(B*N, 1).type(torch.float32) + 1e-6
-    all_weight = all_weight.type(x.dtype)
-    value = value / all_weight[idx_HW_orig.reshape(-1), 0]
-
-    if kernel > 1 and C > N:
-        A = x.new_zeros(B * H * W, N)
-        A[idx_HW_orig.reshape(-1), idx_agg.reshape(-1)] = value.reshape(-1)
-        A = A.reshape(B, H, W, N).permute(0, 3, 1, 2)
-        A = guassian_filt(A, kernel, sigma)
-        A = A.flatten(2).permute(0, 2, 1)
-        x_out = A @ x
-        x_out = x_out.type(x.dtype)
-        x_out = x_out.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
-        all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3, 1, 2).contiguous()
-    else:
-        A = torch.sparse.FloatTensor(coor, value, torch.Size([B * H * W, B * N]))
-        x_out = A.type(torch.float32) @ x.reshape(B*N, C).type(torch.float32)
-        x_out = x_out.type(x.dtype)
-        x_out = x_out.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
-        all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3, 1, 2).contiguous()
-        if kernel > 1:
-            x_out = guassian_filt(x_out, kernel, sigma)
+        if kernel > 1 and C > N:
+            A = x.new_zeros(B * H * W, N)
+            A[idx_HW_orig.reshape(-1), idx_agg.reshape(-1)] = value.reshape(-1)
+            A = A.reshape(B, H, W, N).permute(0, 3, 1, 2)
+            A = guassian_filt(A, kernel, sigma)
+            A = A.flatten(2).permute(0, 2, 1)
+            x_out = A @ x
+            x_out = x_out.type(x.dtype)
+            x_out = x_out.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+            all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3, 1, 2).contiguous()
+        else:
+            A = torch.sparse.FloatTensor(coor, value.detach(), torch.Size([B * H * W, B * N]))
+            x_out = A.type(torch.float32) @ x.reshape(B*N, C).type(torch.float32)
+            x_out = x_out.type(x.dtype)
+            x_out = x_out.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+            all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3, 1, 2).contiguous()
+            if kernel > 1:
+                x_out = guassian_filt(x_out, kernel, sigma)
 
     return x_out, all_weight
 
@@ -2066,7 +2066,7 @@ def map2token_agg_sparse_nearest(feature_map, N, loc_orig, idx_agg, agg_weight=N
     with torch.cuda.amp.autocast(enabled=False):
         value = value.detach().float()  # sparse mm do not support gradient for sparse matrix
         A = torch.sparse_coo_tensor(indices, value, (B * N, B *H * W))
-        all_weight = A @ torch.zeros([B*H*W, 1], device=device, dtype=torch.float32) + 1e-6
+        all_weight = A @ torch.ones([B*H*W, 1], device=device, dtype=torch.float32) + 1e-6
         value = value / all_weight[idx_agg.reshape(-1), 0]
 
         A = torch.sparse_coo_tensor(indices, value, (B * N, B *H * W))
@@ -2767,13 +2767,12 @@ def downup_sparse(target_dict, source_dict):
     weight = weight.reshape(-1)
 
     with torch.cuda.amp.autocast(enabled=False):
+        weight = weight.float()
         A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
         all_weight = A.type(torch.float32) @ x_s.new_ones(B*S, 1).type(torch.float32) + 1e-6
         # all_weight = A @ x_s.new_ones(B*S, 1) + 1e-6
-        all_weight = all_weight.type(x_s.dtype)
         weight = weight / all_weight[(idx_agg_t).reshape(-1), 0]
 
-    with torch.cuda.amp.autocast(enabled=False):
         A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
         x_out = A.type(torch.float32) @ x_s.reshape(B*S, C).type(torch.float32)
         x_out = x_out.reshape(B, T, C).type(x_s.dtype)

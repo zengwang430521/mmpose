@@ -296,7 +296,7 @@ class DownLayer(nn.Module):
             norm_weight = weight / (mean_weight + 1e-6)
 
             x_down = x * norm_weight
-            x_down = x_down.reshape(B, H, W, -1)
+            x_down = x_down.reshape(B, H, W, -1).permute(0, 3, 1, 2)
             x_down = F.avg_pool2d(x_down, kernel_size=2)
             x_down = x_down.flatten(2).permute(0, 2, 1)
 
@@ -460,7 +460,7 @@ class MyPVT(nn.Module):
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
 
-            x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid, grid_merge=i==1)  # down sample
+            x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid, grid_merge=i==0)  # down sample
             H, W = H // 2, W // 2
 
             for j, blk in enumerate(block):
