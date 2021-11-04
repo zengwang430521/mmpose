@@ -49,11 +49,15 @@ model = dict(
     ),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        in_channels=128,
+        in_channels=[128, 128, 128, 128],
+        in_index=(0, 1, 2, 3),
+        input_transform='resize_concat',
         out_channels=channel_cfg['num_output_channels'],
         num_deconv_layers=0,
-        extra=dict(final_conv_kernel=1, ),
+        extra=dict(
+            final_conv_kernel=1, num_conv_layers=1, num_conv_kernels=(1, )),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+
     train_cfg=dict(),
     test_cfg=dict(
         flip_test=True,
@@ -109,7 +113,7 @@ test_pipeline = val_pipeline
 
 data_root = 'data/wflw'
 data = dict(
-    samples_per_gpu=32,
+    samples_per_gpu=64,
     workers_per_gpu=2,
     val_dataloader=dict(samples_per_gpu=32),
     test_dataloader=dict(samples_per_gpu=32),
