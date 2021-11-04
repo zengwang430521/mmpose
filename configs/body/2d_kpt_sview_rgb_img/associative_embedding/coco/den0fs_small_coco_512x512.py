@@ -55,7 +55,7 @@ model = dict(
     neck=dict(
         type='AttenNeckS',
         in_channels=[64, 128, 320, 512],
-        out_channels=64,
+        out_channels=256,
         start_level=0,
         # add_extra_convs='on_input',
         num_outs=1,
@@ -64,7 +64,7 @@ model = dict(
     ),
     keypoint_head=dict(
         type='AESimpleHead',
-        in_channels=64,
+        in_channels=256,
         num_joints=17,
         num_deconv_layers=0,
         tag_per_joint=True,

@@ -22,7 +22,7 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[87,100-103,116-119] \
 
 
     --job-name=ae_att_coco python -u tools/train.py  --work-dir=work_dirs/ae_att_coco --launcher="slurm" \
-    configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0_small_coco_512x512.py
+    configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0fs_small_coco_512x512.py
 
     --job-name=den0_att python -u tools/train.py configs/pvt3h2_den0_att_adamw.py --work-dir=work_dirs/den0_att --launcher="slurm"
 
