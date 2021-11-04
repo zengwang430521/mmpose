@@ -2070,7 +2070,7 @@ def map2token_agg_sparse_nearest(feature_map, N, loc_orig, idx_agg, agg_weight=N
         value = value / all_weight[idx_agg.reshape(-1), 0]
 
         A = torch.sparse_coo_tensor(indices, value, (B * N, B *H * W))
-        out = A @ feature_map.permute(0, 2, 3, 1).contiguous().reshape(B * H * W, C)
+        out = A @ feature_map.permute(0, 2, 3, 1).contiguous().reshape(B * H * W, C).float()
         out = out.reshape(B, N, C)
     out = out.type(feature_map.dtype)
     return out
