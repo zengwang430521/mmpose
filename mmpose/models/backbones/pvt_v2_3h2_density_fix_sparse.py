@@ -17,7 +17,7 @@ from .utils_mine import (
     # farthest_point_sample
 )
 
-from .utils_mine import token_cluster_density_fixbug_sr as token_cluster_density
+from .utils_mine import token_cluster_density_fixbug as token_cluster_density
 from .utils_mine import token2map_agg_sparse as token2map_agg_mat
 from .utils_mine import map2token_agg_sparse_nearest as map2token_agg_fast_nearest
 from ..builder import BACKBONES
@@ -271,7 +271,7 @@ class DownLayer(nn.Module):
         self.conf_scale = conf_scale
         self.conf_density = conf_density
 
-    def forward(self, x, pos_orig, idx_agg, agg_weight, H, W, N_grid):
+    def forward(self, x, pos_orig, idx_agg, agg_weight, H, W, N_grid, grid_merge=False):
         # x, mask = token2map(x, pos, [H, W], 1, 2, return_mask=True)
         # x = self.conv(x, mask)
 
@@ -288,16 +288,39 @@ class DownLayer(nn.Module):
         conf = self.conf(x)
         weight = conf.exp()
 
-        _, _, H, W = x_map.shape
-        B, N, C = x.shape
-        sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
-        if sample_num < N_grid:
-            sample_num = N_grid
+        if grid_merge:
+            mean_weight = weight.reshape(B, 1, H, W)
+            mean_weight = F.avg_pool2d(mean_weight, kernel_size=2)
+            mean_weight = F.interpolate(mean_weight, [H, W], mode='nearest')
+            mean_weight = mean_weight.reshape(B, H*W, 1)
+            norm_weight = weight / (mean_weight + 1e-6)
 
-        x_down, idx_agg_down, weight_t = token_cluster_density(
-            x, sample_num, idx_agg, weight, True, conf,
-            k=self.k, dist_assign=self.dist_assign, ada_dc=self.ada_dc,
-            use_conf=self.use_conf, conf_scale=self.conf_scale, conf_density=self.conf_density)
+            x_down = x * norm_weight
+            x_down = x_down.reshape(B, H, W, -1)
+            x_down = F.avg_pool2d(x_down, kernel_size=2)
+            x_down = x_down.flatten(2).permute(0, 2, 1)
+
+            weight_t = norm_weight / 4
+
+            _, _, H, W = x_map.shape
+            idx_agg_down = torch.arange(H*W, device=x.device).reshape(1, 1, H, W)
+            idx_agg_down = F.interpolate(idx_agg_down.float(), [H*2, W*2], mode='nearest').long()
+            idx_agg_down = idx_agg_down.reshape(-1)[None, :].repeat([B, 1])
+
+        else:
+            _, _, H, W = x_map.shape
+            B, N, C = x.shape
+            sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
+            if sample_num < N_grid:
+                sample_num = N_grid
+
+            sr_ratio = self.block.attn.sr_ratio
+            x_down, idx_agg_down, weight_t = token_cluster_density(
+                x, sample_num, idx_agg, weight, True, conf,
+                k=self.k, dist_assign=self.dist_assign, ada_dc=self.ada_dc,
+                use_conf=self.use_conf, conf_scale=self.conf_scale, conf_density=self.conf_density,
+                # loc_orig=pos_orig, map_size=[H // sr_ratio, W // sr_ratio]
+            )
 
         agg_weight_down = agg_weight * weight_t
         agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
@@ -436,7 +459,8 @@ class MyPVT(nn.Module):
             down_layers = getattr(self, f"down_layers{i}")
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
-            x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid)  # down sample
+
+            x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid, grid_merge=i==1)  # down sample
             H, W = H // 2, W // 2
 
             for j, blk in enumerate(block):
