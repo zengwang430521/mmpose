@@ -463,24 +463,34 @@ class mypvt3h2_density0f_small(MyPVT):
             **kwargs)
 
 
+# @BACKBONES.register_module()
+# class mypvt3h2_density25f_small(MyPVT):
+#     def __init__(self, **kwargs):
+#         super().__init__(
+#             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
+#             qkv_bias=True,
+#             norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+#             k=5, dist_assign=True, ada_dc=False, use_conf=True, conf_scale=0.25,
+#             **kwargs)
+#
+#
+# @BACKBONES.register_module()
+# class mypvt3h2_densitycf_small(MyPVT):
+#     def __init__(self, **kwargs):
+#         super().__init__(
+#             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+#             norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+#             k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0, conf_density=True,
+#             **kwargs)
+#
+
+
 @BACKBONES.register_module()
-class mypvt3h2_density25f_small(MyPVT):
+class mypvt3h2_density0f_tiny(MyPVT):
     def __init__(self, **kwargs):
         super().__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
             qkv_bias=True,
-            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-            k=5, dist_assign=True, ada_dc=False, use_conf=True, conf_scale=0.25,
+            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1],
+            k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
             **kwargs)
-
-
-@BACKBONES.register_module()
-class mypvt3h2_densitycf_small(MyPVT):
-    def __init__(self, **kwargs):
-        super().__init__(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-            k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0, conf_density=True,
-            **kwargs)
-
-

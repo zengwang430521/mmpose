@@ -38,8 +38,7 @@ channel_cfg = dict(
 # model settings
 model = dict(
     type='TopDown',
-    pretrained='open-mmlab://msra/hrnetv2_w18',
-    backbone=dict(type='mypvt3h2_density0_tiny', pretrained='models/3h2_density0_tiny.pth'),
+    backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
     neck=dict(
         type='AttenNeck',
         in_channels=[64, 128, 320, 512],

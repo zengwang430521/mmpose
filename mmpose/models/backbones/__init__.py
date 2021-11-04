@@ -36,7 +36,7 @@ from .hrt import HRT
 from .hrpvt import HRPVT
 from .myhrpvt import MyHRPVT
 from .pvt_v2_3h2_density import mypvt3h2_density0_small, mypvt3h2_densityc_small
-from .pvt_v2_3h2_density_fix import mypvt3h2_density0f_small, mypvt3h2_densitycf_small
+from .pvt_v2_3h2_density_fix import mypvt3h2_density0f_small, mypvt3h2_density0f_tiny
 from .pvt_v2_3h2_density_vis import mypvt3h2_density0v_small
 
 __all__ = [
@@ -47,5 +47,5 @@ __all__ = [
     'mypvt3g_small', 'mypvt3g1_small', 'mypvt5f_small', 'mypvt3h2_small', 'mypvt3h1_small',
     'mypvt3h11_small', 'HRPVT', 'HRT', 'mypvt3h2a_small', 'MyHRPVT', 'mypvt3h2_fast_norm_small',
     'mypvt3h2_density0_small', 'mypvt3h2_densityc_small',
-    'mypvt3h2_density0f_small', 'mypvt3h2_densitycf_small', 'mypvt3h2_density0v_small'
+    'mypvt3h2_density0f_small', 'mypvt3h2_density0v_small', 'mypvt3h2_density0f_tiny'
 ]
