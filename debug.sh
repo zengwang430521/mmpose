@@ -10,7 +10,10 @@ srun -p mm_human \
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
-        --job-name=ae_att_coco python -u tools/train.py  --work-dir=work_dirs/ae_att_coco --launcher="slurm" \
+    --job-name=wflw_fpn python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/fpn_den0f_tiny_wflw_256x256.py \
+    --work-dir=work_dirs/wflw_att3 --launcher="slurm"
+
+     --job-name=ae_att_coco python -u tools/train.py  --work-dir=work_dirs/ae_att_coco --launcher="slurm" \
     configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0fs_small_coco_512x512.py
 
     --job-name=wflw_att3 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att3_den0f_tiny_wflw_256x256.py \
