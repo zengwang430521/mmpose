@@ -60,47 +60,82 @@ from mmpose.models import build_posenet
 
 
 
-
 channel_cfg = dict(
-    num_output_channels=98,
-    dataset_joints=98,
+    dataset_joints=17,
     dataset_channel=[
-        list(range(98)),
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     ],
-    inference_channel=list(range(98)))
+    inference_channel=[
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+    ])
 
-# model settings
+data_cfg = dict(
+    image_size=512,
+    base_size=256,
+    base_sigma=2,
+    heatmap_size=[128, 256],
+    num_joints=channel_cfg['dataset_joints'],
+    dataset_channel=channel_cfg['dataset_channel'],
+    inference_channel=channel_cfg['inference_channel'],
+    num_scales=2,
+    scale_aware_sigma=False,
+)
 model = dict(
-    type='TopDown',
-    pretrained='open-mmlab://msra/hrnetv2_w18',
-    backbone=dict(type='mypvt3h2_density0f_tiny'),
+    type='AssociativeEmbedding',
+    backbone=dict(type='mypvt3h2_density0fs_small', pretrained='models/3h2_density0_small.pth',),
     neck=dict(
-        type='AttenNeck',
+        type='AttenNeckS',
         in_channels=[64, 128, 320, 512],
-        out_channels=256,
+        out_channels=64,
         start_level=0,
         # add_extra_convs='on_input',
         num_outs=1,
         num_heads=[4, 4, 4, 4],
-        mlp_ratios=[4, 4, 4, 4],
+        mlp_ratios=[1, 1, 1, 1],
     ),
     keypoint_head=dict(
-        type='TopdownHeatmapSimpleHead',
-        in_channels=256,
-        out_channels=channel_cfg['num_output_channels'],
+        type='AESimpleHead',
+        in_channels=64,
+        num_joints=17,
         num_deconv_layers=0,
+        tag_per_joint=True,
+        with_ae_loss=[True],
         extra=dict(final_conv_kernel=1, ),
-        loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
-    train_cfg=dict(),
+        loss_keypoint=dict(
+            type='MultiLossFactory',
+            num_joints=17,
+            num_stages=1,
+            ae_loss_type='exp',
+            with_ae_loss=[True],
+            push_loss_factor=[0.001],
+            pull_loss_factor=[0.001],
+            with_heatmaps_loss=[True],
+            heatmaps_loss_factor=[1.0])),
+    train_cfg=dict(
+        num_joints=channel_cfg['dataset_joints'],
+        img_size=data_cfg['image_size']),
     test_cfg=dict(
-        flip_test=True,
-        post_process='default',
-        shift_heatmap=True,
-        modulate_kernel=11))
+        num_joints=channel_cfg['dataset_joints'],
+        max_num_people=30,
+        scale_factor=[1],
+        with_heatmaps=[True, True],
+        with_ae=[True, False],
+        project2image=True,
+        nms_kernel=5,
+        nms_padding=2,
+        tag_per_joint=True,
+        detection_threshold=0.1,
+        tag_threshold=1,
+        use_detection_val=True,
+        ignore_too_much=False,
+        adjust=True,
+        refine=True,
+        flip_test=True))
+
 
 device = torch.device('cuda')
 model = build_posenet(model).to(device)
-input = torch.rand([2, 3, 256, 256], device=device)
+input = torch.rand([2, 3, 512, 512], device=device)
 out = model(input)
 out = out
 #

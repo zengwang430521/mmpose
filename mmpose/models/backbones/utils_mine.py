@@ -2031,6 +2031,51 @@ def map2token_agg_fast_nearest(feature_map, N, loc_orig, idx_agg, agg_weight=Non
     return tokens
 
 
+
+def map2token_agg_sparse_nearest(feature_map, N, loc_orig, idx_agg, agg_weight=None):
+
+    dtype = feature_map.dtype
+    B, C, H, W = feature_map.shape
+    device = feature_map.device
+    N0 = loc_orig.shape[1]
+
+    if N0 == N and N == H * W:
+        return feature_map.flatten(2).permute(0, 2, 1).contiguous()
+
+    loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
+    x = loc_orig[:, :, 0]
+    y = loc_orig[:, :, 1]
+
+    h, w = H, W
+    x_grid = x.round().long().clamp(min=0, max=w - 1)
+    y_grid = y.round().long().clamp(min=0, max=h - 1)
+    idx_HW_orig = (y_grid * w + x_grid).detach()
+    index_batch = torch.arange(B, device=device)[:, None].expand(B, N0)
+
+    # use sparse matrix
+    idx_agg = idx_agg + index_batch * N
+    idx_HW_orig = idx_HW_orig + index_batch * H * W
+
+    indices = torch.stack([idx_agg, idx_HW_orig], dim=0).reshape(2, -1)
+
+    if agg_weight is None:
+        value = torch.ones(B * N0, device=feature_map.device, dtype=torch.float32)
+    else:
+        value = agg_weight.reshape(B * N0).type(torch.float32)
+
+    with torch.cuda.amp.autocast(enabled=False):
+        value = value.detach().float()  # sparse mm do not support gradient for sparse matrix
+        A = torch.sparse_coo_tensor(indices, value, (B * N, B *H * W))
+        all_weight = A @ torch.zeros([B*H*W, 1], device=device, dtype=torch.float32) + 1e-6
+        value = value / all_weight[idx_agg.reshape(-1), 0]
+
+        A = torch.sparse_coo_tensor(indices, value, (B * N, B *H * W))
+        out = A @ feature_map.permute(0, 2, 3, 1).contiguous().reshape(B * H * W, C)
+        out = out.reshape(B, N, C)
+    out = out.type(feature_map.dtype)
+    return out
+
+
 # def map2token_agg_sparse_nearest(feature_map, N, loc_orig, idx_agg, agg_weight=None):
 #     ''' realized by 2 attention matrix'''
 #     # feature_map = torch.rand(2, 3, 5, 5)
@@ -2328,9 +2373,10 @@ def token_cluster_density_fixbug(x, Ns, idx_agg, weight=None, return_weight=Fals
     return x_out, idx_agg
 
 
-def token_cluster_density(x, Ns, idx_agg, weight=None, return_weight=False, conf=None,
+# compute distance in low res to
+def token_cluster_density_fixbug_sr(x, Ns, idx_agg, weight=None, return_weight=False, conf=None,
                           k=3, dist_assign=False, ada_dc=False, use_conf=False, conf_scale=0.25,
-                          conf_density=False):
+                          conf_density=False, size=[56, 56], loc_orig=None):
     # import torch
     # x = torch.rand(2, 1000, 64)
     # Ns = 250
@@ -2345,7 +2391,15 @@ def token_cluster_density(x, Ns, idx_agg, weight=None, return_weight=False, conf
         conf = conf.squeeze(-1)
 
     with torch.no_grad():
-        dist_matrix = torch.cdist(x, x)
+
+        # dist_matrix = torch.cdist(x, x)
+
+        x_map = token2map_agg_sparse(x, None, loc_orig, idx_agg, size)
+        x_map = x_map.reshape(0, 2, 3, 1).reshape(B, -1, C)
+        dist_m = torch.cdist(x_map, x_map)  # B, hw, hw
+        dist_m = torch
+
+
         # normalize dist_matrix for stable
         dist_matrix = dist_matrix / (dist_matrix.flatten(1).max(dim=-1)[0][:, None, None] + 1e-6)
         idx_tmp = torch.arange(N, device=x.device)

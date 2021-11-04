@@ -51,9 +51,9 @@ data_cfg = dict(
 # model settings
 model = dict(
     type='AssociativeEmbedding',
-    backbone=dict(type='mypvt3h2_density0_small', pretrained='models/3h2_density0_small.pth',),
+    backbone=dict(type='mypvt3h2_density0fs_small', pretrained='models/3h2_density0_small.pth',),
     neck=dict(
-        type='AttenNeck',
+        type='AttenNeckS',
         in_channels=[64, 128, 320, 512],
         out_channels=64,
         start_level=0,
