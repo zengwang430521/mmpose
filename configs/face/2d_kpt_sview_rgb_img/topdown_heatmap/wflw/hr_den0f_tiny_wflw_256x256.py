@@ -42,7 +42,7 @@ model = dict(
     type='TopDown',
     backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
     neck=dict(
-        type='HRNEck',
+        type='HRNeck',
         in_channels=[64, 128, 320, 512],
         out_channels=128,
         norm_cfg=norm_cfg,
