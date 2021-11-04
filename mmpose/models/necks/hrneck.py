@@ -18,11 +18,6 @@ class HRNeck(BaseModule):
     def __init__(self,
                  in_channels,
                  out_channels,
-                 num_outs,
-                 feature_strides,
-                 start_level=0,
-                 end_level=-1,
-                 add_extra_convs=False,
                  relu_before_extra_convs=False,
                  no_norm_on_lateral=False,
                  conv_cfg=None,
@@ -31,19 +26,13 @@ class HRNeck(BaseModule):
                  upsample_cfg=dict(mode='nearest'),
                  init_cfg=dict(
                      type='Xavier', layer='Conv2d', distribution='uniform'),
-                 scale_add=False,
-                 align_corners=False,
-                 scale_conv_cfg=None,
-                 scale_norm_cfg=None,
-                 scale_act_cfg=dict(type='ReLU'),
-                 scale_channels=128,
                  ):
         super().__init__(init_cfg)
         assert isinstance(in_channels, list)
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.num_ins = len(in_channels)
-        self.num_outs = num_outs
+        # self.num_ins = len(in_channels)
+        # self.num_outs = num_outs
         self.relu_before_extra_convs = relu_before_extra_convs
         self.no_norm_on_lateral = no_norm_on_lateral
         self.fp16_enabled = False
