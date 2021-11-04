@@ -200,6 +200,22 @@ class MergeBlock(nn.Module):
         return x
 
 
+def _init_weights(m):
+    if isinstance(m, nn.Linear):
+        trunc_normal_(m.weight, std=.02)
+        if isinstance(m, nn.Linear) and m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+    elif isinstance(m, nn.LayerNorm):
+        nn.init.constant_(m.bias, 0)
+        nn.init.constant_(m.weight, 1.0)
+    elif isinstance(m, nn.Conv2d):
+        fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+        fan_out //= m.groups
+        m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+        if m.bias is not None:
+            m.bias.data.zero_()
+
+
 @NECKS.register_module()
 class AttenNeck3(BaseModule):
     def __init__(self,
@@ -224,8 +240,8 @@ class AttenNeck3(BaseModule):
                  norm_cfg=None,
                  act_cfg=None,
                  upsample_cfg=dict(mode='nearest'),
-                 init_cfg=dict(
-                     type='Xavier', layer='Conv2d', distribution='uniform'),
+                 # init_cfg=dict(type='Xavier', layer='Conv2d', distribution='uniform'),
+                 init_cfg=None
                  ):
         super().__init__(init_cfg)
         assert isinstance(in_channels, list)
@@ -264,6 +280,7 @@ class AttenNeck3(BaseModule):
                 nn.Linear(in_channels[i], out_channels),
                 nn.LayerNorm(out_channels)
             )
+            l_conv.apply(_init_weights)
             self.lateral_convs.append(l_conv)
 
         for i in range(self.start_level, self.end_level):
@@ -272,6 +289,7 @@ class AttenNeck3(BaseModule):
                 qkv_bias=qkv_bias, qk_scale=qk_scale, drop=drop_rate,
                 attn_drop=attn_drop_rate, drop_path=drop_path_rate, norm_layer=norm_layer,
             )
+            merge_block.apply(_init_weights)
             self.merge_blocks.append(merge_block)
 
         # self.final_conv = nn.Sequential(
@@ -294,7 +312,6 @@ class AttenNeck3(BaseModule):
             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
             if m.bias is not None:
                 m.bias.data.zero_()
-
 
     @auto_fp16()
     def forward(self, inputs):
