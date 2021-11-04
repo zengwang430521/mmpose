@@ -10,6 +10,9 @@ srun -p mm_human \
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+        --job-name=ae_att_coco python -u tools/train.py  --work-dir=work_dirs/ae_att_coco --launcher="slurm" \
+    configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0fs_small_coco_512x512.py
+
     --job-name=wflw_att3 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att3_den0f_tiny_wflw_256x256.py \
     --work-dir=work_dirs/wflw_att3 --launcher="slurm"
 
@@ -28,8 +31,10 @@ srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
 srun -p pat_earth -x SH-IDC1-10-198-4-[87,100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
-    --job-name=wflw_att1 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py
-     --work-dir=work_dirs/wflw_att1 --launcher="slurm"
+        --job-name=f_att_coco python -u tools/train.py  --work-dir=work_dirs/att_coco --launcher="slurm" \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/den0f_small_coco_256x192.py --resume-from=work_dirs/att_coco/latest.pth
+
+
 
 
     --job-name=den0f_att2 python -u tools/train.py configs/den0f_att2_adamw.py --work-dir=work_dirs/den0f_att2_8 --launcher="slurm"

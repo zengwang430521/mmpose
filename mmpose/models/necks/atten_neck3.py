@@ -5,11 +5,84 @@ from mmcv.cnn import ConvModule
 from mmcv.runner import BaseModule, auto_fp16
 
 from ..builder import NECKS
-from ..backbones.utils_mine import token2map_agg_mat, downup
+from ..backbones.utils_mine import token2map_agg_mat, downup, map2token_agg_fast_nearest
 import numpy as np
 from ..backbones.pvt_v2 import trunc_normal_, DropPath
-from ..backbones.pvt_v2_3h2_density import MyMlp, token2map_agg_mat
+# from ..backbones.pvt_v2_3h2_density import MyMlp, token2map_agg_mat
 import math
+
+
+class MyMlp(nn.Module):
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False):
+        super().__init__()
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+        self.fc1 = nn.Linear(in_features, hidden_features)
+        self.dwconv = MyDWConv(hidden_features)
+        self.act = act_layer()
+        self.fc2 = nn.Linear(hidden_features, out_features)
+        self.drop = nn.Dropout(drop)
+        self.linear = linear
+        if self.linear:
+            self.relu = nn.ReLU(inplace=True)
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+    def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
+        x = self.fc1(x)
+        if self.linear:
+            x = self.relu(x)
+        x = self.dwconv(x, loc_orig, idx_agg, agg_weight, H, W)
+        x = self.act(x)
+        x = self.drop(x)
+        x = self.fc2(x)
+        x = self.drop(x)
+        return x
+
+
+class MyDWConv(nn.Module):
+    def __init__(self, dim=768):
+        super().__init__()
+        self.dwconv = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim)
+        self.dwconv_skip = nn.Conv1d(dim, dim, 1, bias=False, groups=dim)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+
+    def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
+        B, N, C = x.shape
+        x_map, _ = token2map_agg_mat(x, None, loc_orig, idx_agg, [H, W])
+        x_map = self.dwconv(x_map)
+        x = map2token_agg_fast_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
+            self.dwconv_skip(x.permute(0, 2, 1).contiguous()).permute(0, 2, 1).contiguous()
+        return x
 
 
 class MergeAttention(nn.Module):
@@ -221,6 +294,7 @@ class AttenNeck3(BaseModule):
             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
             if m.bias is not None:
                 m.bias.data.zero_()
+
 
     @auto_fp16()
     def forward(self, inputs):
