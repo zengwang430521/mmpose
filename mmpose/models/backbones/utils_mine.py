@@ -2540,9 +2540,11 @@ def token_cluster_density_fixbug(x, Ns, idx_agg, weight=None, return_weight=Fals
 
         # get dist
         mask = density[:, None, :] > density[:, :, None]
-        mask = mask.type(x.dtype)
+        # mask = mask.type(x.dtype)
+        # dist, index_parent = (dist_matrix * mask +
+        #                       dist_matrix.flatten(1).max(dim=-1)[0][:, None, None] * (1-mask)).min(dim=-1)
         dist, index_parent = (dist_matrix * mask +
-                              dist_matrix.flatten(1).max(dim=-1)[0][:, None, None] * (1-mask)).min(dim=-1)
+                              dist_matrix.flatten(1).max(dim=-1)[0][:, None, None] * (~mask)).min(dim=-1)
 
         # select center according to score
         score = dist * density
