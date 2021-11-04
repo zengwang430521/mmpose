@@ -201,9 +201,9 @@ class AttenNeck3(BaseModule):
             )
             self.merge_blocks.append(merge_block)
 
-        self.final_conv = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, groups=out_channels),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, groups=out_channels))
+        # self.final_conv = nn.Sequential(
+        #     nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, groups=out_channels),
+        #     nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, groups=out_channels))
 
         self.apply(self._init_weights)
 
@@ -259,7 +259,7 @@ class AttenNeck3(BaseModule):
             input_dicts[0]['idx_agg'],
             input_dicts[0]['map_size'],
         )
-        out = self.final_conv(out)
+        # out = self.final_conv(out)
 
         # import matplotlib.pyplot as plt
         # x = out[0].permute(1,2,0).detach().cpu()
