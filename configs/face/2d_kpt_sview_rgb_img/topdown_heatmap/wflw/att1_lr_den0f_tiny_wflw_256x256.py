@@ -7,10 +7,22 @@ workflow = [('train', 1)]
 checkpoint_config = dict(interval=1)
 evaluation = dict(interval=1, metric=['NME'], save_best='NME')
 
+# optimizer = dict(
+#     type='Adam',
+#     lr=2e-3,
+# )
+
+
 optimizer = dict(
-    type='Adam',
-    lr=2e-4,
+    type='AdamW',
+    lr=2e-3,
+    betas=(0.9, 0.999),
+    weight_decay=0.01,
+    paramwise_cfg=dict(
+        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
+    )
 )
+
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
