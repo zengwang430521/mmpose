@@ -76,8 +76,7 @@ class HRNeck(BaseModule):
 
         # build laterals in token format
         lateral_tokens = [
-            lateral_conv(tokens[i])
-            for i, lateral_conv in enumerate(self.lateral_convs)
+            lateral_conv(tokens[i]) for i, lateral_conv in enumerate(self.lateral_convs)
         ]
 
         # build top-down path from token to feature map

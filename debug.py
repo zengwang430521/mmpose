@@ -97,9 +97,17 @@ model = dict(
         shift_heatmap=True,
         modulate_kernel=11))
 
+from mmpose.models.backbones import mypvt3h2_density0f_tiny
+from mmpose.models.necks import HRNeck
+
 device = torch.device('cpu')
-model = build_posenet(model).to(device)
+backbone = mypvt3h2_density0f_tiny(pretrained='models/3h2_density0f_tiny.pth')
+neck = HRNeck(        in_channels=[64, 128, 320, 512],
+        out_channels=128,
+        norm_cfg=norm_cfg,)
+
+# model = build_posenet(model).to(device)
 input = torch.rand([2, 3, 192, 256], device=device)
-out = model(input)
-out = out
+out = backbone(input)
+out = neck(out)
 #
