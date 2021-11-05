@@ -71,6 +71,8 @@ class HRNeck(BaseModule):
         assert len(inputs) == len(self.in_channels)
 
         tokens = [tmp[0] for tmp in inputs]
+        for t in tokens:
+            print(t.shape)
 
         # build laterals in token format
         lateral_tokens = [
