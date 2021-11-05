@@ -49,8 +49,6 @@ class HRNeck(BaseModule):
                 nn.Linear(in_channels[i], out_channels),
                 nn.LayerNorm(out_channels)
             )
-            l_conv.apply(_init_weights)
-            self.lateral_convs.append(l_conv)
 
             fpn_conv = ConvModule(
                 out_channels,
@@ -85,14 +83,15 @@ class HRNeck(BaseModule):
 
         for i in range(used_backbone_levels):
             tmp = inputs[i]
-            _, loc, map_size, loc_orig, idx_agg = tmp
-            loc, map_size, loc_orig, idx_agg = tmp[1], tmp[2], tmp[3], tmp[4]
-            laterals[i] = token2map(lateral_tokens[i], loc, loc_orig, idx_agg, map_size, weight=None)[0]
+            map_size = tmp[2]
             for j in range(used_backbone_levels):
-                if i != j:
-                    tmp = inputs[j]
-                    loc, loc_orig, idx_agg = tmp[1], tmp[3], tmp[4]
+                tmp = inputs[j]
+                loc, loc_orig, idx_agg = tmp[1], tmp[3], tmp[4]
+                if j == 0:
+                    laterals[i] = token2map(lateral_tokens[j], loc, loc_orig, idx_agg, map_size, weight=None)[0]
+                else:
                     laterals[i] += token2map(lateral_tokens[j], loc, loc_orig, idx_agg, map_size, weight=None)[0]
+
 
         outs = [
             self.fpn_convs[i](laterals[i]) for i in range(used_backbone_levels)

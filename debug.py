@@ -101,7 +101,7 @@ from mmpose.models.backbones import mypvt3h2_density0f_tiny
 from mmpose.models.necks import HRNeck
 
 device = torch.device('cpu')
-backbone = mypvt3h2_density0f_tiny(pretrained='models/3h2_density0f_tiny.pth')
+backbone = mypvt3h2_density0f_tiny(pretrained=None)
 neck = HRNeck(in_channels=[64, 128, 320, 512],
         out_channels=128,
         norm_cfg=norm_cfg,)
