@@ -97,7 +97,7 @@ model = dict(
         shift_heatmap=True,
         modulate_kernel=11))
 
-device = torch.device('cuda')
+device = torch.device('cpu')
 model = build_posenet(model).to(device)
 input = torch.rand([2, 3, 192, 256], device=device)
 out = model(input)
