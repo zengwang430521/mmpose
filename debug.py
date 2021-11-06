@@ -40,11 +40,12 @@ channel_cfg = dict(
     ],
     inference_channel=list(range(98)))
 
+
 model = dict(
     type='TopDown',
     backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
     neck=dict(
-        type='AttenNeck5',
+        type='AttenNeck5N',
         in_channels=[64, 128, 320, 512],
         out_channels=128,
         start_level=0,
