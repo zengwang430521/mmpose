@@ -20,7 +20,7 @@ from .shufflenet_v2 import ShuffleNetV2
 from .tcn import TCN
 from .vgg import VGG
 from .vipnas_resnet import ViPNAS_ResNet
-from .pvt_v2 import pvt_v2_b2
+from .pvt_v2 import pvt_v2_b2, pvt_v2_b1
 from .pvt_v2_20_2 import mypvt20_2_small
 from .pvt_v2_3f12_1 import mypvt3f12_1_small
 from .pvt_v2_3f12_2 import mypvt3f12_2_small
@@ -49,5 +49,5 @@ __all__ = [
     'mypvt3h11_small', 'HRPVT', 'HRT', 'mypvt3h2a_small', 'MyHRPVT', 'mypvt3h2_fast_norm_small',
     'mypvt3h2_density0_small', 'mypvt3h2_densityc_small',
     'mypvt3h2_density0f_small', 'mypvt3h2_density0v_small', 'mypvt3h2_density0f_tiny',
-    'mypvt3h2_density0fs_small'
+    'mypvt3h2_density0fs_small', 'pvt_v2_b1'
 ]

@@ -72,6 +72,7 @@ class FPN(BaseModule):
                  upsample_cfg=dict(mode='nearest'),
                  init_cfg=dict(
                      type='Xavier', layer='Conv2d', distribution='uniform'),
+
                  scale_add=False,
                  align_corners=False,
                  scale_conv_cfg=None,
@@ -189,6 +190,16 @@ class FPN(BaseModule):
     @auto_fp16()
     def forward(self, inputs):
         """Forward function."""
+
+        if isinstance(inputs[0], list) or isinstance(inputs[0], tuple):
+            # trans to feature map first
+            inputs = [token2map_agg_mat(x=tmp[0],
+                                        loc=tmp[1],
+                                        loc_orig=tmp[3],
+                                        idx_agg=tmp[4],
+                                        map_size=tmp[2])[0] for tmp in inputs]
+
+
         assert len(inputs) == len(self.in_channels)
 
         # build laterals
