@@ -23,7 +23,7 @@ from .utils_mine import token_cluster_density_fixbug as token_cluster_density
 from ..builder import BACKBONES
 
 vis = False
-# vis = True
+vis = True
 
 
 

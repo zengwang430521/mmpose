@@ -29,6 +29,60 @@ from mmpose.models import build_posenet
 
 
 
+
+
+
+# channel_cfg = dict(
+#     num_output_channels=133,
+#     dataset_joints=133,
+#     dataset_channel=[
+#         list(range(133)),
+#     ],
+#     inference_channel=list(range(133)))
+#
+# # model settings
+# norm_cfg = dict(type='BN', requires_grad=True)
+#
+#
+# model = dict(
+#     type='TopDown',
+#     backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
+#     neck=dict(
+#         type='AttenNeck4',
+#         in_channels=[64, 128, 320, 512],
+#         out_channels=128,
+#         start_level=0,
+#         # add_extra_convs='on_input',
+#         num_outs=1,
+#         num_heads=[4, 4, 4, 4],
+#         mlp_ratios=[2, 2, 2, 2],
+#     ),
+#
+#     keypoint_head=dict(
+#         type='TopdownHeatmapSimpleHead',
+#         in_channels=128,
+#         out_channels=channel_cfg['num_output_channels'],
+#         num_deconv_layers=0,
+#         extra=dict(final_conv_kernel=1, ),
+#         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         flip_test=True,
+#         post_process='default',
+#         shift_heatmap=True,
+#         modulate_kernel=11))
+#
+#
+# device = torch.device('cpu')
+#
+#
+# model = build_posenet(model).to(device)
+# input = torch.rand([2, 3, 256, 256], device=device)
+# out = model(input)
+
+
+
+
 # import matplotlib
 # import matplotlib.pyplot as plt
 # import cv2
@@ -54,55 +108,6 @@ from mmpose.models import build_posenet
 #
 #
 #
-# from mmpose.models.backbones.utils_mine import vis_tokens_merge
-# vis_tokens_merge(563)
-
-
-
-channel_cfg = dict(
-    num_output_channels=133,
-    dataset_joints=133,
-    dataset_channel=[
-        list(range(133)),
-    ],
-    inference_channel=list(range(133)))
-
-# model settings
-norm_cfg = dict(type='BN', requires_grad=True)
-
-
-model = dict(
-    type='TopDown',
-    backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
-    neck=dict(
-        type='AttenNeck4',
-        in_channels=[64, 128, 320, 512],
-        out_channels=128,
-        start_level=0,
-        # add_extra_convs='on_input',
-        num_outs=1,
-        num_heads=[4, 4, 4, 4],
-        mlp_ratios=[2, 2, 2, 2],
-    ),
-
-    keypoint_head=dict(
-        type='TopdownHeatmapSimpleHead',
-        in_channels=128,
-        out_channels=channel_cfg['num_output_channels'],
-        num_deconv_layers=0,
-        extra=dict(final_conv_kernel=1, ),
-        loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
-    train_cfg=dict(),
-    test_cfg=dict(
-        flip_test=True,
-        post_process='default',
-        shift_heatmap=True,
-        modulate_kernel=11))
-
-
-device = torch.device('cpu')
-
-
-model = build_posenet(model).to(device)
-input = torch.rand([2, 3, 256, 256], device=device)
-out = model(input)
+from mmpose.models.backbones import utils_mine
+utils_mine.vis_feature_map()
+# utils_mine.analysis()
