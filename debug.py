@@ -43,60 +43,15 @@ norm_cfg = dict(type='BN', requires_grad=True)
 # model settings
 model = dict(
     type='TopDown',
-    # pretrained='/path/to/hrt_small.pth', # Set the path to pretrained backbone here
-    backbone=dict(
-        type='MyHRPVT',
-        in_channels=3,
-        norm_cfg=norm_cfg,
-        return_map=True,
-        extra=dict(
-            drop_path_rate=0.1,
-            stage1=dict(
-                num_modules=1,
-                num_branches=1,
-                block='BOTTLENECK',
-                num_blocks=(2, ),
-                num_channels=(64, ),
-                num_heads=[2],
-                num_mlp_ratios=[4]),
-            stage2=dict(
-                num_modules=1,
-                num_branches=2,
-                remerge=(False, False),
-                block='MYBLOCK',
-                num_blocks=(2, 2),
-                num_channels=(32, 64),
-                num_heads=[1, 2],
-                num_mlp_ratios=[4, 4],
-                sr_ratios=[8, 4]),
-            stage3=dict(
-                num_modules=4,
-                remerge=(False, False, False, False),
-                num_branches=3,
-                block='MYBLOCK',
-                num_blocks=(2, 2, 2),
-                num_channels=(32, 64, 128),
-                num_heads = [1, 2, 4],
-                num_mlp_ratios = [4, 4, 4],
-                sr_ratios=[8, 4, 2]),
-            stage4=dict(
-                num_modules=2,
-                remerge=(False, False),
-                num_branches=4,
-                block='MYBLOCK',
-                num_blocks=(2, 2, 2, 2),
-                num_channels=(32, 64, 128, 256),
-                num_heads = [1, 2, 4, 8],
-                num_mlp_ratios = [4, 4, 4, 4],
-                sr_ratios=[8, 4, 2, 1])
-            )),
+    # pretrained='torchvision://resnet50',
+    # backbone=dict(type='ResNet', depth=50),
+    backbone=dict(type='pvt_v2_b1', pretrained='models/pvt_v2_b1.pth'),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        in_channels=32,
+        # in_channels=2048,
+        in_channels=512,
+        in_index=3,
         out_channels=channel_cfg['num_output_channels'],
-        num_deconv_layers=0,
-        # norm_cfg=norm_cfg,
-        extra=dict(final_conv_kernel=1, ),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
     test_cfg=dict(
@@ -104,6 +59,7 @@ model = dict(
         post_process='default',
         shift_heatmap=True,
         modulate_kernel=11))
+
 
 
 device = torch.device('cuda')
