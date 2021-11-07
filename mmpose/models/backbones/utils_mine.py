@@ -2771,7 +2771,7 @@ def downup_sparse(target_dict, source_dict):
     weight = weight.reshape(-1)
 
     with torch.cuda.amp.autocast(enabled=False):
-        weight = weight.float()
+        weight = weight.float().detach()    # sparse mm do not support grad for sparse mat
         A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
         all_weight = A.type(torch.float32) @ x_s.new_ones(B*S, 1).type(torch.float32) + 1e-6
         # all_weight = A @ x_s.new_ones(B*S, 1) + 1e-6
