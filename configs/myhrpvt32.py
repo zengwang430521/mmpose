@@ -7,18 +7,10 @@ workflow = [('train', 1)]
 checkpoint_config = dict(interval=10)
 evaluation = dict(interval=10, metric='mAP', save_best='AP')
 
-
 optimizer = dict(
-    type='AdamW',
+    type='Adam',
     lr=5e-4,
-    betas=(0.9, 0.999),
-    weight_decay=0.01,
-    paramwise_cfg=dict(
-        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
-    )
 )
-
-
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -47,11 +39,12 @@ channel_cfg = dict(
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    pretrained='models/hrt_small.pth', # Set the path to pretrained backbone here
+    # pretrained='/path/to/hrt_small.pth', # Set the path to pretrained backbone here
     backbone=dict(
-        type='HRT',
+        type='MyHRPVT',
         in_channels=3,
         norm_cfg=norm_cfg,
+        return_map=True,
         extra=dict(
             drop_path_rate=0.1,
             stage1=dict(
@@ -65,33 +58,35 @@ model = dict(
             stage2=dict(
                 num_modules=1,
                 num_branches=2,
-                block='TRANSFORMER_BLOCK',
+                remerge=(False, False),
+                block='MYBLOCK',
                 num_blocks=(2, 2),
                 num_channels=(32, 64),
-                num_heads = [1, 2],
-                num_mlp_ratios = [4, 4],
-                num_window_sizes = [7, 7]),
+                num_heads=[1, 2],
+                num_mlp_ratios=[4, 4],
+                sr_ratios=[8, 4]),
             stage3=dict(
                 num_modules=4,
+                remerge=(False, False, False, False),
                 num_branches=3,
-                block='TRANSFORMER_BLOCK',
+                block='MYBLOCK',
                 num_blocks=(2, 2, 2),
                 num_channels=(32, 64, 128),
                 num_heads = [1, 2, 4],
                 num_mlp_ratios = [4, 4, 4],
-                num_window_sizes = [7, 7, 7]),
+                sr_ratios=[8, 4, 2]),
             stage4=dict(
                 num_modules=2,
+                remerge=(False, False),
                 num_branches=4,
-                block='TRANSFORMER_BLOCK',
+                block='MYBLOCK',
                 num_blocks=(2, 2, 2, 2),
                 num_channels=(32, 64, 128, 256),
                 num_heads = [1, 2, 4, 8],
                 num_mlp_ratios = [4, 4, 4, 4],
-                num_window_sizes = [7, 7, 7, 7])
+                sr_ratios=[8, 4, 2, 1])
             )),
     keypoint_head=dict(
-        # type='TopDownSimpleHead',
         type='TopdownHeatmapSimpleHead',
         in_channels=32,
         out_channels=channel_cfg['num_output_channels'],
@@ -105,7 +100,6 @@ model = dict(
         post_process='default',
         shift_heatmap=True,
         modulate_kernel=11))
-
 
 data_cfg = dict(
     image_size=[192, 256],

@@ -30,35 +30,72 @@ from mmpose.models import build_posenet
 
 
 
-
-
 channel_cfg = dict(
-    num_output_channels=98,
-    dataset_joints=98,
+    num_output_channels=133,
+    dataset_joints=133,
     dataset_channel=[
-        list(range(98)),
+        list(range(133)),
     ],
-    inference_channel=list(range(98)))
+    inference_channel=list(range(133)))
 
 
+norm_cfg = dict(type='BN', requires_grad=True)
+# model settings
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
-    neck=dict(
-        type='AttenNeck5N',
-        in_channels=[64, 128, 320, 512],
-        out_channels=128,
-        start_level=0,
-        # add_extra_convs='on_input',
-        num_outs=1,
-        num_heads=[2, 2, 2, 2],
-        mlp_ratios=[4, 4, 4, 4],
-    ),
+    # pretrained='/path/to/hrt_small.pth', # Set the path to pretrained backbone here
+    backbone=dict(
+        type='MyHRPVT',
+        in_channels=3,
+        norm_cfg=norm_cfg,
+        return_map=True,
+        extra=dict(
+            drop_path_rate=0.1,
+            stage1=dict(
+                num_modules=1,
+                num_branches=1,
+                block='BOTTLENECK',
+                num_blocks=(2, ),
+                num_channels=(64, ),
+                num_heads=[2],
+                num_mlp_ratios=[4]),
+            stage2=dict(
+                num_modules=1,
+                num_branches=2,
+                remerge=(False, False),
+                block='MYBLOCK',
+                num_blocks=(2, 2),
+                num_channels=(32, 64),
+                num_heads=[1, 2],
+                num_mlp_ratios=[4, 4],
+                sr_ratios=[8, 4]),
+            stage3=dict(
+                num_modules=4,
+                remerge=(False, False, False, False),
+                num_branches=3,
+                block='MYBLOCK',
+                num_blocks=(2, 2, 2),
+                num_channels=(32, 64, 128),
+                num_heads = [1, 2, 4],
+                num_mlp_ratios = [4, 4, 4],
+                sr_ratios=[8, 4, 2]),
+            stage4=dict(
+                num_modules=2,
+                remerge=(False, False),
+                num_branches=4,
+                block='MYBLOCK',
+                num_blocks=(2, 2, 2, 2),
+                num_channels=(32, 64, 128, 256),
+                num_heads = [1, 2, 4, 8],
+                num_mlp_ratios = [4, 4, 4, 4],
+                sr_ratios=[8, 4, 2, 1])
+            )),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        in_channels=128,
+        in_channels=32,
         out_channels=channel_cfg['num_output_channels'],
         num_deconv_layers=0,
+        # norm_cfg=norm_cfg,
         extra=dict(final_conv_kernel=1, ),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
@@ -67,6 +104,7 @@ model = dict(
         post_process='default',
         shift_heatmap=True,
         modulate_kernel=11))
+
 
 device = torch.device('cuda')
 

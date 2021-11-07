@@ -1,11 +1,11 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from functools import partial
-import math
-from .pvt_v2 import (Block, DropPath, DWConv, OverlapPatchEmbed, trunc_normal_, Attention, Mlp)
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
+# from functools import partial
+# import math
+# from .pvt_v2 import (Block, DropPath, DWConv, OverlapPatchEmbed, trunc_normal_, Attention, Mlp)
 
-import pdb
+# import pdb
 import torch
 import torch.nn as nn
 from mmcv.cnn import (
@@ -19,257 +19,46 @@ from mmcv.runner import load_checkpoint
 from mmcv.runner.checkpoint import load_state_dict
 from mmcv.utils.parrots_wrapper import _BatchNorm
 
-from mmpose.models.utils.ops import resize
+# from mmpose.models.utils.ops import resize
+# from .modules.transformer_block import MlpDWBN
+
 from mmpose.utils import get_root_logger
 from ..builder import BACKBONES
 from .modules.bottleneck_block import Bottleneck
-from .modules.transformer_block import MlpDWBN
 
-from .utils_mine import \
-    get_merge_way, farthest_point_sample, index_points, merge_tokens_agg_dist2, \
-    get_grid_loc, guassian_filt, map2token_agg_fast_nearest, token2map_agg_sparse, \
+from .utils_mine import get_merge_way, \
+    index_points, \
+    get_grid_loc, \
     downup
 
-
-class MyDWConv(nn.Module):
-    def __init__(self, dim=768):
-        super().__init__()
-        self.dwconv = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim)
-        self.dwconv_skip = nn.Conv1d(dim, dim, 1, bias=False, groups=dim)
-
-    def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
-        B, N, C = x.shape
-        x_map, _ = token2map_agg_sparse(x, None, loc_orig, idx_agg, [H, W])
-        x_map = self.dwconv(x_map)
-        x = map2token_agg_fast_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
-            self.dwconv_skip(x.permute(0, 2, 1)).permute(0, 2, 1)
-        return x
+import math
+from .pvt_v2_3h2_density_fix import (map2token_agg_fast_nearest, token2map_agg_mat, MyAttention,
+                                     MyMlp, DropPath, trunc_normal_, token_cluster_density)
+# from .pvt_v2_3h2_density_fix import MyBlock as BaseBlock
+# from .pvt_v2_3h2_density_fix import DownLayer as BaseDown
 
 
-class MyMlp(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False):
-        super().__init__()
-        out_features = out_features or in_features
-        hidden_features = hidden_features or in_features
-        self.fc1 = nn.Linear(in_features, hidden_features)
-        self.dwconv = MyDWConv(hidden_features)
-        self.act = act_layer()
-        self.fc2 = nn.Linear(hidden_features, out_features)
-        self.drop = nn.Dropout(drop)
-        self.linear = linear
-        if self.linear:
-            self.relu = nn.ReLU(inplace=True)
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
-        x = self.fc1(x)
-        if self.linear:
-            x = self.relu(x)
-        x = self.dwconv(x, loc_orig, idx_agg, agg_weight, H, W)
-        x = self.act(x)
-        x = self.drop(x)
-        x = self.fc2(x)
-        x = self.drop(x)
-        return x
-
-
-class MyMlpBN(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False,
-                 norm_cfg=dict(type="BN", requires_grad=True),
-                 dw_act_layer=nn.GELU
-                 ):
-        super().__init__()
-        out_features = out_features or in_features
-        hidden_features = hidden_features or in_features
-        self.fc1 = nn.Linear(in_features, hidden_features)
-        self.norm1 = TokenNorm(build_norm_layer(norm_cfg, hidden_features))
-        self.act1 = act_layer()
-
-        self.dwconv = MyDWConv(hidden_features)
-        self.act2 = dw_act_layer()
-        self.norm2 = TokenNorm(build_norm_layer(norm_cfg, hidden_features))
-
-        self.fc2 = nn.Linear(hidden_features, out_features)
-        self.act3 = act_layer()
-        self.norm3 = TokenNorm(build_norm_layer(norm_cfg, out_features))
-
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
-        x = self.fc1(x)
-        x = self.norm1(x)
-        x = self.act1(x)
-        x = self.dwconv(x, loc_orig, idx_agg, agg_weight, H, W)
-        x = self.norm2(x)
-        x = self.act2(x)
-        x = self.fc2(x)
-        x = self.norm3(x)
-        x = self.act3(x)
-        return x
-
-
-class MyAttention(nn.Module):
-    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1, linear=False):
-        super().__init__()
-        assert dim % num_heads == 0, f"dim {dim} should be divided by num_heads {num_heads}."
-
-        self.dim = dim
-        self.num_heads = num_heads
-        head_dim = dim // num_heads
-        self.scale = qk_scale or head_dim ** -0.5
-
-        self.q = nn.Linear(dim, dim, bias=qkv_bias)
-        self.kv = nn.Linear(dim, dim * 2, bias=qkv_bias)
-        self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
-        self.proj_drop = nn.Dropout(proj_drop)
-
-        self.linear = linear
-        self.sr_ratio = sr_ratio
-        if not linear:
-            if sr_ratio > 1:
-                self.sr = nn.Conv2d(dim, dim, kernel_size=sr_ratio, stride=sr_ratio)
-                self.norm = nn.LayerNorm(dim)
-        else:
-            self.pool = nn.AdaptiveAvgPool2d(7)
-            self.sr = nn.Conv2d(dim, dim, kernel_size=1, stride=1)
-            self.norm = nn.LayerNorm(dim)
-            self.act = nn.GELU()
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def forward(self, x, loc_orig, x_source, idx_agg_source, H, W, conf_source=None):
-        B, N, C = x.shape
-        Ns = x_source.shape[1]
-        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-
-        if not self.linear:
-            if self.sr_ratio > 1:
-                if conf_source is None:
-                    conf_source = x_source.new_zeros(B, Ns, 1)
-                tmp = torch.cat([x_source, conf_source], dim=-1)
-                tmp, _ = token2map_agg_sparse(tmp, None, loc_orig, idx_agg_source, [H, W])
-                x_source = tmp[:, :C]
-                conf_source = tmp[:, C:]
-
-                x_source = self.sr(x_source)
-                _, _, h, w = x_source.shape
-                x_source = x_source.reshape(B, C, -1).permute(0, 2, 1)
-                x_source = self.norm(x_source)
-                conf_source = F.avg_pool2d(conf_source, kernel_size=self.sr_ratio, stride=self.sr_ratio)
-                conf_source = conf_source.reshape(B, 1, -1).permute(0, 2, 1)
-
-        else:
-            print('error!')
-
-        kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        k, v = kv[0], kv[1]
-
-        attn = (q @ k.transpose(-2, -1)) * self.scale
-        if conf_source is not None:
-            conf_source = conf_source.squeeze(-1)[:, None, None, :]
-            attn = attn + conf_source
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
-
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
-        x = self.proj(x)
-        x = self.proj_drop(x)
-
-        return x
 
 
 class MyBlock(nn.Module):
-    expansion = 1
-
-    def __init__(
-            self,
-            inplanes,
-            planes,
-            num_heads,
-            mlp_ratio=4.,
-            qkv_bias=False,
-            qk_scale=None,
-            drop=0.,
-            attn_drop=0.,
-            drop_path=0.,
-            act_layer=nn.GELU,
-            norm_layer=nn.LayerNorm,
-            sr_ratio=1,
-            linear=False,
-            conv_cfg=None,
-            norm_cfg=dict(type="BN", requires_grad=True)
-    ):
+    expansion=1
+    def __init__(self, dim, dim_out, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
+                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, sr_ratio=1, linear=False,
+                 conv_cfg=None,
+                 norm_cfg=dict(type="BN", requires_grad=True)
+                 ):
         super().__init__()
-        self.dim = inplanes
-        self.out_dim = planes
-        self.num_heads = num_heads
-        self.mlp_ratio = mlp_ratio
-        self.conv_cfg = conv_cfg
-        self.norm_cfg = norm_cfg
-
-        self.norm1 = norm_layer(self.dim)
+        self.norm1 = norm_layer(dim)
         self.attn = MyAttention(
-            self.dim,
+            dim,
             num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
             attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio, linear=linear)
-
         # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
-        self.norm2 = norm_layer(self.dim)
-        mlp_hidden_dim = int(self.dim * mlp_ratio)
-        self.mlp = MyMlp(
-            in_features=self.dim,
-            out_features=self.out_dim,
-            hidden_features=mlp_hidden_dim,
-            act_layer=act_layer,
-            drop=drop,
-            linear=linear
-        )
+        self.norm2 = norm_layer(dim)
+        mlp_hidden_dim = int(dim * mlp_ratio)
+
+        self.mlp = MyMlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop, linear=linear, out_features=dim_out)
 
         self.apply(self._init_weights)
 
@@ -330,112 +119,294 @@ class MyBlock(nn.Module):
         return out_dict
 
 
-class MyBlockBN(nn.Module):
-    expansion = 1
+# from partialconv2d import PartialConv2d
+class DownLayer(nn.Module):
+    """ Down sample
+    """
 
-    def __init__(
-            self,
-            inplanes,
-            planes,
-            num_heads,
-            mlp_ratio=4.,
-            qkv_bias=False,
-            qk_scale=None,
-            drop=0.,
-            attn_drop=0.,
-            drop_path=0.,
-            act_layer=nn.GELU,
-            norm_layer=nn.LayerNorm,
-            sr_ratio=1,
-            linear=False,
-            conv_cfg=None,
-            norm_cfg=dict(type="BN", requires_grad=True)
-    ):
+    def __init__(self, sample_ratio, embed_dim, dim_out, drop_rate, down_block,
+                 k=3, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0.25, conf_density=False):
         super().__init__()
-        self.dim = inplanes
-        self.out_dim = planes
-        self.num_heads = num_heads
-        self.mlp_ratio = mlp_ratio
-        self.conv_cfg = conv_cfg
-        self.norm_cfg = norm_cfg
+        # self.sample_num = sample_num
+        self.sample_ratio = sample_ratio
+        self.dim_out = dim_out
 
-        self.norm1 = norm_layer(self.dim)
-        self.attn = MyAttention(
-            self.dim,
-            num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
-            attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio, linear=linear)
+        self.block = down_block
+        # self.pos_drop = nn.Dropout(p=drop_rate)
+        # self.gumble_sigmoid = GumbelSigmoid()
+        # temperature of confidence weight
+        self.register_buffer('T', torch.tensor(1.0, dtype=torch.float))
+        self.T_min = 1
+        self.T_decay = 0.9998
+        self.conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=2, padding=1)
+        self.conv_skip = nn.Linear(embed_dim, dim_out, bias=False)
+        # self.conv = PartialConv2d(embed_dim, self.block.dim_out, kernel_size=3, stride=1, padding=1)
+        self.norm = nn.LayerNorm(self.dim_out)
+        self.conf = nn.Linear(self.dim_out, 1)
 
-        # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
-        self.norm2 = norm_layer(self.dim)
-        mlp_hidden_dim = int(self.dim * mlp_ratio)
-        self.mlp = MyMlpBN(
-            in_features=self.dim,
-            out_features=self.out_dim,
-            hidden_features=mlp_hidden_dim,
-            act_layer=act_layer,
-            drop=drop,
-            linear=linear,
-            norm_cfg=norm_cfg
-        )
+        # for density clustering
+        self.k = k
+        self.dist_assign = dist_assign
+        self.ada_dc = ada_dc
+        self.use_conf = use_conf
+        self.conf_scale = conf_scale
+        self.conf_density = conf_density
 
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def forward(self, input_dict, src_dict=None):
-        if src_dict is None:
-            src_dict = input_dict
-
-        x = input_dict['x']
-        loc_orig = input_dict['loc_orig']
+    def forward(self, input_dict):
+        x=input_dict['x']
+        pos_orig = input_dict['loc_orig']
         idx_agg = input_dict['idx_agg']
         agg_weight = input_dict['agg_weight']
         H, W = input_dict['map_size']
+        N_grid = 0
 
-        x_source = src_dict['x']
-        idx_agg_source = src_dict['idx_agg']
-        if 'conf_source' in src_dict.keys():
-            conf_source = src_dict['conf_source']
+
+        B, N, C = x.shape
+        N0 = idx_agg.shape[1]
+        if N0 == N and N == H * W:
+            x_map = x.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
         else:
-            conf_source=None
+            x_map, _ = token2map_agg_mat(x, None, pos_orig, idx_agg, [H, W])
 
-        x1 = x + self.drop_path(self.attn(self.norm1(x),
-                                          loc_orig,
-                                          self.norm1(x_source),
-                                          idx_agg_source,
-                                          H, W, conf_source))
+        x_map = self.conv(x_map)
+        x = map2token_agg_fast_nearest(x_map, N, pos_orig, idx_agg, agg_weight) + self.conv_skip(x)
+        x = self.norm(x)
+        conf = self.conf(x)
+        weight = conf.exp()
 
-        x2 = x1 + self.drop_path(self.mlp(self.norm2(x1),
-                                          loc_orig,
-                                          idx_agg,
-                                          agg_weight,
-                                          H, W))
-        out_dict = {
-            'x': x2,
-            'idx_agg': idx_agg,
-            'agg_weight': agg_weight,
-            'x_source': x2,
-            'idx_agg_source': idx_agg,
-            'agg_weight_source': agg_weight,
-            'loc_orig': loc_orig,
-            'map_size': (H, W),
-            'conf_source': None,
+        _, _, H, W = x_map.shape
+        B, N, C = x.shape
+        sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
+        if sample_num < N_grid:
+            sample_num = N_grid
+
+        x_down, idx_agg_down, weight_t = token_cluster_density(
+            x, sample_num, idx_agg, weight, True, conf,
+            k=self.k, dist_assign=self.dist_assign, ada_dc=self.ada_dc,
+            use_conf=self.use_conf, conf_scale=self.conf_scale, conf_density=self.conf_density)
+
+        agg_weight_down = agg_weight * weight_t
+        agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+
+
+        tmp_dict = input_dict.copy()
+        tmp_dict['x'] = x
+        tmp_dict['conf_source'] = conf
+
+        down_dict = {
+            'x': x_down,
+            'idx_agg': idx_agg_down,
+            'agg_weight': agg_weight_down,
+            'map_size': [H, W],
+            'loc_orig': input_dict['loc_orig'],
+            'conf_source': None
         }
-        return out_dict
+
+        down_dict = self.block(down_dict, tmp_dict)
+        return down_dict
+
+
+
+
+# class MyBlock(BaseBlock):
+#
+#     def forward(self, input_dict, src_dict=None):
+#         if src_dict is None:
+#             src_dict = input_dict
+#
+#         x = input_dict['x']
+#         loc_orig = input_dict['loc_orig']
+#         idx_agg = input_dict['idx_agg']
+#         agg_weight = input_dict['agg_weight']
+#         H, W = input_dict['map_size']
+#
+#         x_source = src_dict['x']
+#         idx_agg_source = src_dict['idx_agg']
+#         if 'conf_source' in src_dict.keys():
+#             conf_source = src_dict['conf_source']
+#         else:
+#             conf_source=None
+#
+#         x1 = x + self.drop_path(self.attn(self.norm1(x),
+#                                           loc_orig,
+#                                           self.norm1(x_source),
+#                                           idx_agg_source,
+#                                           H, W, conf_source))
+#
+#         x2 = x1 + self.drop_path(self.mlp(self.norm2(x1),
+#                                           loc_orig,
+#                                           idx_agg,
+#                                           agg_weight,
+#                                           H, W))
+#         out_dict = {
+#             'x': x2,
+#             'idx_agg': idx_agg,
+#             'agg_weight': agg_weight,
+#             'x_source': x2,
+#             'idx_agg_source': idx_agg,
+#             'agg_weight_source': agg_weight,
+#             'loc_orig': loc_orig,
+#             'map_size': (H, W),
+#             'conf_source': None,
+#         }
+#         return out_dict
+
+# class MyMlpBN(nn.Module):
+#     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False,
+#                  norm_cfg=dict(type="BN", requires_grad=True),
+#                  dw_act_layer=nn.GELU
+#                  ):
+#         super().__init__()
+#         out_features = out_features or in_features
+#         hidden_features = hidden_features or in_features
+#         self.fc1 = nn.Linear(in_features, hidden_features)
+#         self.norm1 = TokenNorm(build_norm_layer(norm_cfg, hidden_features))
+#         self.act1 = act_layer()
+#
+#         self.dwconv = MyDWConv(hidden_features)
+#         self.act2 = dw_act_layer()
+#         self.norm2 = TokenNorm(build_norm_layer(norm_cfg, hidden_features))
+#
+#         self.fc2 = nn.Linear(hidden_features, out_features)
+#         self.act3 = act_layer()
+#         self.norm3 = TokenNorm(build_norm_layer(norm_cfg, out_features))
+#
+#         self.apply(self._init_weights)
+#
+#     def _init_weights(self, m):
+#         if isinstance(m, nn.Linear):
+#             trunc_normal_(m.weight, std=.02)
+#             if isinstance(m, nn.Linear) and m.bias is not None:
+#                 nn.init.constant_(m.bias, 0)
+#         elif isinstance(m, nn.LayerNorm):
+#             nn.init.constant_(m.bias, 0)
+#             nn.init.constant_(m.weight, 1.0)
+#         elif isinstance(m, nn.Conv2d):
+#             fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+#             fan_out //= m.groups
+#             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+#             if m.bias is not None:
+#                 m.bias.data.zero_()
+#
+#     def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
+#         x = self.fc1(x)
+#         x = self.norm1(x)
+#         x = self.act1(x)
+#         x = self.dwconv(x, loc_orig, idx_agg, agg_weight, H, W)
+#         x = self.norm2(x)
+#         x = self.act2(x)
+#         x = self.fc2(x)
+#         x = self.norm3(x)
+#         x = self.act3(x)
+#         return x
+
+# class MyBlockBN(nn.Module):
+#     expansion = 1
+#
+#     def __init__(
+#             self,
+#             inplanes,
+#             planes,
+#             num_heads,
+#             mlp_ratio=4.,
+#             qkv_bias=False,
+#             qk_scale=None,
+#             drop=0.,
+#             attn_drop=0.,
+#             drop_path=0.,
+#             act_layer=nn.GELU,
+#             norm_layer=nn.LayerNorm,
+#             sr_ratio=1,
+#             linear=False,
+#             conv_cfg=None,
+#             norm_cfg=dict(type="BN", requires_grad=True)
+#     ):
+#         super().__init__()
+#         self.dim = inplanes
+#         self.out_dim = planes
+#         self.num_heads = num_heads
+#         self.mlp_ratio = mlp_ratio
+#         self.conv_cfg = conv_cfg
+#         self.norm_cfg = norm_cfg
+#
+#         self.norm1 = norm_layer(self.dim)
+#         self.attn = MyAttention(
+#             self.dim,
+#             num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
+#             attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio, linear=linear)
+#
+#         # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
+#         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+#         self.norm2 = norm_layer(self.dim)
+#         mlp_hidden_dim = int(self.dim * mlp_ratio)
+#         self.mlp = MyMlpBN(
+#             in_features=self.dim,
+#             out_features=self.out_dim,
+#             hidden_features=mlp_hidden_dim,
+#             act_layer=act_layer,
+#             drop=drop,
+#             linear=linear,
+#             norm_cfg=norm_cfg
+#         )
+#
+#         self.apply(self._init_weights)
+#
+#     def _init_weights(self, m):
+#         if isinstance(m, nn.Linear):
+#             trunc_normal_(m.weight, std=.02)
+#             if isinstance(m, nn.Linear) and m.bias is not None:
+#                 nn.init.constant_(m.bias, 0)
+#         elif isinstance(m, nn.LayerNorm):
+#             nn.init.constant_(m.bias, 0)
+#             nn.init.constant_(m.weight, 1.0)
+#         elif isinstance(m, nn.Conv2d):
+#             fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+#             fan_out //= m.groups
+#             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+#             if m.bias is not None:
+#                 m.bias.data.zero_()
+#
+#     def forward(self, input_dict, src_dict=None):
+#         if src_dict is None:
+#             src_dict = input_dict
+#
+#         x = input_dict['x']
+#         loc_orig = input_dict['loc_orig']
+#         idx_agg = input_dict['idx_agg']
+#         agg_weight = input_dict['agg_weight']
+#         H, W = input_dict['map_size']
+#
+#         x_source = src_dict['x']
+#         idx_agg_source = src_dict['idx_agg']
+#         if 'conf_source' in src_dict.keys():
+#             conf_source = src_dict['conf_source']
+#         else:
+#             conf_source=None
+#
+#         x1 = x + self.drop_path(self.attn(self.norm1(x),
+#                                           loc_orig,
+#                                           self.norm1(x_source),
+#                                           idx_agg_source,
+#                                           H, W, conf_source))
+#
+#         x2 = x1 + self.drop_path(self.mlp(self.norm2(x1),
+#                                           loc_orig,
+#                                           idx_agg,
+#                                           agg_weight,
+#                                           H, W))
+#         out_dict = {
+#             'x': x2,
+#             'idx_agg': idx_agg,
+#             'agg_weight': agg_weight,
+#             'x_source': x2,
+#             'idx_agg_source': idx_agg,
+#             'agg_weight_source': agg_weight,
+#             'loc_orig': loc_orig,
+#             'map_size': (H, W),
+#             'conf_source': None,
+#         }
+#         return out_dict
+
 
 
 class TokenConv(nn.Conv2d):
@@ -454,7 +425,7 @@ class TokenConv(nn.Conv2d):
         agg_weight = input_dict['agg_weight']
         H, W = input_dict['map_size']
 
-        x_map, _ = token2map_agg_sparse(x, None, loc_orig, idx_agg, [H, W])
+        x_map, _ = token2map_agg_mat(x, None, loc_orig, idx_agg, [H, W])
         x_map = super().forward(x_map)
         x = map2token_agg_fast_nearest(x_map, x.shape[1], loc_orig, idx_agg, agg_weight) + \
             self.skip(x.permute(0, 2, 1)).permute(0, 2, 1)
@@ -578,49 +549,27 @@ class FuseLayer_Straight(nn.Module):
         return out_lists
 
 
-class DownLayer(nn.Module):
-    """ Down sample
-    """
-    def __init__(self, in_channels, out_channels, sample_ratio, down_block):
-        super().__init__()
-        self.sample_ratio = sample_ratio
-        self.out_channels = out_channels
-        self.conv = TokenConv(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=2, padding=1)
-        self.block = down_block
-
-    def forward(self, input_dict):
-        H, W = input_dict['map_size']
-        idx_agg = input_dict['idx_agg']
-        agg_weight = input_dict['agg_weight']
-
-        x = self.conv(input_dict)
-        H, W = H // 2, W // 2
-        B, N, C = x.shape
-
-        sample_num = max(math.ceil(N * self.sample_ratio), 1)
-
-        with torch.no_grad():
-            index_down = farthest_point_sample(x, sample_num)
-
-        x_down = index_points(x, index_down)
-        weight = None
-        x_down, idx_agg_down, weight_t = merge_tokens_agg_dist2(x, index_down, x_down, idx_agg, weight)
-        agg_weight_down = agg_weight * weight_t
-        agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
-
-        down_dict = {
-            'x': x_down,
-            'idx_agg': idx_agg_down,
-            'agg_weight': agg_weight_down,
-            'map_size': [H, W],
-            'loc_orig': input_dict['loc_orig'],
-            'conf_source': None
-        }
-        tmp_dict = input_dict.copy()
-        tmp_dict['x'] = x
-
-        down_dict = self.block(down_dict, tmp_dict)
-        return down_dict
+# class DownLayer(BaseDown):
+#     """ Down sample
+#     """
+#     def forward(self, input_dict):
+#         H, W = input_dict['map_size']
+#         idx_agg = input_dict['idx_agg']
+#         agg_weight = input_dict['agg_weight']
+#         x = input_dict['x']
+#         loc_orig = input_dict['loc_orig']
+#
+#         x_down, idx_agg_down, agg_weight_down = super().forward(x, loc_orig, idx_agg, agg_weight, H, W, N_grid=0)
+#
+#         down_dict = {
+#             'x': x_down,
+#             'idx_agg': idx_agg_down,
+#             'agg_weight': agg_weight_down,
+#             'map_size': [H, W],
+#             'loc_orig': input_dict['loc_orig'],
+#             'conf_source': None
+#         }
+#         return down_dict
 
 
 class MyModule(nn.Module):
@@ -836,7 +785,7 @@ class MyHRPVT(nn.Module):
     blocks_dict = {
         "BOTTLENECK": Bottleneck,
         "MYBLOCK": MyBlock,
-        "MYBLOCKBN": MyBlockBN,
+        # "MYBLOCKBN": MyBlockBN,
 
     }
 
@@ -1012,8 +961,9 @@ class MyHRPVT(nn.Module):
             else:
                 # down layers
                 down_layers = DownLayer(
-                    in_channels=num_channels_pre_layer[-1],
-                    out_channels=num_channels_cur_layer[i],
+                    embed_dim=num_channels_pre_layer[-1],
+                    dim_out=num_channels_cur_layer[i],
+                    drop_rate=0,
                     sample_ratio=0.25,
                     down_block=self._make_block(i)
                 )
@@ -1158,8 +1108,8 @@ class MyHRPVT(nn.Module):
                 for m in self.modules():
                     if isinstance(m, Bottleneck):
                         constant_init(m.norm3, 0)
-                    elif isinstance(m, BasicBlock):
-                        constant_init(m.norm2, 0)
+                    # elif isinstance(m, BasicBlock):
+                    #     constant_init(m.norm2, 0)
         else:
             raise TypeError("pretrained must be a str or None")
 
@@ -1235,10 +1185,9 @@ class MyHRPVT(nn.Module):
                 H, W = input_dict['map_size']
                 idx_agg = input_dict['idx_agg']
                 loc_orig = input_dict['loc_orig']
-                x = token2map_agg_sparse(x, None, loc_orig, idx_agg, [H, W])
+                x, _ = token2map_agg_mat(x, None, loc_orig, idx_agg, [H, W])
                 input_list[i] = x
         return input_list
-
 
     def train(self, mode=True):
         """Convert the model into training mode."""

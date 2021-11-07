@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+export MASTER_PORT=29505
 
 srun -p mm_human \
     --ntasks=4 --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
@@ -10,6 +10,13 @@ srun -p mm_human \
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+    --job-name=wflw_2e-4_fpn0_den0f python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/2e-4fpn0_den0f_tiny_wflw_256x256.py \
+    --work-dir=work_dirs/wflw_2e-4_fpn0_den0f --launcher="slurm"
+
+    --job-name=wflw_2e-4_fpn_base python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/2e-4fpn_pvt_tiny_wflw_256x256.py \
+    --work-dir=work_dirs/wflw_2e-4_fpn_base --launcher="slurm"
+
+
     --job-name=wflw_att5 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att5_den0f_tiny_wflw_256x256.py \
     --work-dir=work_dirs/wflw_att5 --launcher="slurm"
 
@@ -60,7 +67,11 @@ srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
 srun -p pat_earth -x SH-IDC1-10-198-4-[87,100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
-        --job-name=f_att_coco python -u tools/train.py  --work-dir=work_dirs/att_coco --launcher="slurm" \
+    --job-name=hrtw32_pre_adamw python -u tools/train.py configs/hrtw32_pre_adamw.py --work-dir=work_dirs/hrtw32_pre_adamw --launcher="slurm" \
+    --resume-from=work_dirs/hrtw32_pre_adamw/latest.pth
+
+
+     --job-name=f_att_coco python -u tools/train.py  --work-dir=work_dirs/att_coco --launcher="slurm" \
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/den0f_small_coco_256x192.py --resume-from=work_dirs/att_coco/latest.pth
 
 
@@ -109,7 +120,6 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[87,100-103,116-119] \
 
    --job-name=pvtv2_cat_pre_adamw python -u tools/train.py configs/pvtv2_cat_pre_adamw.py --work-dir=work_dirs/pvtv2_cat_pre_adamw --launcher="slurm"
 
-    --job-name=hrtw32_pre_adamw python -u tools/train.py configs/hrtw32_pre_adamw.py --work-dir=work_dirs/hrtw32_pre_adamw --launcher="slurm"
 
      --job-name=pvtv2_cat_pre python -u tools/train.py configs/pvtv2_cat_pre.py --work-dir=work_dirs/pvtv2_cat_pre --launcher="slurm"
 
