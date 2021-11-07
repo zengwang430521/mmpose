@@ -45,7 +45,7 @@ model = dict(
     type='TopDown',
     # pretrained='torchvision://resnet50',
     # backbone=dict(type='ResNet', depth=50),
-    backbone=dict(type='pvt_v2_b1', pretrained='models/pvt_v2_b1.pth'),
+    backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         # in_channels=2048,
@@ -59,6 +59,7 @@ model = dict(
         post_process='default',
         shift_heatmap=True,
         modulate_kernel=11))
+
 
 
 

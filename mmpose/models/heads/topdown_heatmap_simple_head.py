@@ -336,6 +336,11 @@ class TopdownHeatmapSimpleHead(TopdownHeatmapBaseHead):
         else:
             inputs = inputs[self.in_index]
 
+            ## for tokens
+            if isinstance(inputs, list) or isinstance(inputs, tuple):
+                x, loc, map_size, loc_orig, idx_agg = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
+                inputs, _ = token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size)
+
         return inputs
 
     def _make_deconv_layer(self, num_layers, num_filters, num_kernels):
