@@ -10,6 +10,8 @@ srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=l_s_fine_att python -u tools/train.py configs/den0fs_large_att_fine0.py --work-dir=work_dirs/den0fs_large_att_8 --launcher="slurm"
+
     --job-name=eval python -u tools/test.py  configs/debug_den0fs_att_adamw.py work_dirs/den0f_att_16/epoch_210.pth --launcher="slurm"
 
     --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \

@@ -43,9 +43,11 @@ channel_cfg = dict(
 
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
+# fp16 settings
+fp16 = dict(loss_scale='dynamic')
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0f_large', pretrained='models/tran_pvt_v2_b4_0.pth',),
+    backbone=dict(type='mypvt3h2_density0fs_large', pretrained='models/tran_pvt_v2_b4_0.pth',),
     neck=dict(
         type='AttenNeck',
         in_channels=[64, 128, 320, 512],
