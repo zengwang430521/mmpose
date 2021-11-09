@@ -8,15 +8,9 @@ checkpoint_config = dict(interval=10)
 evaluation = dict(interval=10, metric='mAP', save_best='AP')
 
 optimizer = dict(
-    type='AdamW',
+    type='Adam',
     lr=5e-4,
-    betas=(0.9, 0.999),
-    weight_decay=0.01,
-    paramwise_cfg=dict(
-        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
-    )
 )
-
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -134,7 +128,7 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=64,
+    samples_per_gpu=2,
     workers_per_gpu=2,
     val_dataloader=dict(samples_per_gpu=32),
     test_dataloader=dict(samples_per_gpu=32),

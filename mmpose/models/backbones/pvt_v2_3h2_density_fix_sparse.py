@@ -18,8 +18,8 @@ from .utils_mine import (
 )
 
 from .utils_mine import token_cluster_density_fixbug as token_cluster_density
-from .utils_mine import token2map_agg_sparse as token2map_agg_mat
-from .utils_mine import map2token_agg_sparse_nearest as map2token_agg_fast_nearest
+from .utils_mine import token2map_agg_sparse_new as token2map_agg_mat
+from .utils_mine import map2token_agg_sparse_nearest_new as map2token_agg_fast_nearest
 from ..builder import BACKBONES
 
 vis = False
@@ -514,3 +514,12 @@ class mypvt3h2_density0fs_small(MyPVT):
 #
 
 
+@BACKBONES.register_module()
+class mypvt3h2_density0fs_large(MyPVT):
+    def __init__(self, **kwargs):
+        super().__init__(
+            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
+            qkv_bias=True,
+            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
+            k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
+            **kwargs)
