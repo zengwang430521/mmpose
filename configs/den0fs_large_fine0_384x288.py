@@ -45,7 +45,7 @@ model = dict(
     type='TopDown',
     backbone=dict(type='mypvt3h2_density0fs_large', pretrained='models/tran_pvt_v2_b4_0.pth',),
     neck=dict(
-        type='AttenNeck',
+        type='AttenNeckS',
         in_channels=[64, 128, 320, 512],
         out_channels=256,
         start_level=0,

@@ -37,6 +37,7 @@ channel_cfg = dict(
 
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
+fp16 = dict(loss_scale='dynamic')
 model = dict(
     type='TopDown',
     backbone=dict(type='mypvt3h2_density0fs_small', pretrained='models/3h2_density0_small.pth',),

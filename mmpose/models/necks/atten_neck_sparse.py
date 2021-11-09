@@ -8,8 +8,8 @@ from ..builder import NECKS
 import numpy as np
 from ..backbones.pvt_v2 import trunc_normal_, DropPath
 from ..backbones.pvt_v2_3h2_density import MyMlp
-from ..backbones.utils_mine import token2map_agg_sparse as token2map_agg_mat
-from ..backbones.utils_mine import downup_sparse as downup
+from ..backbones.utils_mine import token2map_agg_sparse_new as token2map_agg_mat
+from ..backbones.utils_mine import downup_sparse_new as downup
 
 
 import math
@@ -215,7 +215,7 @@ class AttenNeckS(BaseModule):
             if m.bias is not None:
                 m.bias.data.zero_()
 
-    @auto_fp16()
+    # @auto_fp16()
     def forward(self, inputs):
         """Forward function."""
         assert len(inputs) == len(self.in_channels)
