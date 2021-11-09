@@ -4069,10 +4069,9 @@ def map2token_agg_sparse_nearest_new(feature_map, N, loc_orig, idx_agg, agg_weig
     indices = torch.stack([idx_agg, idx_HW_orig], dim=0).reshape(2, -1)
 
     if agg_weight is None:
-        value = torch.ones(B * N0, device=feature_map.device, dtype=torch.float32)
+        value = torch.ones(B * N0, device=feature_map.device, dtype=feature_map.dtype)
     else:
-        value = agg_weight.reshape(B * N0).type(torch.float32)
-
+        value = agg_weight.reshape(B * N0) #.type(torch.float32)
 
     all_weight = spmm(indices, value, B*N, B*H*W, feature_map.new_ones([B*H*W, 1])) + 1e-6
     value = value / all_weight[idx_agg.reshape(-1), 0]

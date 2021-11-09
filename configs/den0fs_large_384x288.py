@@ -1,4 +1,4 @@
-_base_ = ['_base_/datasets/coco_wholebody.py']
+_base_ = ['../../../../_base_/datasets/coco_wholebody.py']
 log_level = 'INFO'
 load_from = None
 resume_from = None
@@ -8,22 +8,17 @@ checkpoint_config = dict(interval=10)
 evaluation = dict(interval=10, metric='mAP', save_best='AP')
 
 optimizer = dict(
-    type='AdamW',
+    type='Adam',
     lr=5e-4,
-    betas=(0.9, 0.999),
-    weight_decay=0.01,
-    paramwise_cfg=dict(
-        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
-    )
 )
-
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
     policy='step',
-    warmup='linear',
-    warmup_iters=500,
-    warmup_ratio=0.001,
+    warmup=None,
+    # warmup='linear',
+    # warmup_iters=500,
+    # warmup_ratio=0.001,
     step=[170, 200])
 total_epochs = 210
 log_config = dict(
@@ -41,10 +36,11 @@ channel_cfg = dict(
     ],
     inference_channel=list(range(133)))
 
-# model settings
-norm_cfg = dict(type='SyncBN', requires_grad=True)
+
 # fp16 settings
 fp16 = dict(loss_scale='dynamic')
+# model settings
+norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
     backbone=dict(type='mypvt3h2_density0fs_large', pretrained='models/tran_pvt_v2_b4_0.pth',),
@@ -73,9 +69,11 @@ model = dict(
         modulate_kernel=11))
 
 
+
+
 data_cfg = dict(
-    image_size=[192, 256],
-    heatmap_size=[48, 64],
+    image_size=[288, 384],
+    heatmap_size=[72, 96],
     num_output_channels=channel_cfg['num_output_channels'],
     num_joints=channel_cfg['dataset_joints'],
     dataset_channel=channel_cfg['dataset_channel'],
@@ -105,7 +103,7 @@ train_pipeline = [
         type='NormalizeTensor',
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]),
-    dict(type='TopDownGenerateTarget', sigma=2),
+    dict(type='TopDownGenerateTarget', sigma=3),
     dict(
         type='Collect',
         keys=['img', 'target', 'target_weight'],
@@ -136,7 +134,7 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=32,
+    samples_per_gpu=16,
     workers_per_gpu=2,
     val_dataloader=dict(samples_per_gpu=32),
     test_dataloader=dict(samples_per_gpu=32),
