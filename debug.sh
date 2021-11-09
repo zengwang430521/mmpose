@@ -10,6 +10,12 @@ srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p mm_human --quotatype=auto\
     --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+    --job-name=aflw_den0 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/den0_tiny_aflw_256x256.py \
+    --work-dir=work_dirs/aflw_den0 --launcher="slurm"
+
+    --job-name=wflw_den0 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/den0_tiny_wflw_256x256.py \
+    --work-dir=work_dirs/wflw_den0 --launcher="slurm"
+
     --job-name=wflw_pvt python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/pvt_tiny_wflw_256x256.py \
     --work-dir=work_dirs/wflw_pvt --launcher="slurm"
 

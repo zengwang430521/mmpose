@@ -28,46 +28,142 @@ from mmpose.models import build_posenet
 
 
 
+#
+#
+# channel_cfg = dict(
+#     num_output_channels=133,
+#     dataset_joints=133,
+#     dataset_channel=[
+#         list(range(133)),
+#     ],
+#     inference_channel=list(range(133)))
+#
+#
+# norm_cfg = dict(type='BN', requires_grad=True)
+# # model settings
+# model = dict(
+#     type='TopDown',
+#     # pretrained='torchvision://resnet50',
+#     # backbone=dict(type='ResNet', depth=50),
+#     backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
+#     keypoint_head=dict(
+#         type='TopdownHeatmapSimpleHead',
+#         # in_channels=2048,
+#         in_channels=512,
+#         in_index=3,
+#         out_channels=channel_cfg['num_output_channels'],
+#         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
+#     train_cfg=dict(),
+#     test_cfg=dict(
+#         flip_test=True,
+#         post_process='default',
+#         shift_heatmap=True,
+#         modulate_kernel=11))
+#
+#
+#
+#
+# device = torch.device('cuda')
+#
+#
+# model = build_posenet(model).to(device)
+# input = torch.rand([2, 3, 256, 256], device=device)
+# out = model(input)
 
 
-channel_cfg = dict(
-    num_output_channels=133,
-    dataset_joints=133,
-    dataset_channel=[
-        list(range(133)),
-    ],
-    inference_channel=list(range(133)))
+# import  torch
+# device = torch.device('cuda')
+# x = torch.zeros(2, 3136, 128).to(device)
+# idx = torch.rand(2, 3136).to(device) * 48
+# idx = idx.long()
+# idx_batch = torch.arange(2)[:, None].expand(2, 3136).to(device)
+# y = torch.zeros(2, 64, 49, 128).to(device)
+# # z = y[idx_batch.reshape(-1), idx.reshape(-1), :]
+# # z[:, :, :]= 1
+#
+# out = torch.bmm(y[idx_batch.reshape(-1), idx.reshape(-1), :], x.reshape(-1, 128, 1))
+#
 
 
-norm_cfg = dict(type='BN', requires_grad=True)
-# model settings
-model = dict(
-    type='TopDown',
-    # pretrained='torchvision://resnet50',
-    # backbone=dict(type='ResNet', depth=50),
-    backbone=dict(type='mypvt3h2_density0f_tiny', pretrained='models/3h2_density0f_tiny.pth'),
-    keypoint_head=dict(
-        type='TopdownHeatmapSimpleHead',
-        # in_channels=2048,
-        in_channels=512,
-        in_index=3,
-        out_channels=channel_cfg['num_output_channels'],
-        loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
-    train_cfg=dict(),
-    test_cfg=dict(
-        flip_test=True,
-        post_process='default',
-        shift_heatmap=True,
-        modulate_kernel=11))
+# import torch
+# from typing import List
+#
+# def foo(x):
+#     return torch.neg(x)
+#
+# @torch.jit.script
+# def example(x):
+#     futures : List[torch.jit.Future[torch.Tensor]] = []
+#     for _ in range(100):
+#         futures.append(torch.jit.fork(foo, x))
+#
+#     results = []
+#     for future in futures:
+#         results.append(torch.jit.wait(future))
+#
+#     return torch.sum(torch.stack(results))
+#
+# print(example(torch.ones([])))
 
 
+import torch
+from typing import List
+
+@torch.jit.script
+def index_matmul(x, y, idx):
+    B, N, C = x.shape
+    idx_batch = torch.arange(B, device=x.device)
+
+    futures: List[torch.jit.Future[torch.Tensor]] = []
+    for i in range(N):
+        # futures.append(x[:, i, :] @ y[idx_batch, :,  idx[:, i]])
+        futures.append(
+            torch.jit.fork(
+                torch.matmul,
+                x[:, i, :].unsqueeze(1), y[idx_batch, :,  idx[:, i]])
+        )
+
+    results = []
+    for future in futures:
+        results.append(torch.jit.wait(future))
+
+    return torch.cat(results, dim=1)
 
 
+def index_matmul_for(x, y, idx):
+    B, N, C = x.shape
+    idx_batch = torch.arange(B, device=x.device)
+
+    futures = []
+    for i in range(N):
+        # futures.append(x[:, i, :] @ y[idx_batch, :,  idx[:, i]])
+        futures.append(
+            torch.matmul(x[:, i, :].unsqueeze(1), y[idx_batch, :,  idx[:, i]])
+        )
+    return torch.cat(futures, dim=1)
+
+
+import  torch
 device = torch.device('cuda')
+x = torch.zeros(2, 3136, 128).to(device)
+idx = torch.rand(2, 3136).to(device) * 48
+idx = idx.long()
+idx_batch = torch.arange(2)[:, None].expand(2, 3136).to(device)
+y = torch.zeros(2, 128, 49, 64).to(device)
+
+import time
+t1 = time.time()
+for n in range(100):
+    out = index_matmul(x, y, idx_batch)
+t2 = time.time()
+print(t2-t1)
+
+t1 = time.time()
+for n in range(100):
+    out = index_matmul(x, y, idx_batch)
+t2 = time.time()
+print(t2-t1)
 
 
-model = build_posenet(model).to(device)
-input = torch.rand([2, 3, 256, 256], device=device)
-out = model(input)
 
-
+t=0
