@@ -53,7 +53,7 @@ norm_cfg = dict(type='SyncBN', requires_grad=True)
 # norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
-    pretrained='work_dirs/myhrpvt_32_46.pth',
+    pretrained='models/myhrpvt_32_46.pth',
     backbone=dict(
         type='MyHRPVT',
         in_channels=3,
@@ -64,14 +64,15 @@ model = dict(
                 num_modules=1,
                 num_branches=1,
                 block='BOTTLENECK',
-                num_blocks=(2, ),
-                num_channels=(64, ),
+                num_blocks=(2,),
+                num_channels=(64,),
                 num_heads=[2],
                 num_mlp_ratios=[4]),
             stage2=dict(
                 num_modules=1,
                 num_branches=2,
-                block='PVT2BLOCK',
+                remerge=(False, False),
+                block='MYBLOCK',
                 num_blocks=(2, 2),
                 num_channels=(32, 64),
                 num_heads=[1, 2],
@@ -79,23 +80,28 @@ model = dict(
                 sr_ratios=[8, 4]),
             stage3=dict(
                 num_modules=4,
+                remerge=(False, False, False, False),
                 num_branches=3,
-                block='PVT2BLOCK',
+                block='MYBLOCK',
                 num_blocks=(2, 2, 2),
                 num_channels=(32, 64, 128),
-                num_heads = [1, 2, 4],
-                num_mlp_ratios = [4, 4, 4],
+                num_heads=[1, 2, 4],
+                num_mlp_ratios=[4, 4, 4],
                 sr_ratios=[8, 4, 2]),
             stage4=dict(
                 num_modules=2,
+                remerge=(False, False),
                 num_branches=4,
-                block='PVT2BLOCK',
+                block='MYBLOCK',
                 num_blocks=(2, 2, 2, 2),
                 num_channels=(32, 64, 128, 256),
-                num_heads = [1, 2, 4, 8],
-                num_mlp_ratios = [4, 4, 4, 4],
-                sr_ratios=[8, 4, 2, 1])
-            )),
+                num_heads=[1, 2, 4, 8],
+                num_mlp_ratios=[4, 4, 4, 4],
+                sr_ratios=[8, 4, 2, 1],
+            ),
+        )
+
+    ),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         in_channels=32,
