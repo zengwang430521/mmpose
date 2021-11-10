@@ -33,7 +33,7 @@ from .utils_mine import get_merge_way, \
 
 import math
 from .pvt_v2_3h2_density_fix import (map2token_agg_fast_nearest, token2map_agg_mat, MyAttention,
-                                     MyMlp, DropPath, trunc_normal_, token_cluster_density)
+                                     MyMlp, DropPath, trunc_normal_, token_cluster_density, load_checkpoint)
 # from .pvt_v2_3h2_density_fix import MyBlock as BaseBlock
 # from .pvt_v2_3h2_density_fix import DownLayer as BaseDown
 
@@ -801,7 +801,8 @@ class MyHRPVT(nn.Module):
         norm_eval=False,
         with_cp=False,
         zero_init_residual=False,
-        return_map=False,
+        return_map=True,
+        pretrained=None,
     ):
         super().__init__()
         self.return_map = return_map
@@ -904,6 +905,14 @@ class MyHRPVT(nn.Module):
             multiscale_output=self.stage4_cfg.get("multiscale_output", False),
             drop_paths=dpr[depth_s2 + depth_s3 :],
         )
+
+        # self.apply(self._init_weights)
+        self.init_weights(pretrained)
+
+    def init_weights(self, pretrained=None):
+        if isinstance(pretrained, str):
+            logger = get_root_logger()
+            load_checkpoint(self, pretrained, map_location='cpu', strict=False, logger=logger)
 
     @property
     def norm1(self):

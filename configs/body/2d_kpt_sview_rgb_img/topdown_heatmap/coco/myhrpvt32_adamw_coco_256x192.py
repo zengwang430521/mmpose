@@ -53,9 +53,9 @@ channel_cfg = dict(
 norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
-    pretrained='models/myhrpvt_32_46.pth',
     backbone=dict(
         type='MyHRPVT',
+        pretrained='models/myhrpvt_32_46.pth',
         in_channels=3,
         norm_cfg=norm_cfg,
         return_map=True,
@@ -182,7 +182,7 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=32,
+    samples_per_gpu=2,
     workers_per_gpu=2,
     val_dataloader=dict(samples_per_gpu=32),
     test_dataloader=dict(samples_per_gpu=32),
