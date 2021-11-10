@@ -13,8 +13,12 @@ srun -p mm_human --quotatype=auto\
     --job-name=myhrpvt32 python -u tools/train.py  configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/myhrpvt32_adamw_coco_256x192.py\
     --work-dir=work_dirs/myhrpvt_coco --launcher="slurm"
 
-srun -p mm_human --quotatype=auto\
+srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+    --job-name=aflw_att1_adamw python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/att1_adamw_tiny_aflw_256x256.py \
+    --work-dir=work_dirs/aflw_att1_adamw--launcher="slurm" --resume=work_dirs/aflw_att1_adamw/latest.pth
+
+
     --job-name=aflw_att1fine python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/att1_fine_den0f_tiny_aflw_256x256.py \
     --work-dir=work_dirs/aflw_att1fine --launcher="slurm" --resume=work_dirs/aflw_att1fine/latest.pth
 
