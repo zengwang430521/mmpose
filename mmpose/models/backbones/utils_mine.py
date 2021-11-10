@@ -2808,7 +2808,7 @@ def downup(target_dict, source_dict):
 
 
 
-def show_tokens_merge_old(x, out, N_grid=14*14, count=0):
+def show_tokens_merge(x, out, N_grid=14*14, count=0):
     # import matplotlib.pyplot as plt
     IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
     IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
@@ -2894,8 +2894,8 @@ def show_tokens_merge_old(x, out, N_grid=14*14, count=0):
             idx_map = idx_map[i].permute(1, 2, 0).detach().cpu().float()
             ax.imshow(idx_map)
     # plt.show()
-    fname = f'vis/{count}.jpg'
-    plt.savefig(fname, dpi=200)
+    # fname = f'vis/{count}.jpg'
+    # plt.savefig(fname, dpi=200)
 
 
     return
@@ -3256,9 +3256,9 @@ def vis_tokens_merge(count=18880):
     return
 
 
-color = torch.rand(1, 10000, 3)
-color48 = index_points(color, farthest_point_sample(color, 48))
-def show_tokens_merge(x, out, N_grid=14*14, count=0):
+# color = torch.rand(1, 10000, 3)
+# color48 = index_points(color, farthest_point_sample(color, 48))
+def show_tokens_merge_48(x, out, N_grid=14*14, count=0):
     # import matplotlib.pyplot as plt
     IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
     IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]

@@ -75,42 +75,56 @@ def single_gpu_vis(model, data_loader):
     # for i in [1272, 260, 563,968,974,993,1272,1736,1895, 2280, 2405, 2556, 2570, 2605, 2833, 2850,2950, 3580, 3590, 4710, 4798, 5055, 5248, 6032]:
     # for i in [913,918,921,1079,2802,2838,3318,5055,6308,2424,2556]:
 
-    for i in [2424, 2556, 250, 260]:
-        data = data_loader.collate_fn([dataset[i]])
-        # for save hr image
-        x = data['img']
-        IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
-        IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
-        x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
-        img = x[0].permute(1, 2, 0).detach().cpu()
-        count = i
-        fname = f'vis/{count}_img.png'
-        import cv2
-        cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
+    # for i in [2424, 2556, 250, 260]:
+    #     data = data_loader.collate_fn([dataset[i]])
+    #     # for save hr image
+    #     x = data['img']
+    #     IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
+    #     IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
+    #     x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+    #     img = x[0].permute(1, 2, 0).detach().cpu()
+    #     count = i
+    #     fname = f'vis/{count}_img.png'
+    #     import cv2
+    #     cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
+    #
+    #     model.module.backbone.batch_count = i
+    #     with torch.no_grad():
+    #         result = model(return_loss=False, **data)
+    #     results.append(result)
 
+
+    # for (i, data) in enumerate(data_loader):
+    #     if i % 1 == 0:
+    #         scale = data['img_metas'].data[0][0]['scale']
+    #         # fliter black edges
+    #         img = data['img']
+    #         if scale[0] > 1 and scale[1] > 1:
+    #             if no_black_edge(img):
+    #                 model.module.backbone.batch_count = i
+    #                 with torch.no_grad():
+    #                     result = model(return_loss=False, **data)
+    #                 results.append(result)
+    #
+    #
+    #     # use the first key as main key to calculate the batch size
+    #     batch_size = len(next(iter(data.values())))
+    #     for _ in range(batch_size):
+    #         prog_bar.update()
+
+
+    for (i, data) in enumerate(data_loader):
         model.module.backbone.batch_count = i
         with torch.no_grad():
             result = model(return_loss=False, **data)
         results.append(result)
 
 
-    for (i, data) in enumerate(data_loader):
-        if i % 1 == 0:
-            scale = data['img_metas'].data[0][0]['scale']
-            # fliter black edges
-            img = data['img']
-            if scale[0] > 1 and scale[1] > 1:
-                if no_black_edge(img):
-                    model.module.backbone.batch_count = i
-                    with torch.no_grad():
-                        result = model(return_loss=False, **data)
-                    results.append(result)
-
-
         # use the first key as main key to calculate the batch size
         batch_size = len(next(iter(data.values())))
         for _ in range(batch_size):
             prog_bar.update()
+
     return results
 
 

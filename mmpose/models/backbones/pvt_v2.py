@@ -55,7 +55,7 @@ def load_checkpoint(model,
     for p, r in revise_keys:
         state_dict = {re.sub(p, r, k): v for k, v in state_dict.items()}
     # load state_dict
-    load_state_dict(model, state_dict, strict, logger)
+    _ = load_state_dict(model, state_dict, strict, logger)
     return checkpoint
 
 

@@ -10,7 +10,7 @@ import numpy as np
 from ..backbones.pvt_v2 import trunc_normal_, DropPath
 from ..backbones.pvt_v2_3h2_density import MyMlp, token2map_agg_mat
 import math
-
+from ..backbones.pvt_v2 import load_checkpoint, get_root_logger
 
 class MergeAttention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1, linear=False):
@@ -151,6 +151,7 @@ class AttenNeck(BaseModule):
                  upsample_cfg=dict(mode='nearest'),
                  init_cfg=dict(
                      type='Xavier', layer='Conv2d', distribution='uniform'),
+                 pretrained=None
                  ):
         super().__init__(init_cfg)
         assert isinstance(in_channels, list)
@@ -196,6 +197,9 @@ class AttenNeck(BaseModule):
             self.merge_blocks.append(merge_block)
 
         self.apply(self._init_weights)
+        if pretrained is not None:
+            logger = get_root_logger()
+            load_checkpoint(self, pretrained, map_location='cpu', strict=False, logger=logger)
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
