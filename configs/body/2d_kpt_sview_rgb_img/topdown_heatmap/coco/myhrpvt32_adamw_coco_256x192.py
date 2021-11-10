@@ -49,8 +49,8 @@ channel_cfg = dict(
     ])
 
 # model settings
-norm_cfg = dict(type='SyncBN', requires_grad=True)
-# norm_cfg = dict(type='BN', requires_grad=True)
+# norm_cfg = dict(type='SyncBN', requires_grad=True)
+norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
     pretrained='models/myhrpvt_32_46.pth',
@@ -58,6 +58,7 @@ model = dict(
         type='MyHRPVT',
         in_channels=3,
         norm_cfg=norm_cfg,
+        return_map=True,
         extra=dict(
             drop_path_rate=0.1,
             stage1=dict(

@@ -9,11 +9,16 @@ srun -p mm_human \
 
 srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+    --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+    --job-name=aflw_att1n python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/att1n_den0f_tiny_aflw_256x256.py \
+    --work-dir=work_dirs/aflw_att1n --launcher="slurm"
+
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=myhrpvt32 python -u tools/train.py  configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/myhrpvt32_adamw_coco_256x192.py\
      --work-dir=work_dirs/myhrpvt_coco --launcher="slurm"
 
-    --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+
+
     --job-name=aflw_pvt python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/pvt_tiny_aflw_256x256.py \
     --work-dir=work_dirs/aflw_pvt --launcher="slurm" --resume=work_dirs/aflw_pvt/latest.pth
 
@@ -33,9 +38,6 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --job-name=aflw_den0 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/den0_tiny_aflw_256x256.py \
     --work-dir=work_dirs/aflw_den0 --launcher="slurm" --resume=work_dirs/aflw_den0/latest.pth
 
-
-    --job-name=aflw_den0 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/den0_tiny_aflw_256x256.py \
-    --work-dir=work_dirs/aflw_den0 --launcher="slurm"
 
 
     --job-name=wflw_pvt python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/pvt_tiny_wflw_256x256.py \
