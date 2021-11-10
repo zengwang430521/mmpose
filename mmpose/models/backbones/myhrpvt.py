@@ -37,6 +37,9 @@ from .pvt_v2_3h2_density_fix import (map2token_agg_fast_nearest, token2map_agg_m
 # from .pvt_v2_3h2_density_fix import MyBlock as BaseBlock
 # from .pvt_v2_3h2_density_fix import DownLayer as BaseDown
 
+from .utils_mine import downup_sparse_new as downup
+from .utils_mine import token2map_agg_sparse_new as token2map_agg_mat
+from .utils_mine import map2token_agg_sparse_nearest_new as map2token_agg_fast_nearest
 
 
 

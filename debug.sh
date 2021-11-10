@@ -7,26 +7,40 @@ srun -p mm_human \
     configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0_small_coco_512x512.py
 
 
-srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p mm_human --quotatype=auto\
+srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+    --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=myhrpvt32 python -u tools/train.py  configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/myhrpvt32_adamw_coco_256x192.py\
+     --work-dir=work_dirs/myhrpvt_coco --launcher="slurm"
+
+    --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+    --job-name=aflw_pvt python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/pvt_tiny_aflw_256x256.py \
+    --work-dir=work_dirs/aflw_pvt --launcher="slurm" --resume=work_dirs/aflw_pvt/latest.pth
+
+    --job-name=wflw_den0 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/den0_tiny_wflw_256x256.py \
+    --work-dir=work_dirs/wflw_den0 --launcher="slurm" --resume=work_dirs/wflw_den0/latest.pth
+
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=l_s_fine_att python -u tools/train.py configs/den0fs_large_fine0_384x288.py\
      --work-dir=work_dirs/den0fs_large_384 --launcher="slurm"
 
+
+
+
+
     --job-name=eval python -u tools/test.py  configs/debug_den0fs_att_adamw.py work_dirs/den0f_att_16/epoch_210.pth --launcher="slurm"
 
-    --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
+    --job-name=aflw_den0 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/den0_tiny_aflw_256x256.py \
+    --work-dir=work_dirs/aflw_den0 --launcher="slurm" --resume=work_dirs/aflw_den0/latest.pth
+
+
     --job-name=aflw_den0 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/den0_tiny_aflw_256x256.py \
     --work-dir=work_dirs/aflw_den0 --launcher="slurm"
 
-    --job-name=wflw_den0 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/den0_tiny_wflw_256x256.py \
-    --work-dir=work_dirs/wflw_den0 --launcher="slurm"
 
     --job-name=wflw_pvt python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/pvt_tiny_wflw_256x256.py \
     --work-dir=work_dirs/wflw_pvt --launcher="slurm"
 
-    --job-name=aflw_pvt python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/pvt_tiny_aflw_256x256.py \
-    --work-dir=work_dirs/aflw_pvt --launcher="slurm"
 
     --job-name=aflw_att1 python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/att1_den0f_tiny_aflw_256x256.py \
     --work-dir=work_dirs/aflw_att1 --launcher="slurm"
