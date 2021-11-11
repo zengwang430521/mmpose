@@ -12,14 +12,10 @@ from mmcv.runner import get_dist_info
 
 def single_gpu_test(model, data_loader):
     """Test model with a single gpu.
-
     This method tests model with a single gpu and displays test progress bar.
-
     Args:
         model (nn.Module): Model to be tested.
         data_loader (nn.Dataloader): Pytorch data loader.
-
-
     Returns:
         list: The prediction results.
     """
@@ -37,7 +33,7 @@ def single_gpu_test(model, data_loader):
         batch_size = len(next(iter(data.values())))
         for _ in range(batch_size):
             prog_bar.update()
-    return
+    return results
 
 
 def notback(x):
@@ -52,6 +48,7 @@ def no_black_edge(img):
             and notback(img[0, :, 0, -1]) \
             and notback(img[0, :, -1, 0]) \
             and notback(img[0, :, -1, -1])
+
 
 def single_gpu_vis(model, data_loader):
     """Test model with a single gpu.

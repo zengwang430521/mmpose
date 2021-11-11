@@ -157,18 +157,20 @@ class TopDown(BasePose):
                 output, target, target_weight)
             losses.update(keypoint_accuracy)
 
-        for loss in losses:
-            if torch.isnan(loss).any():
-                out_file = 'NAN_debug.pth'
-                out_dict = {
-                    'img': img,
-                    'target': target,
-                    'target_weight': target_weight,
-                    'output': output,
-                    'model': self.state_dict()
-                }
-                torch.save(out_dict, out_file)
-                print('loss is NAN!')
+        for key in losses.keys():
+            loss = losses[key]
+            if 'loss' in key:
+                if torch.isnan(loss).any():
+                    out_file = 'NAN_debug.pth'
+                    out_dict = {
+                        'img': img,
+                        'target': target,
+                        'target_weight': target_weight,
+                        'output': output,
+                        'model': self.state_dict()
+                    }
+                    torch.save(out_dict, out_file)
+                    print('loss is NAN!')
 
         return losses
 
