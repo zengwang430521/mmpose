@@ -7,9 +7,13 @@ srun -p mm_human \
     configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0_small_coco_512x512.py
 
 
-srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
  srun -p mm_human --quotatype=auto\
+srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+srun -p pat_earth \
     --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=myhrpvt32 python -u tools/train.py  configs/den0f_fine_adamw.py \
+    --work-dir=work_dirs/den0_simple_whole --launcher="slurm" --resume=work_dirs/den0_simple_whole/latest.pth
+
     --job-name=myhrpvt32 python -u tools/train.py  configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/myhrpvt32_adamw_coco_256x192.py\
     --work-dir=work_dirs/myhrpvt_coco_3 --launcher="slurm" --resume=work_dirs/myhrpvt_coco_3/epoch_26.pth
 
