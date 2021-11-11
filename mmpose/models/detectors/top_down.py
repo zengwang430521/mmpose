@@ -171,6 +171,7 @@ class TopDown(BasePose):
                     }
                     torch.save(out_dict, out_file)
                     print('loss is NAN!')
+                    assert False
 
         return losses
 
