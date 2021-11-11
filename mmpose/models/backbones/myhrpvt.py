@@ -124,6 +124,23 @@ class MyBlock(nn.Module):
             'conf_source': None,
         }
 
+        # for debug
+        print('IN DEBUG MODE!')
+        if (not torch.isnan(x).any()) and torch.isnan(x2).any():
+            print('error is in MYBLOCK')
+
+            x1 = x + self.drop_path(self.attn(self.norm1(x),
+                                              loc_orig,
+                                              self.norm1(x_source),
+                                              idx_agg_source,
+                                              H, W, conf_source))
+
+            x2 = x1 + self.drop_path(self.mlp(self.norm2(x1),
+                                              loc_orig,
+                                              idx_agg,
+                                              agg_weight,
+                                              H, W))
+
         return out_dict
 
 
@@ -1160,6 +1177,11 @@ class MyHRPVT(nn.Module):
 
 
 
+        # print('1')
+        # t=x
+        # print(torch.isinf(t['x']).any())
+        # print(torch.isnan(t['x']).any())
+
         x_list = []
         for i in range(self.stage2_cfg["num_branches"]):
             if self.transition1[i] is not None:
@@ -1168,6 +1190,10 @@ class MyHRPVT(nn.Module):
                 x_list.append(x)
         y_list = self.stage2(x_list)
 
+        # print('2')
+        # for t in y_list:
+        #     print(torch.isinf(t['x']).any())
+        #     print(torch.isnan(t['x']).any())
 
         x_list = []
         for i in range(self.stage3_cfg["num_branches"]):
@@ -1177,7 +1203,10 @@ class MyHRPVT(nn.Module):
                 x_list.append(y_list[i])
         y_list = self.stage3(x_list)
 
-
+        # print('3')
+        # for t in y_list:
+        #     print(torch.isinf(t['x']).any())
+        #     print(torch.isnan(t['x']).any())
 
         x_list = []
         for i in range(self.stage4_cfg["num_branches"]):
@@ -1187,6 +1216,15 @@ class MyHRPVT(nn.Module):
                 x_list.append(y_list[i])
         y_list = self.stage4(x_list)
 
+        # print('4x')
+        # for t in x_list:
+        #     print(torch.isinf(t['x']).any())
+        #     print(torch.isnan(t['x']).any())
+        #
+        # print('4y')
+        # for t in y_list:
+        #     print(torch.isinf(t['x']).any())
+        #     print(torch.isnan(t['x']).any())
 
         if self.return_map:
             y_list = self.tran2map(y_list)

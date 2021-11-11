@@ -227,10 +227,26 @@ tmp = model.state_dict()
 
 
 
-self.cpu()
-data = torch.load('NAN_debug.pth', map_location='cpu')
+data = torch.load('NAN_debug.pth', map_location='cuda:0')
 img = data['img']
-target = data['target']
-target_weight = data['target_weight']
-output = data['output']
+# target = data['target']
+# target_weight = data['target_weight']
+# output = data['output']
 state_dict = data['model']
+self.load_state_dict(state_dict)
+
+with torch.no_grad():
+    output1 = self.backbone(img)
+    if self.with_neck:
+        output = self.neck(output)
+    if self.with_keypoint:
+        output2 = self.keypoint_head(output1)
+
+
+for t in x_list:
+    print(torch.isinf(t['x']).any())
+    print(torch.isnan(t['x']).any())
+
+for t in y_list:
+    print(torch.isinf(t['x']).any())
+    print(torch.isnan(t['x']).any())
