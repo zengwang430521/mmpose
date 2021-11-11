@@ -50,6 +50,7 @@ model = dict(
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         in_channels=512,
+        in_index=3,
         out_channels=channel_cfg['num_output_channels'],
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
