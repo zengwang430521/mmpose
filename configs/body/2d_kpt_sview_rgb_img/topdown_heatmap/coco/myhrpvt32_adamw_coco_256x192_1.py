@@ -4,8 +4,8 @@ load_from = None
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
-checkpoint_config = dict(interval=5)
-evaluation = dict(interval=1, metric='mAP', save_best='AP')
+checkpoint_config = dict(interval=1)
+evaluation = dict(interval=5, metric='mAP', save_best='AP')
 
 # optimizer = dict(
 #     type='Adam',
@@ -49,14 +49,13 @@ channel_cfg = dict(
     ])
 
 # model settings
-# norm_cfg = dict(type='SyncBN', requires_grad=True)
-norm_cfg = dict(type='BN', requires_grad=True)
+norm_cfg = dict(type='SyncBN', requires_grad=True)
+# norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
     backbone=dict(
         type='MyHRPVT',
-        pretrained=None,
-        # pretrained='models/myhrpvt_32_46.pth',
+        pretrained='models/myhrpvt_32_46.pth',
         in_channels=3,
         norm_cfg=norm_cfg,
         return_map=True,
@@ -119,6 +118,7 @@ model = dict(
         shift_heatmap=True,
         modulate_kernel=11))
 
+
 data_cfg = dict(
     image_size=[192, 256],
     heatmap_size=[48, 64],
@@ -132,7 +132,8 @@ data_cfg = dict(
     vis_thr=0.2,
     use_gt_bbox=False,
     det_bbox_thr=0.0,
-    bbox_file='tests/data/coco/test_coco_det_AP_H_56.json',
+    bbox_file='data/coco/person_detection_results/'
+    'COCO_val2017_detections_AP_H_56_person.json',
 )
 
 train_pipeline = [
@@ -181,28 +182,28 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=0,
-    val_dataloader=dict(samples_per_gpu=2),
-    test_dataloader=dict(samples_per_gpu=2),
+    samples_per_gpu=32,
+    workers_per_gpu=2,
+    val_dataloader=dict(samples_per_gpu=32),
+    test_dataloader=dict(samples_per_gpu=32),
     train=dict(
         type='TopDownCocoDataset',
-        ann_file=f'tests/data/coco/test_coco.json',
-        img_prefix=f'tests/data/coco/',
+        ann_file=f'{data_root}/annotations/person_keypoints_train2017.json',
+        img_prefix=f'{data_root}/train2017/',
         data_cfg=data_cfg,
         pipeline=train_pipeline,
         dataset_info={{_base_.dataset_info}}),
     val=dict(
         type='TopDownCocoDataset',
-        ann_file=f'tests/data/coco/test_coco.json',
-        img_prefix=f'tests/data/coco/',
+        ann_file=f'{data_root}/annotations/person_keypoints_val2017.json',
+        img_prefix=f'{data_root}/val2017/',
         data_cfg=data_cfg,
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),
     test=dict(
         type='TopDownCocoDataset',
-        ann_file=f'tests/data/coco/test_coco.json',
-        img_prefix=f'tests/data/coco/',
+        ann_file=f'{data_root}/annotations/person_keypoints_val2017.json',
+        img_prefix=f'{data_root}/val2017/',
         data_cfg=data_cfg,
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),
