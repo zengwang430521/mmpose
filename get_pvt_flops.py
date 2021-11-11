@@ -13,16 +13,10 @@ except ImportError:
 
 
 
-
-
-if len(args.shape) == 1:
-    input_shape = (3, args.shape[0], args.shape[0])
-elif len(args.shape) == 2:
-    input_shape = (3, ) + tuple(args.shape)
-else:
-    raise ValueError('invalid input shape')
-
-cfg = Config.fromfile(args.config)
+W, H = 192, 256
+input_shape = (3, W, H)
+config = 'configs/pvt3h2_den0f_att_adamw.py'
+cfg = Config.fromfile(config)
 model = build_posenet(cfg.model)
 model = model.cuda()
 model.eval()
@@ -34,7 +28,18 @@ else:
         'FLOPs counter is currently not currently supported with {}'.
         format(model.__class__.__name__))
 
-flops, params = get_model_complexity_info(model, input_shape)
+flops, params = get_model_complexity_info(model, input_shape, as_strings=False)
+
+flops += model.backbone.get_extra_flops(H, W)
+if model.has_neck():
+    flops += model.neck.get_extra_flops(H//4, W//4)
+
+
+
+
+
+
+
 split_line = '=' * 30
 print(f'{split_line}\nInput shape: {input_shape}\n'
       f'Flops: {flops}\nParams: {params}\n{split_line}')

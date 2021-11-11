@@ -4106,3 +4106,29 @@ def downup_sparse_new(target_dict, source_dict):
     x_out = x_out.reshape(B, T, C)
     return x_out
 
+
+def DPC_flops(N, C):
+    flops = 0
+
+    flops += N * N * C  # dist_matrix
+    flops += N * 5  # density
+    flops += N * N  # dist
+    flops += N * C  # gather
+    return flops
+
+
+def map2token_flops(N0, C):
+    return N0 * (2 + 1 + 1 + C)
+
+
+def token2map_flops(N0, C):
+    return N0 * (2 + 1 + 1 + C)
+
+
+def downup_flops(N0, C):
+    return N0 * (2 + 1 + 1 + C)
+
+
+# flops for attention
+def sra_flops(h, w, r, dim):
+    return 2 * h * w * (h // r) * (w // r) * dim

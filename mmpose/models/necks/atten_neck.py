@@ -11,6 +11,8 @@ from ..backbones.pvt_v2 import trunc_normal_, DropPath
 from ..backbones.pvt_v2_3h2_density import MyMlp, token2map_agg_mat
 import math
 from ..backbones.pvt_v2 import load_checkpoint, get_root_logger
+from ..backbones.utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
+
 
 class MergeAttention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1, linear=False):
@@ -166,6 +168,7 @@ class AttenNeck(BaseModule):
         self.norm_cfg = norm_cfg
         self.conv_cfg = conv_cfg
         self.act_cfg = act_cfg
+        self.mlp_ratios = mlp_ratios
 
         self.start_level = start_level
         if end_level == -1:
@@ -254,3 +257,17 @@ class AttenNeck(BaseModule):
             input_dicts[0]['map_size'],
         )
         return out
+
+    def get_extra_flops(self, h, w):
+        flops = 0
+        C = self.out_channels
+        N0 = h * w
+        N4 = N0 // 4 // 4 // 4
+        for i in range(3):
+            # down up
+            flops += downup_flops(N0, C)
+            # tokenmap
+            flops += token2map_flops(N0, C) + token2map_flops(N0, C * self.mlp_ratios[i]) + map2token_flops(N0, C * self.mlp_ratios[i])
+            # attn
+            flops += 2 * N0 * N4 * C
+        return flops

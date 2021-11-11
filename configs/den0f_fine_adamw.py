@@ -19,13 +19,22 @@ optimizer = dict(
 
 optimizer_config = dict(grad_clip=None)
 # learning policy
+# lr_config = dict(
+#     policy='step',
+#     warmup='linear',
+#     warmup_iters=500,
+#     warmup_ratio=0.001,
+#     step=[170, 200])
+# total_epochs = 210
 lr_config = dict(
     policy='step',
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=0.001,
-    step=[170, 200])
-total_epochs = 210
+    step=[45, 60])
+total_epochs = 70
+
+
 log_config = dict(
     interval=50,
     hooks=[
@@ -46,7 +55,7 @@ fp16 = dict(loss_scale='dynamic')
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0f_small', pretrained='models/3h2_density0_small.pth',),
+    backbone=dict(type='mypvt3h2_density0f_small', pretrained='work_dirs/den0f_att_16/epoch_210.pth',),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         in_channels=512,
