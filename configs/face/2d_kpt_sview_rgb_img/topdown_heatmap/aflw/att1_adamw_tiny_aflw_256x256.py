@@ -12,9 +12,9 @@ optimizer = dict(
     lr=2e-3,
     betas=(0.9, 0.999),
     weight_decay=0.01,
-    paramwise_cfg=dict(
-        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
-    )
+    # paramwise_cfg=dict(
+    #     custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
+    # )
 )
 optimizer_config = dict(grad_clip=None)
 # learning policy
@@ -54,7 +54,6 @@ model = dict(
         num_heads=[4, 4, 4, 4],
         mlp_ratios=[2, 2, 2, 2],
     ),
-
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         in_channels=128,
