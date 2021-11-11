@@ -11,4 +11,5 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[87,100-103,116-119] \
 
 
 python -m torch.distributed.launch --nproc_per_node=8 --master_port=29876 \
-    tools/train.py configs/ablation_att.py --launcher pytorch --work-dir=work_dirs/ablation_att
+    tools/train.py configs/ablation_att.py --launcher=pytorch --work-dir=work_dirs/ablation_att
+
