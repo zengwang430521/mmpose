@@ -1168,8 +1168,6 @@ class MyHRPVT(nn.Module):
                 x_list.append(x)
         y_list = self.stage2(x_list)
 
-        if torch.isnan(x).any():
-            print('x is NAN after stage 2 !')
 
         x_list = []
         for i in range(self.stage3_cfg["num_branches"]):
