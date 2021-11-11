@@ -123,6 +123,7 @@ class MyBlock(nn.Module):
             'map_size': (H, W),
             'conf_source': None,
         }
+
         return out_dict
 
 
@@ -1157,8 +1158,7 @@ class MyHRPVT(nn.Module):
         x = self.layer1(x)
         x = self.init_dict(x)
 
-        if torch.isnan(x).any():
-            print('x is NAN after stage 1 !')
+
 
         x_list = []
         for i in range(self.stage2_cfg["num_branches"]):
@@ -1179,8 +1179,7 @@ class MyHRPVT(nn.Module):
                 x_list.append(y_list[i])
         y_list = self.stage3(x_list)
 
-        if torch.isnan(x).any():
-            print('x is NAN after stage 3 !')
+
 
         x_list = []
         for i in range(self.stage4_cfg["num_branches"]):
@@ -1190,11 +1189,10 @@ class MyHRPVT(nn.Module):
                 x_list.append(y_list[i])
         y_list = self.stage4(x_list)
 
-        if torch.isnan(x).any():
-            print('x is NAN after stage 4 !')
 
         if self.return_map:
             y_list = self.tran2map(y_list)
+
 
         return y_list
 
