@@ -18,7 +18,7 @@ except ImportError:
     warnings.warn('auto_fp16 from mmpose will be deprecated from v0.15.0'
                   'Please install mmcv>=1.1.4')
     from mmpose.core import auto_fp16
-
+import torch
 
 @POSENETS.register_module()
 class TopDown(BasePose):
@@ -156,6 +156,19 @@ class TopDown(BasePose):
             keypoint_accuracy = self.keypoint_head.get_accuracy(
                 output, target, target_weight)
             losses.update(keypoint_accuracy)
+
+        for loss in losses:
+            if torch.isnan(loss).any():
+                out_file = 'NAN_debug.pth'
+                out_dict = {
+                    'img': img,
+                    'target': target,
+                    'target_weight': target_weight,
+                    'output': output,
+                    'model': self.state_dict()
+                }
+                torch.save(out_dict, out_file)
+                print('loss is NAN!')
 
         return losses
 

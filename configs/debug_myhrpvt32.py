@@ -60,27 +60,27 @@ model = dict(
                 num_branches=2,
                 remerge=(False, False),
                 block='MYBLOCK',
-                num_blocks=(2, 2),
+                num_blocks=(1, 1),
                 num_channels=(32, 64),
                 num_heads=[1, 2],
                 num_mlp_ratios=[4, 4],
                 sr_ratios=[8, 4]),
             stage3=dict(
-                num_modules=4,
+                num_modules=1,
                 remerge=(False, False, False, False),
                 num_branches=3,
                 block='MYBLOCK',
-                num_blocks=(2, 2, 2),
+                num_blocks=(1, 1, 1),
                 num_channels=(32, 64, 128),
                 num_heads = [1, 2, 4],
                 num_mlp_ratios = [4, 4, 4],
                 sr_ratios=[8, 4, 2]),
             stage4=dict(
-                num_modules=2,
+                num_modules=1,
                 remerge=(False, False),
                 num_branches=4,
                 block='MYBLOCK',
-                num_blocks=(2, 2, 2, 2),
+                num_blocks=(1, 1, 1, 1),
                 num_channels=(32, 64, 128, 256),
                 num_heads = [1, 2, 4, 8],
                 num_mlp_ratios = [4, 4, 4, 4],
@@ -164,7 +164,7 @@ test_pipeline = val_pipeline
 data_root = 'data/coco'
 data = dict(
     samples_per_gpu=2,
-    workers_per_gpu=0,
+    workers_per_gpu=2,
     val_dataloader=dict(samples_per_gpu=2),
     test_dataloader=dict(samples_per_gpu=2),
     train=dict(
@@ -172,7 +172,7 @@ data = dict(
         ann_file=f'tests/data/coco/test_coco_wholebody.json',
         img_prefix=f'tests/data/coco/',
         data_cfg=data_cfg,
-        pipeline=val_pipeline,
+        pipeline=train_pipeline,
         dataset_info={{_base_.dataset_info}}),
     val=dict(
         type='TopDownCocoWholeBodyDataset',
@@ -191,4 +191,4 @@ data = dict(
 )
 
 # fp16 settings
-fp16 = dict(loss_scale='dynamic')
+# fp16 = dict(loss_scale='dynamic')
