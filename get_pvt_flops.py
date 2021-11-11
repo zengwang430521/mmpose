@@ -6,7 +6,7 @@ from mmcv import Config
 from mmpose.models import build_posenet
 
 try:
-    from mmcv.cnn import get_model_complexity_info
+    from mmcv.cnn.utils.flops_counter import get_model_complexity_info, flops_to_string, params_to_string
 except ImportError:
     raise ImportError('Please upgrade mmcv to >0.6.2')
 
@@ -30,13 +30,16 @@ else:
 
 flops, params = get_model_complexity_info(model, input_shape, as_strings=False)
 
-flops += model.backbone.get_extra_flops(H, W)
-if model.has_neck():
-    flops += model.neck.get_extra_flops(H//4, W//4)
+back = model.backbone.get_extra_flops(H, W)
+flops += back
+if model.with_neck:
+    neck = model.neck.get_extra_flops(H//4, W//4)
+    flops += neck
 
 
 
-
+flops = flops_to_string(flops)
+params = params_to_string(params)
 
 
 

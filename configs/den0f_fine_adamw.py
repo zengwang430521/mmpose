@@ -9,7 +9,7 @@ evaluation = dict(interval=10, metric='mAP', save_best='AP')
 
 optimizer = dict(
     type='AdamW',
-    lr=5e-4,
+    lr=1e-4,
     betas=(0.9, 0.999),
     weight_decay=0.01,
     paramwise_cfg=dict(
@@ -55,7 +55,7 @@ fp16 = dict(loss_scale='dynamic')
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0f_small', pretrained='work_dirs/den0f_att_16/epoch_210.pth',),
+    backbone=dict(type='mypvt3h2_density0f_small', pretrained='work_dirs/den0f_att_16/epoch_210_backbone.pth',),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         in_channels=512,

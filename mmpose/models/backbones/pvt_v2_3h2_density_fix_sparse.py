@@ -486,26 +486,29 @@ class MyPVT(nn.Module):
 
     def get_extra_flops(self, H, W):
         flops = 0
-        h, w = (H // self.patch_embed1.stride), (W // self.patch_embed1.stride)
+        h, w = H // 4, W // 4
         N0 = h * w
         N = N0
         for stage in range(4):
             depth, sr, dim = self.depths[stage], self.sr_ratios[stage], self.embed_dims[stage]
             mlp_r = self.mlp_ratios[stage]
             dim_up = self.embed_dims[stage-1]
-            N_up = N
-            N = N_up // self.sample_ratio
+
+            if stage > 0:
+                # cluster flops
+                flops += DPC_flops(N, dim)
+                flops += map2token_flops(N0, dim_up) + token2map_flops(N0, dim)
+                N = N * self.sample_ratio
+                h, w = h // 2, w // 2
 
             # attn flops
             flops += sra_flops(h, w, sr, dim) * depth
 
             if stage > 0:
-                # cluster flops
-                flops += DPC_flops(N_up, dim)
-                flops += map2token_flops(N0, dim_up) + token2map_flops(N0, dim)
-
                 # map, token flops
                 flops += (map2token_flops(N0, dim) + map2token_flops(N0, dim * mlp_r) + token2map_flops(N0, dim * mlp_r)) * depth
+
+
         return flops
 
 
