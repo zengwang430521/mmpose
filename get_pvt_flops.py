@@ -16,6 +16,7 @@ except ImportError:
 W, H = 192, 256
 input_shape = (3, W, H)
 config = 'configs/pvt3h2_den0f_att_adamw.py'
+# config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/den0f_small_adamw_coco_256x192.py'
 cfg = Config.fromfile(config)
 model = build_posenet(cfg.model)
 model = model.cuda()

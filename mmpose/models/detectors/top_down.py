@@ -142,23 +142,23 @@ class TopDown(BasePose):
     def forward_train(self, img, target, target_weight, img_metas, **kwargs):
         """Defines the computation performed at every call when training."""
 
-        # print('FOR DEBUG ONLY!')
-        # for i in range(100):
-        #     print('FOR DEBUG ONLY!')
-        #     data = torch.load('NAN_debug.pth', map_location='cuda:0')
-        #     img = data['img']
-        #     # target = data['target']
-        #     # target_weight = data['target_weight']
-        #     # output = data['output']
-        #     state_dict = data['model']
-        #     self.load_state_dict(state_dict)
-        #
-        #     with torch.no_grad():
-        #         output1 = self.backbone(img)
-        #         print(output1[0].min())
-        #         # output2 = self.keypoint_head(output1)
-        #         # print(output2.min())
-        #         t=0
+        print('FOR DEBUG ONLY!')
+        for i in range(100):
+            print('FOR DEBUG ONLY!')
+            data = torch.load('NAN_debug.pth', map_location='cpu')
+            img = data['img'].cuda()
+            # target = data['target']
+            # target_weight = data['target_weight']
+            # output = data['output']
+            state_dict = data['model']
+            self.load_state_dict(state_dict)
+
+            with torch.no_grad():
+                output1 = self.backbone(img)
+                print(output1[0].min())
+                # output2 = self.keypoint_head(output1)
+                # print(output2.min())
+                t=0
 
 
         output = self.backbone(img)

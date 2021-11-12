@@ -76,8 +76,11 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p pat_earth \
     --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=2 --kill-on-bad-exit=1 \
-    --job-name=eval python -u tools/test.py  configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py\
-    work_dirs/wflw_att1/epoch_60.ptg --launcher="slurm"
+    --job-name=eval python -u tools/test.py  configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_blur_256x256.py  \
+    work_dirs/wflw_att1/epoch_60.pth --launcher="slurm"
+
+
+
 
     --job-name=eval python -u tools/test.py  configs/debug_den0fs_att_adamw.py work_dirs/den0f_att_16/epoch_210.pth --launcher="slurm"
 

@@ -1,11 +1,11 @@
-_base_ = ['../../../../_base_/datasets/coco.py']
+_base_ = ['_base_/datasets/coco_wholebody.py']
 log_level = 'INFO'
 load_from = None
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
-checkpoint_config = dict(interval=10)
-evaluation = dict(interval=10, metric='mAP', save_best='AP')
+checkpoint_config = dict(interval=1)
+evaluation = dict(interval=5, metric='mAP', save_best='AP')
 
 optimizer = dict(
     type='Adam',
@@ -15,9 +15,10 @@ optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
     policy='step',
-    warmup='linear',
-    warmup_iters=500,
-    warmup_ratio=0.001,
+    warmup=None,
+    # warmup='linear',
+    # warmup_iters=500,
+    # warmup_ratio=0.001,
     step=[170, 200])
 total_epochs = 210
 log_config = dict(
@@ -28,25 +29,37 @@ log_config = dict(
     ])
 
 channel_cfg = dict(
-    num_output_channels=17,
-    dataset_joints=17,
+    num_output_channels=133,
+    dataset_joints=133,
     dataset_channel=[
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        list(range(133)),
     ],
-    inference_channel=[
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-    ])
+    inference_channel=list(range(133)))
 
+
+# fp16 settings
+fp16 = dict(loss_scale='dynamic')
 # model settings
+norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    # pretrained='https://download.openmmlab.com/mmpose/'
-    # 'pretrain_models/scnet50-7ef0a199.pth',
-    backbone=dict(type='SCNet', depth=50),
+    backbone=dict(type='mypvt3h2_density0fs_large', pretrained=None),
+    neck=dict(
+        type='AttenNeckS',
+        in_channels=[64, 128, 320, 512],
+        out_channels=256,
+        start_level=0,
+        # add_extra_convs='on_input',
+        num_outs=1,
+        num_heads=[4, 4, 4, 4],
+        mlp_ratios=[4, 4, 4, 4],
+    ),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        in_channels=2048,
+        in_channels=256,
         out_channels=channel_cfg['num_output_channels'],
+        num_deconv_layers=0,
+        extra=dict(final_conv_kernel=1, ),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
     test_cfg=dict(
@@ -55,9 +68,12 @@ model = dict(
         shift_heatmap=True,
         modulate_kernel=11))
 
+
+
+
 data_cfg = dict(
-    image_size=[192, 256],
-    heatmap_size=[48, 64],
+    image_size=[288, 384],
+    heatmap_size=[72, 96],
     num_output_channels=channel_cfg['num_output_channels'],
     num_joints=channel_cfg['dataset_joints'],
     dataset_channel=channel_cfg['dataset_channel'],
@@ -68,8 +84,8 @@ data_cfg = dict(
     vis_thr=0.2,
     use_gt_bbox=False,
     det_bbox_thr=0.0,
-    bbox_file='data/coco/person_detection_results/'
-    'COCO_val2017_detections_AP_H_56_person.json',
+    bbox_file='tests/data/coco/test_coco_det_AP_H_56.json',
+
 )
 
 train_pipeline = [
@@ -87,7 +103,7 @@ train_pipeline = [
         type='NormalizeTensor',
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]),
-    dict(type='TopDownGenerateTarget', sigma=2),
+    dict(type='TopDownGenerateTarget', sigma=3),
     dict(
         type='Collect',
         keys=['img', 'target', 'target_weight'],
@@ -118,28 +134,28 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=64,
+    samples_per_gpu=8,
     workers_per_gpu=2,
-    val_dataloader=dict(samples_per_gpu=32),
-    test_dataloader=dict(samples_per_gpu=32),
+    val_dataloader=dict(samples_per_gpu=8),
+    test_dataloader=dict(samples_per_gpu=8),
     train=dict(
-        type='TopDownCocoDataset',
-        ann_file=f'{data_root}/annotations/person_keypoints_train2017.json',
-        img_prefix=f'{data_root}/train2017/',
+        type='TopDownCocoWholeBodyDataset',
+        ann_file=f'tests/data/coco/test_coco_wholebody.json',
+        img_prefix=f'tests/data/coco/',
         data_cfg=data_cfg,
         pipeline=train_pipeline,
         dataset_info={{_base_.dataset_info}}),
     val=dict(
-        type='TopDownCocoDataset',
-        ann_file=f'{data_root}/annotations/person_keypoints_val2017.json',
-        img_prefix=f'{data_root}/val2017/',
+        type='TopDownCocoWholeBodyDataset',
+        ann_file='tests/data/coco/test_coco_wholebody.json',
+        img_prefix='tests/data/coco/',
         data_cfg=data_cfg,
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),
     test=dict(
-        type='TopDownCocoDataset',
-        ann_file=f'{data_root}/annotations/person_keypoints_val2017.json',
-        img_prefix=f'{data_root}/val2017/',
+        type='TopDownCocoWholeBodyDataset',
+        ann_file=f'tests/data/coco/test_coco_wholebody.json',
+        img_prefix=f'tests/data/coco/',
         data_cfg=data_cfg,
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),

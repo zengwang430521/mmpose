@@ -17,9 +17,13 @@ from .utils_mine import (
     # farthest_point_sample
 )
 
+
 from .utils_mine import token_cluster_density_fixbug as token_cluster_density
-from .utils_mine import token2map_agg_sparse_new as token2map_agg_mat
-from .utils_mine import map2token_agg_sparse_nearest_new as map2token_agg_fast_nearest
+from .utils_mine import token2map_agg_sparse as token2map_agg_mat
+from .utils_mine import map2token_agg_sparse_nearest as map2token_agg_fast_nearest
+# from .utils_mine import token_cluster_density_fixbug as token_cluster_density
+# from .utils_mine import token2map_agg_sparse_new as token2map_agg_mat
+# from .utils_mine import map2token_agg_sparse_nearest_new as map2token_agg_fast_nearest
 from ..builder import BACKBONES
 from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
 vis = False

@@ -175,7 +175,8 @@ from mmcv import Config, DictAction
 from mmpose.models import build_posenet
 
 
-cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/debug_myhrpvt32_adamw_coco_256x192.py'
+# cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/debug_myhrpvt32_adamw_coco_256x192.py'
+cfg_file = 'configs/debug_den0fs_large_fine0_384x288.py'
 cfg = Config.fromfile(cfg_file)
 model = cfg.model
 
@@ -184,7 +185,7 @@ model = cfg.model
 import matplotlib.pyplot as plt
 data = torch.load('NAN_debug.pth', map_location='cuda:0')
 img = data['img']
-img = img[24:26]
+# img = img[24:26]
 target = data['target']
 target_weight = data['target_weight']
 output = data['output']
@@ -203,9 +204,10 @@ model = build_posenet(model) #.cuda().half()
 t = model.load_state_dict(state_dict)
 
 
-img = img.float().cpu()
-model = model.float().cpu()
-output = model.backbone(img)
+img = img.float()
+model = model.cuda()
+model.eval()
+output = model.backbone(img[4:6])
 output = model.neck(output)
 output = model.keypoint_head(output)
 
