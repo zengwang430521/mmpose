@@ -8,8 +8,10 @@ import torch
 # torch.save(data_dict, dst)
 
 
-src = 'work_dirs/den0f_att_16/epoch_210.pth'
-tar = 'work_dirs/den0f_att_16/epoch_210_backbone.pth'
+# src = 'work_dirs/den0f_att_16/epoch_210.pth'
+# tar = 'work_dirs/den0f_att_16/epoch_210_backbone.pth'
+src = 'work_dirs/pvtv2/epoch_210.pth'
+tar = 'work_dirs/pvtv2/epoch_210_backbone.pth'
 src_dict = torch.load(src, map_location='cpu')
 src_dict = src_dict['state_dict']
 tar_dict = {}
