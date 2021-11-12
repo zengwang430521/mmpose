@@ -41,8 +41,17 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --job-name=aflw_att1n python -u tools/train.py configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/aflw/att1n_den0f_tiny_aflw_256x256.py \
     --work-dir=work_dirs/aflw_att1n --launcher="slurm" --resume=work_dirs/aflw_att1n/latest.pth
 
+srun -p pat_earth \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=eval python -u tools/test.py  configs/hrtw32_pre.py work_dirs/hrtw32_pre/latest.pth --launcher="slurm"
+
+    --job-name=eval python -u tools/test.py  configs/pvtv2_coco_wholebody_256x192.py  work_dirs/pvtv2/latest.pth --launcher="slurm"
+
+    --job-name=eval python -u tools/test.py  configs/pvt3h2_den0f_att_adamw.py  work_dirs/den0f_att_16/latest.pth --launcher="slurm"
+
     --job-name=eval python -u tools/test.py  configs/den0fs_large_fine0_384x288.py work_dirs/den0fs_large_384/latest.pth --launcher="slurm"
+
+
 
 srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
