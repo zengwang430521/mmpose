@@ -5,15 +5,36 @@ from mmcv.cnn import ConvModule
 from mmcv.runner import BaseModule, auto_fp16
 
 from ..builder import NECKS
-from ..backbones.utils_mine import token2map_agg_mat, downup
+# from ..backbones.utils_mine import token2map_agg_mat, downup
 import numpy as np
 from ..backbones.pvt_v2 import trunc_normal_, DropPath, Mlp
-from ..backbones.pvt_v2_3h2_density import MyMlp, token2map_agg_mat
+# from ..backbones.pvt_v2_3h2_density import MyMlp, token2map_agg_mat
 import math
 from ..backbones.pvt_v2 import load_checkpoint, get_root_logger
-from ..backbones.utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
+# from ..backbones.utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
 
 '''neck for ablation on pvt2'''
+
+
+def downup(target_dict, source_dict):
+
+    x = source_dict['x']
+
+    Ht, Wt = target_dict['map_size']
+    H, W = source_dict['map_size']
+    if Ht == H and Wt == W:
+        return x
+
+    B, N, C = x.shape
+    x = x.reshape(B, H, W, C).permute(0, 3, 1, 2)
+    if Ht > H:
+        x = F.interpolate(x, [Ht, Wt], mode='nearest')
+    elif Ht < H:
+        x = F.adaptive_avg_pool2d(x, [Ht, Wt])
+    else:
+        pass
+    x = x.flatten(2).permute(0, 2, 1)
+    return x
 
 
 class MergeAttention(nn.Module):
@@ -60,14 +81,7 @@ class MergeAttention(nn.Module):
         x = tar_dict['x']
         if src_dict is None:
             src_dict = tar_dict
-
-        x_source = src_dict['x']
-        B, N, C = x_source
-        H, W = src_dict['map_size']
-        gather_size = gather_dict['map_size']
-
-        x_source = x_source.reshape(B, H, W, C).permute(0, 3, 1, 2)
-        x_source = F.adaptive_avg_pool2d(x_source, gather_size).flatten(1).permute(0, 2, 1)
+        x_source = downup(gather_dict, src_dict)
 
         B, N, C = x.shape
         q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
@@ -234,7 +248,7 @@ class AttenNeck0(BaseModule):
         for i, lateral_conv in enumerate(self.lateral_convs):
             tmp = inputs[i + self.start_level]
             input_dicts.append(
-                {'x': lateral_conv(tmp),
+                {'x': lateral_conv(tmp).flatten(2).permute(0, 2, 1),
                  'map_size': [tmp.shape[2], tmp.shape[3]],
                  })
 
@@ -244,11 +258,13 @@ class AttenNeck0(BaseModule):
 
         # merge from high levle to low level
         for i in range(len(input_dicts) - 2, -1, -1):
-            input_dicts[i]['x'] = input_dicts[i]['x'] + \
-                                  F.interpolate(input_dicts[i+1]['x'], size=input_dicts[i]['map_size'], model='nearest')
+            input_dicts[i]['x'] = input_dicts[i]['x'] + downup(input_dicts[i], input_dicts[i+1])
             input_dicts[i]['x'] = self.merge_blocks[i](input_dicts[i], gather_dict, input_dicts[i])
 
         out = input_dicts[0]['x']
+        H, W = input_dicts[0]['map_size']
+        B, N, C = out.shape
+        out = out.reshape(B, H, W, C).permute(0, 3, 1, 2)
         return out
 
     def get_extra_flops(self, h, w):

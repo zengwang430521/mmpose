@@ -55,7 +55,8 @@ fp16 = dict(loss_scale='dynamic')
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0f_small', pretrained='work_dirs/pvtv2/epoch_210_backbone.pth',),
+    backbone=dict(type='pvt_v2_b2', pretrained=None),
+    # backbone=dict(type='pvt_v2_b2',pretrained='work_dirs/pvtv2/epoch_210_backbone.pth'),
     neck=dict(
         type='AttenNeck0',
         in_channels=[64, 128, 320, 512],

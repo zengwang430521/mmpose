@@ -9,6 +9,7 @@ from .atten_neck2 import AttenNeck2
 from .atten_neck3 import AttenNeck3
 from .atten_neck4 import AttenNeck4
 from .atten_neck5 import AttenNeck5
+from .atten_neck0 import AttenNeck0
 from .hrneck import HRNeck
 
 __all__ = ['GlobalAveragePooling', 'UpSampleNeck', 'TokenInterNeck1', 'TokenInterNeck2',

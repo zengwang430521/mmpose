@@ -176,9 +176,13 @@ from mmpose.models import build_posenet
 
 
 # cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/debug_myhrpvt32_adamw_coco_256x192.py'
-cfg_file = 'configs/debug_den0fs_large_fine0_384x288.py'
+# cfg_file = 'configs/debug_den0fs_large_fine0_384x288.py'
+cfg_file = 'configs/pvtv2_att_fine_adamw.py'
 cfg = Config.fromfile(cfg_file)
 model = cfg.model
+model = build_posenet(model) #.cuda().half()
+input = torch.zeros(2,3, 256, 192)
+out = model(input)
 
 
 
