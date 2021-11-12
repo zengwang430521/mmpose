@@ -132,7 +132,9 @@ data = dict(
         dataset_info={{_base_.dataset_info}}),
     test=dict(
         type='FaceWFLWDataset',
-        ann_file=f'{data_root}/annotations/face_landmarks_wflw_test.json',
+        # ann_file=f'{data_root}/annotations/face_landmarks_wflw_test.json',
+        ann_file=f'{data_root}/annotations/face_landmarks_wflw_test_largepose.json',
+
         img_prefix=f'{data_root}/images/',
         data_cfg=data_cfg,
         pipeline=val_pipeline,
