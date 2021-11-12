@@ -25,6 +25,8 @@ def parse_args():
     parser.add_argument(
         '--resume-from', help='the checkpoint file to resume from')
     parser.add_argument(
+        '--finetune-from', help='the checkpoint file to finetune from')
+    parser.add_argument(
         '--no-validate',
         action='store_true',
         help='whether not to evaluate the checkpoint during training')

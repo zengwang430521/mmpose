@@ -11,6 +11,9 @@ srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p pat_earth \
     --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=fine_att python -u tools/train.py  configs/den0f_att_fine2_adamw.py \
+    --work-dir=work_dirs/den0f_att_fine2 --launcher="slurm" --resume=work_dirs/den0f_att_16/latest.pth
+
     --job-name=myhrpvt32 python -u tools/train.py  configs/den0f_fine_adamw.py \
     --work-dir=work_dirs/den0_simple_whole --launcher="slurm" --resume=work_dirs/den0_simple_whole/latest.pth
 
