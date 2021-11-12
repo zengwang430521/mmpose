@@ -11,6 +11,7 @@ import re
 import logging
 
 from mmcv.utils import get_logger
+from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
 
 
 def load_checkpoint(model,
@@ -394,6 +395,13 @@ class PyramidVisionTransformerV2(nn.Module):
         self.num_classes = num_classes
         self.depths = depths
         self.num_stages = num_stages
+        self.grid_stride = sr_ratios[0]
+        self.embed_dims = embed_dims
+        self.depths = depths
+        self.sample_ratio = 0.25
+        self.sr_ratios = sr_ratios
+        self.mlp_ratios = mlp_ratios
+
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
         cur = 0
@@ -478,6 +486,33 @@ class PyramidVisionTransformerV2(nn.Module):
         x = self.forward_features(x)
         # x = self.head(x)
         return x
+
+    def get_extra_flops(self, H, W):
+        flops = 0
+        h, w = H // 4, W // 4
+        N0 = h * w
+        N = N0
+        for stage in range(4):
+            depth, sr, dim = self.depths[stage], self.sr_ratios[stage], self.embed_dims[stage]
+            mlp_r = self.mlp_ratios[stage]
+            dim_up = self.embed_dims[stage-1]
+
+            if stage > 0:
+                # cluster flops
+                # flops += DPC_flops(N, dim)
+                # flops += map2token_flops(N0, dim_up) + token2map_flops(N0, dim)
+                # N = N * self.sample_ratio
+                h, w = h // 2, w // 2
+
+            # attn flops
+            flops += sra_flops(h, w, sr, dim) * depth
+
+            # if stage > 0:
+            #     # map, token flops
+            #     flops += (map2token_flops(N0, dim) + map2token_flops(N0, dim * mlp_r) + token2map_flops(N0, dim * mlp_r)) * depth
+
+
+        return flops
 
 
 class DWConv(nn.Module):

@@ -595,11 +595,11 @@ dataset_info = dict(
             swap='face-65'),
         91:
         dict(
-            name='left_wrist',
+            name='left_hand_root',
             id=91,
             color=[255, 255, 255],
             type='',
-            swap='right_wrist'),
+            swap='right_hand_root'),
         92:
         dict(
             name='left_thumb1',
@@ -742,11 +742,11 @@ dataset_info = dict(
             swap='right_pinky_finger4'),
         112:
         dict(
-            name='right_wrist',
+            name='right_hand_root',
             id=112,
             color=[255, 255, 255],
             type='',
-            swap='left_wrist'),
+            swap='left_hand_root'),
         113:
         dict(
             name='right_thumb1',
@@ -1131,7 +1131,7 @@ dataset_info = dict(
     joint_weights=[1.] * 133,
 
     # 'https://github.com/jin-s13/COCO-WholeBody/blob/master/'
-    # 'evaluation/myeval_wholebody.py#L170'
+    # 'evaluation/myeval_wholebody.py#L175'
     sigmas=[
         0.026, 0.025, 0.025, 0.035, 0.035, 0.079, 0.079, 0.072, 0.072, 0.062,
         0.062, 0.107, 0.107, 0.087, 0.087, 0.089, 0.089, 0.068, 0.066, 0.066,
