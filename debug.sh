@@ -9,9 +9,12 @@ srun -p mm_human \
 
  srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
-srun -p pat_earth \
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
-    --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+srun -p pat_earth \
+    --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=ablation python -u tools/train.py  configs/pvtv2_att_fine_adamw.py \
+    --work-dir=work_dirs/pvt2_att_whole --launcher="slurm" --resume=work_dirs/pvt2_att_whole/latest.pth
+
     --job-name=fine_pvt python -u tools/train.py  configs/fine_pvt2.py \
     --work-dir=work_dirs/fine_pvt --launcher="slurm" --resume=work_dirs/pvtv2/latest.pth
 
@@ -28,7 +31,6 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
 
     --job-name=fine_att python -u tools/train.py  configs/den0f_att_fine2_adamw.py \
     --work-dir=work_dirs/den0f_att_fine2 --launcher="slurm" --resume=work_dirs/den0f_att_16/latest.pth
-
 
 
     --job-name=myhrpvt32 python -u tools/train.py  configs/den0f_fine_adamw.py \
