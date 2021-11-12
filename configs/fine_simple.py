@@ -8,15 +8,9 @@ checkpoint_config = dict(interval=10)
 evaluation = dict(interval=10, metric='mAP', save_best='AP')
 
 optimizer = dict(
-    type='AdamW',
-    lr=1e-4,
-    betas=(0.9, 0.999),
-    weight_decay=0.01,
-    paramwise_cfg=dict(
-        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
-    )
+    type='Adam',
+    lr=5e-4,
 )
-
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -24,9 +18,11 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=0.001,
-    step=[45, 60]
-)
-total_epochs = 70
+    step=[170, 200])
+total_epochs = 250
+
+
+
 log_config = dict(
     interval=50,
     hooks=[
@@ -43,26 +39,16 @@ channel_cfg = dict(
     inference_channel=list(range(133)))
 
 # model settings
+fp16 = dict(loss_scale='dynamic')
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0f_small', pretrained='models/3h2_density0_small.pth',),
-    neck=dict(
-        type='AttenNeck',
-        in_channels=[64, 128, 320, 512],
-        out_channels=256,
-        start_level=0,
-        # add_extra_convs='on_input',
-        num_outs=1,
-        num_heads=[4, 4, 4, 4],
-        mlp_ratios=[4, 4, 4, 4],
-    ),
+    backbone=dict(type='mypvt3h2_density0f_small', pretrained='work_dirs/den0f_att_16/epoch_210_backbone.pth',),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
-        in_channels=256,
+        in_channels=512,
+        in_index=3,
         out_channels=channel_cfg['num_output_channels'],
-        num_deconv_layers=0,
-        extra=dict(final_conv_kernel=1, ),
         loss_keypoint=dict(type='JointsMSELoss', use_target_weight=True)),
     train_cfg=dict(),
     test_cfg=dict(
