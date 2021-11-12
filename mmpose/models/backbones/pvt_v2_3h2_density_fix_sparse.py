@@ -174,7 +174,9 @@ class MyAttention(nn.Module):
         kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
         k, v = kv[0], kv[1]
 
-        attn = (q @ k.transpose(-2, -1)) * self.scale
+        # attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = (q * self.scale) @ k.transpose(-2, -1)
+
         if conf_source is not None:
             conf_source = conf_source.squeeze(-1)[:, None, None, :]
             attn = attn + conf_source
