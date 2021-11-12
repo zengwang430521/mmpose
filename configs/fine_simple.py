@@ -8,9 +8,15 @@ checkpoint_config = dict(interval=10)
 evaluation = dict(interval=10, metric='mAP', save_best='AP')
 
 optimizer = dict(
-    type='Adam',
+    type='AdamW',
     lr=5e-4,
+    betas=(0.9, 0.999),
+    weight_decay=0.1,
+    paramwise_cfg=dict(
+        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
+    )
 )
+
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -43,7 +49,7 @@ fp16 = dict(loss_scale='dynamic')
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0f_small', pretrained='work_dirs/den0f_att_16/epoch_210_backbone.pth',),
+    backbone=dict(type='mypvt3h2_density0f_small', pretrained=None), #pretrained='work_dirs/den0f_att_16/epoch_210_backbone.pth',),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         in_channels=512,
