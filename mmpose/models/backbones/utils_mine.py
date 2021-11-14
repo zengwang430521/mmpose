@@ -4132,3 +4132,189 @@ def downup_flops(N0, C):
 # flops for attention
 def sra_flops(h, w, r, dim):
     return 2 * h * w * (h // r) * (w // r) * dim
+
+
+
+
+
+def vis_tokens_and_grid():
+    color = torch.rand(1, 10000, 3)
+    color48 = index_points(color, farthest_point_sample(color, 48))
+
+    idx_dict={
+        # 18880: [0, 10, 11],
+        # 260:[0, 17, 2],
+        # 563: [0, 22, 8],
+        993:[17, 27, 13],
+        1272: [31, 37, 18],
+        1736:[0, 35, 14],
+        2405: [0, 12, 15],
+        2950:[0, 16, 14],
+        3590:[27, 43, 7],
+        4710:[0, 12, 21],
+    }
+
+    color_begin = torch.tensor([[0, 0, 1],
+                                [1, 0, 0],
+                                [0, 1, 0]]).float()
+    for count in [1272]*100:
+        fname = f'vis/{count}.pth'
+
+        color = torch.rand(1, 10000, 3)
+        color48 = index_points(color, farthest_point_sample(color, 48))
+
+        data = torch.load(fname)
+        x = data['x']
+        out = data['out']
+        B, _, h, w = x.shape
+        h, w = h // 4, w // 4
+        device = x.device
+        N0 = h * w
+
+        img = x[0].permute(1, 2, 0).detach().cpu()
+        ax = plt.subplot(1, 6, 1)
+        ax.clear()
+        ax.imshow(img)
+
+        fname = f'vis/{count}_img.png'
+        import cv2
+        cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
+
+
+        lv = len(out) - 1
+        ax = plt.subplot(1, 6, 6)
+        ax.clear()
+        loc_orig = out[lv][3]
+        idx_agg = out[lv][4]
+        agg_weight = out[lv][5]
+        x = out[lv][0]
+        B, N, _ = x.shape
+
+        tmp = torch.arange(N, device=x.device)[None, :, None].expand(B, N, 1).float()
+        H, W, _ = img.shape
+        idx_map, _ = token2map_agg_mat(tmp, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
+        idx_map = F.interpolate(idx_map, [H, W], mode='nearest')
+        idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
+        ax.imshow(idx_map)
+        # ax.imshow(idx_map / 48 * 0.5 + img * 0.5)
+        # tmp_map = img.clone()
+        # tmp_map[:, :, 2] = idx_map[:, :, 0] / 48
+        # ax.imshow(tmp_map)
+
+
+        pixel_num = x.new_zeros(N)
+        pixel_num.index_add_(0, idx_agg[0], x.new_ones(N0))
+        # idx_begin = pixel_num.argsort()
+
+        token_c = x.new_ones(B, N, 3) * 0.8
+        token_c[:, :, :] = color48.to(x.device)
+
+        idx_begin = idx_dict[count]
+        color_begin = torch.tensor([[0, 0, 1],
+                                    [1, 0, 0],
+                                    [0, 1, 0]]).float().to(x.device)
+        # token_c = x.new_zeros(B, N, 3)
+        # token_c = x.new_ones(B, N, 3) * 0.8
+        token_c[0, idx_begin] = color_begin
+
+
+        # color_begin = torch.tensor([[0, 0, 1],
+        #                             [1, 0, 0],
+        #                             [0, 1, 0]]).float().to(x.device)
+        # # token_c = x.new_zeros(B, N, 3)
+        # token_c[0, idx_begin] = color_begin
+        src_dict = {
+            'x': token_c,
+            'idx_agg': idx_agg,
+            'agg_weight': agg_weight,
+            'loc_orig': loc_orig
+        }
+
+        factors = [.2, .4, .6]
+        # for lv in range(len(out)-1, -1, -1):
+        for lv in range(len(out) - 1, len(out) - 2, -1):
+
+            loc_orig = out[lv][3]
+            idx_agg = out[lv][4]
+            agg_weight = out[lv][5]
+            x = out[lv][0]
+            B, N, _ = x.shape
+
+            if lv < len(out) - 1:
+                dst_dict = {
+                    'x': x,
+                    'idx_agg': idx_agg,
+                    'agg_weight': agg_weight,
+                    'loc_orig': loc_orig
+                }
+
+                token_c = downup(dst_dict, src_dict)
+                factor = factors[lv]
+                token_c = token_c + (torch.rand([B, N, 3], device=x.device)-0.5) * factor * (token_c.sum(dim=-1, keepdim=True) > 0).float()
+                token_c = token_c.clamp(0, 1)
+
+            src_dict = {
+                'x': token_c,
+                'idx_agg': idx_agg,
+                'agg_weight': agg_weight,
+                'loc_orig': loc_orig
+            }
+
+            H, W, _ = img.shape
+            idx_map, _ = token2map_agg_mat(token_c, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
+            idx_map_s = F.interpolate(idx_map, [H*4, W*4], mode='nearest')[0].permute(1, 2, 0).detach().cpu().float()
+            idx_map = F.interpolate(idx_map, [H, W], mode='nearest')
+            idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
+            ax = plt.subplot(1, 6, lv+2)
+            ax.imshow(idx_map*0.7 + img*0.3)
+
+            fname = f'vis/{count}_{lv}.png'
+            import cv2
+            cv2.imwrite(fname, idx_map_s.numpy()[:, :, ::-1]*255)
+
+
+
+            # idx_map_l = token2map_agg_mat(token_c, loc_orig, loc_orig, idx_agg, [H // 32, W // 32])
+
+            # dst_dict = {
+            #     'x': x,
+            #     'idx_agg': idx_agg,
+            #     'agg_weight': agg_weight,
+            #     'loc_orig': loc_orig
+            # }
+            #
+            # idx_begin_new = []
+            # for idx in idx_begin:
+            #     mask = src_dict['idx_agg'] == idx
+            #     weight = x.new_zeros(N)
+            #     # weight.index_add_(0, idx_agg[0], agg_weight[0, :, 0] * mask[0].float())
+            #     weight.index_add_(0, idx_agg[0], mask[0].float())
+            #     idx_begin_new.append(weight.argmax().item())
+            # idx_begin = idx_begin_new
+            # token_c = x.new_ones(B, N, 3) * 0.8
+            # token_c[0, idx_begin] = color_begin
+
+
+
+            # idx_begin_new = []
+            # for idx in idx_begin:
+            #     mask = src_dict['idx_agg'] == idx
+            #     weight = x.new_zeros(N)
+            #     # weight.index_add_(0, idx_agg[0], agg_weight[0, :, 0] * mask[0].float())
+            #     # weight.index_add_(0, idx_agg[0], mask[0].float())
+            #     idx_begin_new.append(weight.argmax().item())
+
+            idx_map_l = color48.reshape(1, 8, 6, 3).permute(0, 3, 1, 2)
+            idx_map_l = F.interpolate(idx_map_l, [H * 4, W * 4], mode='nearest')[0].permute(1, 2,
+                                                                                            0).detach().cpu().float()
+            fname = f'vis/{count}_{lv}_grid.png'
+            import cv2
+            cv2.imwrite(fname, idx_map_l.numpy()[:, :, ::-1] * 255)
+
+
+
+
+        fname = f'vis/{count}.jpg'
+        plt.savefig(fname, dpi=800)
+
+    return

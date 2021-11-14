@@ -136,8 +136,17 @@ def imshow_keypoints(img,
                     if show_keypoint_weight:
                         img_copy = img.copy()
                         r, g, b = pose_kpt_color[kid]
-                        cv2.circle(img_copy, (int(x_coord), int(y_coord)),
-                                   radius, (int(r), int(g), int(b)), -1)
+                        # cv2.circle(img_copy, (int(x_coord), int(y_coord)),
+                        #            radius, (int(r), int(g), int(b)), -1)
+
+                        if kid > 23:
+                            cv2.circle(img_copy, (int(x_coord), int(y_coord)),
+                                       radius, (int(r), int(g), int(b)), -1)
+                        else:
+                            cv2.circle(img_copy, (int(x_coord), int(y_coord)),
+                                       radius * 4, (int(r), int(g), int(b)), -1)
+
+
                         transparency = max(0, min(1, kpt_score))
                         cv2.addWeighted(
                             img_copy,
@@ -148,8 +157,14 @@ def imshow_keypoints(img,
                             dst=img)
                     else:
                         r, g, b = pose_kpt_color[kid]
-                        cv2.circle(img, (int(x_coord), int(y_coord)), radius,
-                                   (int(r), int(g), int(b)), -1)
+                        # cv2.circle(img, (int(x_coord), int(y_coord)), radius,
+                        #            (int(r), int(g), int(b)), -1)
+                        if kid > 23:
+                            cv2.circle(img, (int(x_coord), int(y_coord)), radius,
+                                       (int(r), int(g), int(b)), -1)
+                        else:
+                            cv2.circle(img, (int(x_coord), int(y_coord)), radius * 2,
+                                       (int(r), int(g), int(b)), -1)
 
         # draw links
         if skeleton is not None and pose_link_color is not None:
@@ -189,11 +204,25 @@ def imshow_keypoints(img,
                             0,
                             dst=img)
                     else:
-                        cv2.line(
-                            img,
-                            pos1,
-                            pos2, (int(r), int(g), int(b)),
-                            thickness=thickness)
+                        # cv2.line(
+                        #     img,
+                        #     pos1,
+                        #     pos2, (int(r), int(g), int(b)),
+                        #     thickness=thickness)
+
+                        if sk_id > 25:
+                            cv2.line(
+                                img,
+                                pos1,
+                                pos2, (int(r), int(g), int(b)),
+                                thickness=thickness * 2)
+                        else:
+                            cv2.line(
+                                img,
+                                pos1,
+                                pos2, (int(r), int(g), int(b)),
+                                thickness=thickness * 4)
+
 
     return img
 

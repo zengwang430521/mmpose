@@ -69,6 +69,8 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 
 srun -p pat_earth \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=eval python -u tools/test.py   configs/fine_pvt2.py work_dirs/fine_pvt/latest.pth --launcher="slurm"
+
     --job-name=eval python -u tools/test.py  configs/wholebody/2d_kpt_sview_rgb_img/topdown_heatmap/coco-wholebody/res50_coco_wholebody_256x192.py\
      ../mmpose_mine/work_dirs/res50_coco_wholebody_256x192-9e37ed88_20201004.pth --launcher="slurm"
 
@@ -102,9 +104,10 @@ srun -p pat_earth \
 
 
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
+srun -p pat_earth \
     --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=l_s_fine_att python -u tools/train.py configs/den0fs_large_fine0_384x288.py\
-     --work-dir=work_dirs/den0fs_large_384_16 --launcher="slurm"  --resume=work_dirs/den0fs_large_384/latest.pth
+     --work-dir=work_dirs/den0fs_large_384_16 --launcher="slurm"  --resume=work_dirs/den0fs_large_384_32/latest.pth
 
 
 
@@ -343,5 +346,21 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[87,100-103,116-119] \
     --work-dir=work_dirs/pvtv2 --resume-from=work_dirs/pvtv2/latest --launcher="slurm"
 
 
+
+
+# for demo
+
+
+python demo/top_down_img_demo.py
+
+configs/debug_den0fs_att_adamw.py work_dirs/fine_att/epoch_230.pth --img-root=data/coco/val2017/
+--json-file=data/coco/annotations/coco_wholebody_val_v1.0.json --out-img-root=demo_results
+
+
+
+configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py
+ work_dirs/wflw_att1/epoch_60.pth
+ --img-root=data/wflw/images/
+--json-file=data/wflw/annotations/face_landmarks_wflw_train.json --out-img-root=demo_results
 
 

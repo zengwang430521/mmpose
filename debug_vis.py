@@ -109,5 +109,6 @@ from mmpose.models import build_posenet
 #
 #
 from mmpose.models.backbones import utils_mine
-utils_mine.vis_feature_map()
+# utils_mine.vis_feature_map()
 # utils_mine.analysis()
+utils_mine.vis_tokens_and_grid()

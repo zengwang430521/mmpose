@@ -306,29 +306,51 @@ class TopDown(BasePose):
         img = mmcv.imread(img)
         img = img.copy()
 
+        import cv2
+        img = cv2.resize(img, None, fx=4, fy=4)
+
+
         bbox_result = []
         pose_result = []
         for res in result:
-            bbox_result.append(res['bbox'])
-            pose_result.append(res['keypoints'])
+            # bbox_result.append(res['bbox'])
+            # pose_result.append(res['keypoints'])
+
+            bbox_result.append(res['bbox'] * 4)
+            pose_result.append(res['keypoints'] * 4)
 
         if len(bbox_result) > 0:
-            bboxes = np.vstack(bbox_result)
-            labels = None
-            if 'label' in result[0]:
-                labels = [res['label'] for res in result]
-            # draw bounding boxes
-            imshow_bboxes(
-                img,
-                bboxes,
-                labels=labels,
-                colors=bbox_color,
-                text_color=text_color,
-                thickness=bbox_thickness,
-                font_scale=font_scale,
-                show=False)
+            # bboxes = np.vstack(bbox_result)
+            # labels = None
+            # if 'label' in result[0]:
+            #     labels = [res['label'] for res in result]
+            # # draw bounding boxes
+            # imshow_bboxes(
+            #     img,
+            #     bboxes,
+            #     labels=labels,
+            #     colors=bbox_color,
+            #     text_color=text_color,
+            #     thickness=bbox_thickness,
+            #     font_scale=font_scale,
+            #     show=False)
 
-            imshow_keypoints(img, pose_result, skeleton, kpt_score_thr,
+
+            for pose in pose_result:
+                if pose[15, 1] > pose[17, 1]:
+                    pose[17, 2] = 0
+                if pose[15, 1] > pose[18, 1]:
+                    pose[18, 2] = 0
+                if pose[15, 1] > pose[19, 1]:
+                    pose[19, 2] = 0
+                if pose[16, 1] > pose[20, 1]:
+                    pose[20, 2] = 0
+                if pose[16, 1] > pose[21, 1]:
+                    pose[21, 2] = 0
+                if pose[16, 1] > pose[22, 1]:
+                    pose[22, 2] = 0
+
+            imshow_keypoints(img, pose_result, skeleton, 0.5,
                              pose_kpt_color, pose_link_color, radius,
                              thickness)
 

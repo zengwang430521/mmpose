@@ -78,7 +78,8 @@ def main():
     output_layer_names = None
 
     # process each image
-    for i in range(len(img_keys)):
+    # for i in range(len(img_keys)):
+    for i in [88, 667, 916, 1882, 1913, 1968, 2133, 2613, 2873, 3441, 3648, 3730,3773, 3779, 4007, 4146, 4284, 4287, 4897]:
         # get bounding box annotations
         image_id = img_keys[i]
         image = coco.loadImgs(image_id)[0]

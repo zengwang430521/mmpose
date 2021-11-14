@@ -32,7 +32,7 @@ lr_config = dict(
     warmup_iters=500,
     warmup_ratio=0.001,
     step=[45, 60])
-total_epochs = 100
+total_epochs = 70
 
 
 log_config = dict(
@@ -95,8 +95,8 @@ data_cfg = dict(
     vis_thr=0.2,
     use_gt_bbox=False,
     det_bbox_thr=0.0,
-    bbox_file='data/coco/person_detection_results/'
-    'COCO_val2017_detections_AP_H_56_person.json',
+    bbox_file='tests/data/coco/test_coco_det_AP_H_56.json',
+
 )
 
 train_pipeline = [
@@ -145,28 +145,28 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=64,
+    samples_per_gpu=2,
     workers_per_gpu=2,
-    val_dataloader=dict(samples_per_gpu=32),
-    test_dataloader=dict(samples_per_gpu=32),
+    val_dataloader=dict(samples_per_gpu=2),
+    test_dataloader=dict(samples_per_gpu=2),
     train=dict(
         type='TopDownCocoWholeBodyDataset',
-        ann_file=f'{data_root}/annotations/coco_wholebody_train_v1.0.json',
-        img_prefix=f'{data_root}/train2017/',
+        ann_file=f'tests/data/coco/test_coco_wholebody.json',
+        img_prefix=f'tests/data/coco/',
         data_cfg=data_cfg,
         pipeline=train_pipeline,
         dataset_info={{_base_.dataset_info}}),
     val=dict(
         type='TopDownCocoWholeBodyDataset',
-        ann_file=f'{data_root}/annotations/coco_wholebody_val_v1.0.json',
-        img_prefix=f'{data_root}/val2017/',
+        ann_file=f'tests/data/coco/test_coco_wholebody.json',
+        img_prefix=f'tests/data/coco/',
         data_cfg=data_cfg,
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),
-    test=dict(
+    vak=dict(
         type='TopDownCocoWholeBodyDataset',
-        ann_file=f'{data_root}/annotations/coco_wholebody_val_v1.0.json',
-        img_prefix=f'{data_root}/val2017/',
+        ann_file=f'tests/data/coco/test_coco_wholebody.json',
+        img_prefix=f'tests/data/coco/',
         data_cfg=data_cfg,
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),
