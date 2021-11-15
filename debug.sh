@@ -7,16 +7,18 @@ srun -p mm_human \
     configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0_small_coco_512x512.py
 
 
- srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p pat_earth \
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
+ srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+      --job-name=fine_hand python -u tools/train.py  configs/fine_hand.py \
+    --work-dir=work_dirs/fine_hand --launcher="slurm"
+
      --job-name=fine_face python -u tools/train.py  configs/fine_face.py \
     --work-dir=work_dirs/fine_face --launcher="slurm"
 
-    --job-name=fine_hand python -u tools/train.py  configs/fine_hand.py \
-    --work-dir=work_dirs/fine_hand --launcher="slurm"
+
 
 
     --job-name=ablation python -u tools/train.py  configs/pvtv2_att_fine_adamw.py \
