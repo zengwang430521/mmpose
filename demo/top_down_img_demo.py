@@ -8,7 +8,7 @@ from xtcocotools.coco import COCO
 from mmpose.apis import (inference_top_down_pose_model, init_pose_model,
                          vis_pose_result)
 from mmpose.datasets import DatasetInfo
-
+import torch
 
 def main():
     """Visualize the demo images.
@@ -58,6 +58,7 @@ def main():
     # build the pose model from a config file and a checkpoint file
     pose_model = init_pose_model(
         args.pose_config, args.pose_checkpoint, device=args.device.lower())
+    pose_model.eval()
 
     dataset = pose_model.cfg.data['test']['type']
     dataset_info = pose_model.cfg.data['test'].get('dataset_info', None)
@@ -78,8 +79,8 @@ def main():
     output_layer_names = None
 
     # process each image
-    # for i in range(len(img_keys)):
-    for i in [88, 667, 916, 1882, 1913, 1968, 2133, 2613, 2873, 3441, 3648, 3730,3773, 3779, 4007, 4146, 4284, 4287, 4897]:
+    for i in range(len(img_keys)):
+    # for i in [88, 667, 916, 1882, 1913, 1968, 2133, 2613, 2873, 3441, 3648, 3730,3773, 3779, 4007, 4146, 4284, 4287, 4897]:
         # get bounding box annotations
         image_id = img_keys[i]
         image = coco.loadImgs(image_id)[0]
@@ -94,36 +95,36 @@ def main():
             # bbox format is 'xywh'
             person['bbox'] = ann['bbox']
             person_results.append(person)
+        with torch.no_grad():
+            # test a single image, with a list of bboxes
+            pose_results, returned_outputs = inference_top_down_pose_model(
+                pose_model,
+                image_name,
+                person_results,
+                bbox_thr=None,
+                format='xywh',
+                dataset=dataset,
+                dataset_info=dataset_info,
+                return_heatmap=return_heatmap,
+                outputs=output_layer_names)
 
-        # test a single image, with a list of bboxes
-        pose_results, returned_outputs = inference_top_down_pose_model(
-            pose_model,
-            image_name,
-            person_results,
-            bbox_thr=None,
-            format='xywh',
-            dataset=dataset,
-            dataset_info=dataset_info,
-            return_heatmap=return_heatmap,
-            outputs=output_layer_names)
+            if args.out_img_root == '':
+                out_file = None
+            else:
+                os.makedirs(args.out_img_root, exist_ok=True)
+                out_file = os.path.join(args.out_img_root, f'vis_{i}.jpg')
 
-        if args.out_img_root == '':
-            out_file = None
-        else:
-            os.makedirs(args.out_img_root, exist_ok=True)
-            out_file = os.path.join(args.out_img_root, f'vis_{i}.jpg')
-
-        vis_pose_result(
-            pose_model,
-            image_name,
-            pose_results,
-            dataset=dataset,
-            dataset_info=dataset_info,
-            kpt_score_thr=args.kpt_thr,
-            radius=args.radius,
-            thickness=args.thickness,
-            show=args.show,
-            out_file=out_file)
+            vis_pose_result(
+                pose_model,
+                image_name,
+                pose_results,
+                dataset=dataset,
+                dataset_info=dataset_info,
+                kpt_score_thr=args.kpt_thr,
+                radius=args.radius,
+                thickness=args.thickness,
+                show=args.show,
+                out_file=out_file)
 
 
 if __name__ == '__main__':

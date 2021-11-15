@@ -9,15 +9,15 @@ srun -p mm_human \
 
  srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
-srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
 srun -p pat_earth \
+srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+     --job-name=ablation python -u tools/train.py  configs/pvtv2_att_fine_adamw.py \
+    --work-dir=work_dirs/pvt2_att_whole --launcher="slurm" --resume=work_dirs/pvt2_att_whole/latest.pth
+
     --job-name=fine_simple python -u tools/train.py  configs/fine_simple.py \
     --work-dir=work_dirs/fine_simple --launcher="slurm" --resume=work_dirs/den0_simple_whole/latest.pth
 
-
-    --job-name=ablation python -u tools/train.py  configs/pvtv2_att_fine_adamw.py \
-    --work-dir=work_dirs/pvt2_att_whole --launcher="slurm" --resume=work_dirs/pvt2_att_whole/latest.pth
 
     --job-name=fine_pvt python -u tools/train.py  configs/fine_pvt2.py \
     --work-dir=work_dirs/fine_pvt --launcher="slurm" --resume=work_dirs/pvtv2/latest.pth
@@ -353,7 +353,7 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[87,100-103,116-119] \
 
 python demo/top_down_img_demo.py
 
-configs/debug_den0fs_att_adamw.py work_dirs/fine_att/epoch_230.pth --img-root=data/coco/val2017/
+configs/debug_den0fs_att_adamw.py work_dirs/fine_att/epoch_250.pth --img-root=data/coco/val2017/
 --json-file=data/coco/annotations/coco_wholebody_val_v1.0.json --out-img-root=demo_results
 
 
