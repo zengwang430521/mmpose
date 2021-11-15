@@ -12,7 +12,14 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p pat_earth \
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
-     --job-name=ablation python -u tools/train.py  configs/pvtv2_att_fine_adamw.py \
+     --job-name=fine_face python -u tools/train.py  configs/fine_face.py \
+    --work-dir=work_dirs/fine_face --launcher="slurm"
+
+    --job-name=fine_hand python -u tools/train.py  configs/fine_hand.py \
+    --work-dir=work_dirs/fine_hand --launcher="slurm"
+
+
+    --job-name=ablation python -u tools/train.py  configs/pvtv2_att_fine_adamw.py \
     --work-dir=work_dirs/pvt2_att_whole --launcher="slurm" --resume=work_dirs/pvt2_att_whole/latest.pth
 
     --job-name=fine_simple python -u tools/train.py  configs/fine_simple.py \
