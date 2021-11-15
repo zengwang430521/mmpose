@@ -1,6 +1,7 @@
 _base_ = ['_base_/datasets/coco_wholebody_hand.py']
 log_level = 'INFO'
 # load_from = 'work_dirs/fine_att/latest.pth'
+load_from = None
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
