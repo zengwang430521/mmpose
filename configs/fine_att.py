@@ -12,7 +12,7 @@ optimizer = dict(
     type='AdamW',
     lr=5e-4,
     betas=(0.9, 0.999),
-    weight_decay=0.1,
+    weight_decay=0.01,
     paramwise_cfg=dict(
         custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
     )
@@ -26,7 +26,7 @@ lr_config = dict(
     warmup_iters=500,
     warmup_ratio=0.001,
     step=[170, 200])
-total_epochs = 250
+total_epochs = 270
 
 log_config = dict(
     interval=50,

@@ -11,7 +11,7 @@ optimizer = dict(
     type='AdamW',
     lr=5e-4,
     betas=(0.9, 0.999),
-    weight_decay=0.1,
+    weight_decay=0.01,
     paramwise_cfg=dict(
         custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
     )

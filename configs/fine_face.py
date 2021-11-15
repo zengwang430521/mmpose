@@ -4,7 +4,7 @@ load_from = 'work_dirs/fine_att/latest.pth'
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
-checkpoint_config = dict(interval=10)
+checkpoint_config = dict(interval=5)
 evaluation = dict(interval=10, metric='mAP', save_best='AP')
 
 
@@ -12,7 +12,7 @@ optimizer = dict(
     type='AdamW',
     lr=5e-4,
     betas=(0.9, 0.999),
-    weight_decay=0.1,
+    weight_decay=0.01,
     paramwise_cfg=dict(
         custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
     )
