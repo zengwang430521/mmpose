@@ -13,7 +13,7 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
  srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=fine_simple2 python -u tools/train.py  configs/fine_simple.py \
-    --work-dir=work_dirs/fine_simple2 --launcher="slurm" --resume=work_dirs/den0_simple_whole/latest.pth
+    --work-dir=work_dirs/fine_simple2 --launcher="slurm" --resume=work_dirs/fine_simple/latest.pth
 
 
     --job-name=fine_hand0 python -u tools/train.py  configs/fine_hand0.py \
