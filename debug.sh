@@ -133,8 +133,8 @@ srun -p pat_earth \
     --work-dir=work_dirs/den0fs_large_384_32 --launcher="slurm"  --resume=work_dirs/den0fs_large_384/latest.pth
 
 
-srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
 srun -p pat_earth \
+srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
     --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=l_s_fine_att python -u tools/train.py configs/den0fs_large_fine0_384x288.py\
      --work-dir=work_dirs/den0fs_large_384_16 --launcher="slurm"  --resume=work_dirs/den0fs_large_384_32/latest.pth

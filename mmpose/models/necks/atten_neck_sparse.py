@@ -241,8 +241,8 @@ class AttenNeckS(BaseModule):
                        'idx_agg': tmp[4],
                        'agg_weight': tmp[5]}
 
-        for i_tmp in range(len(input_dicts)):
-            print(input_dicts[i_tmp]['x'].min())
+        # for i_tmp in range(len(input_dicts)):
+        #     print(input_dicts[i_tmp]['x'].min())
 
         # merge from high levle to low level
         for i in range(len(input_dicts) - 2, -1, -1):
