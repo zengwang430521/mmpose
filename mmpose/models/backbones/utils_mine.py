@@ -4188,8 +4188,7 @@ def vis_tokens_and_grid():
         ax.clear()
         ax.imshow(img)
         color_map = F.avg_pool2d(x, kernel_size=4)
-
-
+        # color_map = x
 
         fname = f'vis/{count}_img.png'
         import cv2
@@ -4388,8 +4387,12 @@ def vis_tokens_and_grid():
                 mask_s = F.conv2d(F.pad(mask_s, [1, 1, 1, 1], mode='replicate'), kernel, groups=3)
                 mask_l = F.conv2d(F.pad(mask_l, [1, 1, 1, 1], mode='replicate'), kernel, groups=3)
 
+            idx_map_s = F.interpolate(color_map, [H*4, W*4], mode='nearest')
+            mask_s = (mask_s.max(dim=1)[0] > 0 ).float().unsqueeze(1).repeat([1, 3, 1,1])
             idx_map_s = (idx_map_s + mask_s*10).clamp(0, 1)
-            idx_map_l = (idx_map_l + mask_l*10).clamp(0, 1)
+            # idx_map_s = (mask_s * 10).clamp(0, 1)
+
+            # idx_map_l = (idx_map_l + mask_l*10).clamp(0, 1)
 
             fname = f'vis/{count}_{lv}.png'
             import cv2
@@ -4463,6 +4466,7 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
         ax.imshow(idx_map[0].permute(1, 2, 0).detach().cpu().float())
 
         for lv in range(len(out)):
+        # for lv in range(len(out)-1, len(out)):
 
             loc_orig = out[lv][3]
             idx_agg = out[lv][4]
@@ -4473,10 +4477,10 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
 
             token_c = map2token_agg_sparse_nearest_new(color_map, N, loc_orig, idx_agg, agg_weight)
             idx_map, _ = token2map_agg_mat(token_c, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
-
-
-            idx_map_our = F.interpolate(idx_map, [H*4, W*4], mode='nearest')
             idx_map_grid = F.avg_pool2d(color_map, kernel_size=2**lv)
+
+            idx_map_our = idx_map
+            idx_map_our = F.interpolate(idx_map, [H*4, W*4], mode='nearest')
             idx_map_grid = F.interpolate(idx_map_grid, [H * 4, W * 4], mode='nearest')
 
             sharpen = torch.FloatTensor([   [0, -1, 0],
@@ -4490,10 +4494,11 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
 
             mask_our = (mask_our.abs() > 0).float()
             mask_grid = (mask_grid.abs() > 0).float()
-            for t in range(lv - 1):
+            # for t in range(lv - 1):
+            for t in range(1):
                 kernel = torch.FloatTensor([[0, 1, 0],
-                                            [1, 1, 1],
-                                            [0, 1, 0]])
+                                        [1, 1, 1],
+                                        [0, 1, 0]])
                 kernel = kernel[None, None, :, :].to(idx_map.device).expand([3, 1, 3, 3])
 
                 mask_our = F.conv2d(F.pad(mask_our, [1, 1, 1, 1], mode='replicate'), kernel, groups=3)

@@ -69,7 +69,8 @@ class MergeAttention(nn.Module):
         kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         k, v = kv[0], kv[1]
 
-        attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = (q * self.scale) @ k.transpose(-2, -1)
+        # attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
@@ -239,6 +240,9 @@ class AttenNeckS(BaseModule):
                        'loc_orig': tmp[3],
                        'idx_agg': tmp[4],
                        'agg_weight': tmp[5]}
+
+        for i_tmp in range(len(input_dicts)):
+            print(input_dicts[i_tmp]['x'].min())
 
         # merge from high levle to low level
         for i in range(len(input_dicts) - 2, -1, -1):

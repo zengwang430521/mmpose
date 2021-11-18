@@ -195,12 +195,12 @@ target_weight = data['target_weight']
 output = data['output']
 state_dict = data['model']
 
-# IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=img.device)[None, :, None, None]
-# IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=img.device)[None, :, None, None]
-# img_ori = img.float() * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
-# t = img_ori[25].float().permute(1,2,0).detach().cpu()
-# t = t.clamp(0, 1)
-# plt.imshow(t.numpy())
+IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=img.device)[None, :, None, None]
+IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=img.device)[None, :, None, None]
+img_ori = img.float() * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+t = img_ori[1].float().permute(1,2,0).detach().cpu()
+t = t.clamp(0, 1)
+plt.imshow(t.numpy())
 
 
 
