@@ -40,6 +40,8 @@ from .pvt_v2_3h2_density_fix import mypvt3h2_density0f_small, mypvt3h2_density0f
 from .pvt_v2_3h2_density_vis import mypvt3h2_density0v_small
 from .pvt_v2_3h2_density_fix_sparse import mypvt3h2_density0fs_small
 from .pvt_v2_3h2_density_fix_noconf import mypvt3h2_density0fNC_small
+from .pvt_v2_3h2_density_fix_topk import mypvt3h2_density0ftopk_small
+
 
 
 __all__ = [

@@ -1,6 +1,6 @@
 _base_ = ['_base_/datasets/coco_wholebody.py']
 log_level = 'INFO'
-load_from = '/home/wzeng/mycodes/mmpose_mine/work_dirs/den0f_att_16/epoch_210.pth'
+load_from = 'work_dirs/den0f_att_16/epoch_210.pth'
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]

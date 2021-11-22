@@ -2495,6 +2495,71 @@ def token_cluster_density_fixbug(x, Ns, idx_agg, weight=None, return_weight=Fals
     return x_out, idx_agg
 
 
+def token_cluster_topk(x, Ns, idx_agg, weight=None, return_weight=False, conf=None,
+                          k=5, dist_assign=False, ada_dc=False, use_conf=False, conf_scale=0.25,
+                          conf_density=False):
+    # import torch
+    # x = torch.rand(2, 1000, 64)
+    # Ns = 250
+    # k = 3
+    dtype = x.dtype
+    device = x.device
+    B, N, C = x.shape
+
+    if weight is None:
+        weight = x.new_ones(B, N, 1)
+    if conf is not None:
+        conf = conf.squeeze(-1)
+
+    with torch.no_grad():
+        dist_matrix = torch.cdist(x, x)
+        # normalize dist_matrix for stable
+        dist_matrix = dist_matrix / (dist_matrix.flatten(1).max(dim=-1)[0][:, None, None] + 1e-6)
+        # idx_tmp = torch.arange(N, device=x.device)
+        # dist_matrix[:, idx_tmp, idx_tmp] = 0
+        _, index_down = torch.topk(conf, k=Ns, dim=-1)
+
+        '''nearest assign'''
+        dist_matrix = index_points(dist_matrix, index_down)
+        idx_agg_t = dist_matrix.argmin(dim=1)
+
+        # make sure selected tokens merge to itself
+        if index_down is not None:
+            idx_batch = torch.arange(B, device=x.device)[:, None].expand(B, Ns)
+            idx_tmp = torch.arange(Ns, device=x.device)[None, :].expand(B, Ns)
+            idx_agg_t[idx_batch.reshape(-1), index_down.reshape(-1)] = idx_tmp.reshape(-1)
+
+        idx = idx_agg_t + torch.arange(B, device=x.device)[:, None] * Ns
+
+
+    # # # for debug only
+    # loc_orig = get_grid_loc(x.shape[0], 56, 56, x.device)
+    # show_conf_merge(density[:, :, None], None, loc_orig, idx_agg, n=1, vmin=None)
+    # show_conf_merge(dist[:, :, None], None, loc_orig, idx_agg, n=2, vmin=None)
+    # show_conf_merge(score[:, :, None], None, loc_orig, idx_agg, n=3, vmin=None)
+    # show_conf_merge(conf[:, :, None], None, loc_orig, idx_agg, n=4, vmin=None)
+    # if use_conf:
+    #     show_conf_merge(score_log[:, :, None], None, loc_orig, idx_agg, n=5)
+
+
+    all_weight = weight.new_zeros(B * Ns, 1)
+    all_weight.index_add_(dim=0, index=idx.reshape(B * N), source=weight.reshape(B * N, 1))
+    all_weight = all_weight + 1e-6
+    norm_weight = weight / all_weight[idx]
+
+    x_out = x.new_zeros(B * Ns, C)
+    source = x * norm_weight
+    x_out.index_add_(dim=0, index=idx.reshape(B * N), source=source.reshape(B * N, C).type(x.dtype))
+    x_out = x_out.reshape(B, Ns, C)
+
+    idx_agg = index_points(idx_agg_t[..., None], idx_agg).squeeze(-1)
+
+    if return_weight:
+        weight_t = index_points(norm_weight, idx_agg)
+        return x_out, idx_agg, weight_t
+    return x_out, idx_agg
+
+
 # def token_cluster_density_fixbug(x, Ns, idx_agg, weight=None, return_weight=False, conf=None,
 #                           k=5, dist_assign=False, ada_dc=False, use_conf=False, conf_scale=0.25,
 #                           conf_density=False):
