@@ -13,18 +13,23 @@ except ImportError:
 
 
 
-W, H = 192, 256
-input_shape = (3, W, H)
+# W, H = 192, 256
 # config = 'configs/pvt3h2_den0f_att_adamw.py'
 # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/den0f_small_adamw_coco_256x192.py'
 # config = 'configs/pvtv2_0.py'
 # config = 'configs/den0f_fine_adamw.py'
 
 
-W, H = 256, 256
-config = 'configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py'
+# W, H = 256, 256
+# input_shape = (3, W, H)
+# config = 'configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py'
 # config = 'configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/den0_tiny_wflw_256x256.py'
 # config = '/home/wzeng/mycodes/mmpose_mine/configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py'
+
+
+W, H = 288, 384
+input_shape = (3, W, H)
+config = 'configs/debug_den0fs_large_fine0_384x288.py'
 
 cfg = Config.fromfile(config)
 model = build_posenet(cfg.model)

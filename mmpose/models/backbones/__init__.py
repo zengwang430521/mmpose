@@ -39,6 +39,8 @@ from .pvt_v2_3h2_density import mypvt3h2_density0_small, mypvt3h2_densityc_small
 from .pvt_v2_3h2_density_fix import mypvt3h2_density0f_small, mypvt3h2_density0f_tiny
 from .pvt_v2_3h2_density_vis import mypvt3h2_density0v_small
 from .pvt_v2_3h2_density_fix_sparse import mypvt3h2_density0fs_small
+from .pvt_v2_3h2_density_fix_noconf import mypvt3h2_density0fNC_small
+
 
 __all__ = [
     'AlexNet', 'HourglassNet', 'HRNet', 'MobileNetV2', 'MobileNetV3', 'RegNet',

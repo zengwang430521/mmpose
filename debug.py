@@ -16,11 +16,11 @@
 
 import torch
 
-# from mmpose.models.backbones import mypvt20_2_small
-# model = mypvt20_2_small(pretrained='data/pretrained/my_20_2_300.pth')
-# input = torch.rand([1, 3, 192, 256])
-# out = model(input)
-# out = out
+from mmpose.models.backbones import mypvt3h2_density0fNC_small
+model = mypvt3h2_density0fNC_small(pretrained='data/pretrained/my_20_2_300.pth')
+input = torch.rand([1, 3, 192, 256])
+out = model(input)
+out = out
 
 
 # from mmpose.models import build_posenet
@@ -169,90 +169,90 @@ from typing import List
 #
 # t=0
 
-
-import mmcv
-from mmcv import Config, DictAction
-from mmpose.models import build_posenet
-
-
-# cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/debug_myhrpvt32_adamw_coco_256x192.py'
-# cfg_file = 'configs/debug_den0fs_large_fine0_384x288.py'
-cfg_file = 'configs/pvtv2_att_fine_adamw.py'
-cfg = Config.fromfile(cfg_file)
-model = cfg.model
-model = build_posenet(model) #.cuda().half()
-input = torch.zeros(2,3, 256, 192)
-out = model(input)
-
-
-
-import matplotlib.pyplot as plt
-data = torch.load('NAN_debug.pth', map_location='cuda:0')
-img = data['img']
-# img = img[24:26]
-target = data['target']
-target_weight = data['target_weight']
-output = data['output']
-state_dict = data['model']
-
-IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=img.device)[None, :, None, None]
-IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=img.device)[None, :, None, None]
-img_ori = img.float() * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
-t = img_ori[1].float().permute(1,2,0).detach().cpu()
-t = t.clamp(0, 1)
-plt.imshow(t.numpy())
-
-
-
-model = build_posenet(model) #.cuda().half()
-t = model.load_state_dict(state_dict)
-
-
-img = img.float()
-model = model.cuda()
-model.eval()
-output = model.backbone(img[4:6])
-output = model.neck(output)
-output = model.keypoint_head(output)
-
-losses = dict()
-keypoint_losses = model.keypoint_head.get_loss(output, target, target_weight)
-losses.update(keypoint_losses)
-keypoint_accuracy = model.keypoint_head.get_accuracy(
-    output, target, target_weight)
-losses.update(keypoint_accuracy)
-
-
-
-for key in state_dict.keys():
-    print(key)
-
-tmp = model.state_dict()
-
-
-
-
-
-data = torch.load('NAN_debug.pth', map_location='cuda:0')
-img = data['img']
+#
+# import mmcv
+# from mmcv import Config, DictAction
+# from mmpose.models import build_posenet
+#
+#
+# # cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/debug_myhrpvt32_adamw_coco_256x192.py'
+# # cfg_file = 'configs/debug_den0fs_large_fine0_384x288.py'
+# cfg_file = 'configs/pvtv2_att_fine_adamw.py'
+# cfg = Config.fromfile(cfg_file)
+# model = cfg.model
+# model = build_posenet(model) #.cuda().half()
+# input = torch.zeros(2,3, 256, 192)
+# out = model(input)
+#
+#
+#
+# import matplotlib.pyplot as plt
+# data = torch.load('NAN_debug.pth', map_location='cuda:0')
+# img = data['img']
+# # img = img[24:26]
 # target = data['target']
 # target_weight = data['target_weight']
 # output = data['output']
-state_dict = data['model']
-self.load_state_dict(state_dict)
-
-with torch.no_grad():
-    output1 = self.backbone(img)
-    if self.with_neck:
-        output = self.neck(output)
-    if self.with_keypoint:
-        output2 = self.keypoint_head(output1)
-
-
-for t in x_list:
-    print(torch.isinf(t['x']).any())
-    print(torch.isnan(t['x']).any())
-
-for t in y_list:
-    print(torch.isinf(t['x']).any())
-    print(torch.isnan(t['x']).any())
+# state_dict = data['model']
+#
+# IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=img.device)[None, :, None, None]
+# IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=img.device)[None, :, None, None]
+# img_ori = img.float() * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+# t = img_ori[1].float().permute(1,2,0).detach().cpu()
+# t = t.clamp(0, 1)
+# plt.imshow(t.numpy())
+#
+#
+#
+# model = build_posenet(model) #.cuda().half()
+# t = model.load_state_dict(state_dict)
+#
+#
+# img = img.float()
+# model = model.cuda()
+# model.eval()
+# output = model.backbone(img[4:6])
+# output = model.neck(output)
+# output = model.keypoint_head(output)
+#
+# losses = dict()
+# keypoint_losses = model.keypoint_head.get_loss(output, target, target_weight)
+# losses.update(keypoint_losses)
+# keypoint_accuracy = model.keypoint_head.get_accuracy(
+#     output, target, target_weight)
+# losses.update(keypoint_accuracy)
+#
+#
+#
+# for key in state_dict.keys():
+#     print(key)
+#
+# tmp = model.state_dict()
+#
+#
+#
+#
+#
+# data = torch.load('NAN_debug.pth', map_location='cuda:0')
+# img = data['img']
+# # target = data['target']
+# # target_weight = data['target_weight']
+# # output = data['output']
+# state_dict = data['model']
+# self.load_state_dict(state_dict)
+#
+# with torch.no_grad():
+#     output1 = self.backbone(img)
+#     if self.with_neck:
+#         output = self.neck(output)
+#     if self.with_keypoint:
+#         output2 = self.keypoint_head(output1)
+#
+#
+# for t in x_list:
+#     print(torch.isinf(t['x']).any())
+#     print(torch.isnan(t['x']).any())
+#
+# for t in y_list:
+#     print(torch.isinf(t['x']).any())
+#     print(torch.isnan(t['x']).any())

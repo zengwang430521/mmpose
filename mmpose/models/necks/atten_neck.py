@@ -220,7 +220,7 @@ class AttenNeck(BaseModule):
             if m.bias is not None:
                 m.bias.data.zero_()
 
-    @auto_fp16()
+    # @auto_fp16()
     def forward(self, inputs):
         """Forward function."""
         assert len(inputs) == len(self.in_channels)
