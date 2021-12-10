@@ -4604,7 +4604,10 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
 
 
 
-from function import f_distance
+try:
+    from function import f_distance
+except (ImportError, ModuleNotFoundError):
+    print('no f_distance')
 def token_cluster_hir(x, Ns, idx_agg, conf, weight=None, return_weight=False, **kwargs):
     dtype = x.dtype
     device = x.device
