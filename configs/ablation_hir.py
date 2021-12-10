@@ -49,8 +49,7 @@ fp16 = dict(loss_scale='dynamic')
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    # backbone=dict(type='mypvt3h2_density0f_small', pretrained='models/3h2_density0_small.pth',),
-    backbone=dict(type='mypvt3h2_density0ftopk_small'),
+    backbone=dict(type='tcformer_hir_small'),
     neck=dict(
         type='AttenNeckS',
         in_channels=[64, 128, 320, 512],

@@ -397,6 +397,10 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[87,100-103,116-119] \
 
 python demo/top_down_img_demo.py
 
+configs/debug_den0fs_large_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_175.pth
+--img-root=data/coco/val2017/ --json-file=data/coco/annotations/coco_wholebody_val_v1.0.json --out-img-root=demo_results
+
+
 configs/debug_den0fs_att_adamw.py work_dirs/fine_att/epoch_250.pth --img-root=data/coco/val2017/
 --json-file=data/coco/annotations/coco_wholebody_val_v1.0.json --out-img-root=demo_results
 

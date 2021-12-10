@@ -4489,13 +4489,17 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
     IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
     IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
     x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+    save_x = False
+    save_img = False
+    save_fig = True
 
-    save_dict = {
-        'x': x,
-        'out': out
-    }
-    fname = f'vis/{count}.pth'
-    torch.save(save_dict, fname)
+    if save_x:
+        save_dict = {
+            'x': x,
+            'out': out
+        }
+        fname = f'vis/{count}.pth'
+        torch.save(save_dict, fname)
 
     B, _, h, w = x.shape
     h, w = h // 4, w//4
@@ -4511,9 +4515,10 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
         ax.clear()
         ax.imshow(img)
 
-        fname = f'vis/{count}_img.png'
-        import cv2
-        cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
+        if save_img:
+            fname = f'vis/{count}_img.png'
+            import cv2
+            cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
 
         lv = 3
         loc_orig = out[lv][3]
@@ -4572,13 +4577,14 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
             idx_map_our = (idx_map_our + mask_our * 10).clamp(0, 1)
             idx_map_grid = (idx_map_grid + mask_grid * 10).clamp(0, 1)
 
-            fname = f'vis/{count}_{lv}.png'
-            import cv2
-            cv2.imwrite(fname, idx_map_our[0].permute(1, 2, 0).detach().cpu().float().numpy()[:, :, ::-1] * 255)
+            if save_img:
+                fname = f'vis/{count}_{lv}.png'
+                import cv2
+                cv2.imwrite(fname, idx_map_our[0].permute(1, 2, 0).detach().cpu().float().numpy()[:, :, ::-1] * 255)
 
-            fname = f'vis/{count}_{lv}_grid.png'
-            import cv2
-            cv2.imwrite(fname, idx_map_grid[0].permute(1, 2, 0).detach().cpu().float().numpy()[:, :, ::-1] * 255)
+                fname = f'vis/{count}_{lv}_grid.png'
+                import cv2
+                cv2.imwrite(fname, idx_map_grid[0].permute(1, 2, 0).detach().cpu().float().numpy()[:, :, ::-1] * 255)
 
             ax = plt.subplot(1, 6, lv+2)
             ax.clear()
@@ -4588,9 +4594,85 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
 
 
     # plt.show()
-    fname = f'vis/{count}.jpg'
-    plt.savefig(fname, dpi=200)
+    if save_fig:
+        fname = f'vis/{count}.jpg'
+        plt.savefig(fname, dpi=200)
 
 
     return
 
+
+
+
+from function import f_distance
+def token_cluster_hir(x, Ns, idx_agg, conf, weight=None, return_weight=False, **kwargs):
+    dtype = x.dtype
+    device = x.device
+    B, N, C = x.shape
+    conf = conf.squeeze(-1)
+    if weight is None:
+        weight = x.new_ones(B, N, 1)
+
+    with torch.no_grad():
+        index_down = gumble_top_k(conf, Ns, dim=1)
+
+        if N <= 256:
+            '''nearest assign'''
+            centers = index_points(x, index_down)
+            dist_matrix = torch.cdist(x, centers)
+            idx_agg_t = dist_matrix.argmin(dim=2)
+        else:
+
+            Nr = int(math.sqrt(Ns))
+            K = int(2 * Ns / Nr)
+            index_rough_center = index_down[:, :Nr]
+
+            centers = index_points(x, index_down)
+            rough_centers = index_points(x, index_rough_center)
+
+            dist_matrix1 = torch.cdist(rough_centers, centers, p=2)
+            _, idx_k_rough = torch.topk(-dist_matrix1, k=K, dim=-1)
+
+            idx_tmp = torch.cdist(x, rough_centers, p=2).argmin(axis=2)
+            idx_k = index_points(idx_k_rough, idx_tmp)
+
+            dist_k = f_distance(x, centers, idx_k.int())
+            idx_tmp = dist_k.argmin(dim=2)
+            idx_agg_t = torch.gather(idx_k, -1, idx_tmp[:,:, None])
+            idx_agg_t = idx_agg_t.squeeze(-1)
+
+        # make sure selected tokens merge to itself
+        if index_down is not None:
+            idx_batch = torch.arange(B, device=x.device)[:, None].expand(B, Ns)
+            idx_tmp = torch.arange(Ns, device=x.device)[None, :].expand(B, Ns)
+            idx_agg_t[idx_batch.reshape(-1), index_down.reshape(-1)] = idx_tmp.reshape(-1)
+
+        idx = idx_agg_t + torch.arange(B, device=x.device)[:, None] * Ns
+
+
+    # # # for debug only
+    # loc_orig = get_grid_loc(x.shape[0], 56, 56, x.device)
+    # show_conf_merge(density[:, :, None], None, loc_orig, idx_agg, n=1, vmin=None)
+    # show_conf_merge(dist[:, :, None], None, loc_orig, idx_agg, n=2, vmin=None)
+    # show_conf_merge(score[:, :, None], None, loc_orig, idx_agg, n=3, vmin=None)
+    # show_conf_merge(conf[:, :, None], None, loc_orig, idx_agg, n=4, vmin=None)
+    # if use_conf:
+    #     show_conf_merge(score_log[:, :, None], None, loc_orig, idx_agg, n=5)
+
+
+    all_weight = weight.new_zeros(B * Ns, 1)
+    all_weight.index_add_(dim=0, index=idx.reshape(B * N), source=weight.reshape(B * N, 1))
+    all_weight = all_weight + 1e-6
+    norm_weight = weight / all_weight[idx]
+
+    x_out = x.new_zeros(B * Ns, C)
+    source = x * norm_weight
+    x_out.index_add_(dim=0, index=idx.reshape(B * N), source=source.reshape(B * N, C).type(x.dtype))
+    x_out = x_out.reshape(B, Ns, C)
+
+    idx_agg = index_points(idx_agg_t[..., None], idx_agg).squeeze(-1)
+
+    if return_weight:
+        weight_t = index_points(norm_weight, idx_agg)
+        return x_out, idx_agg, weight_t
+    return x_out, idx_agg

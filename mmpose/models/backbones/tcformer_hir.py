@@ -9,12 +9,7 @@ from .pvt_v2 import (Block, DropPath, DWConv, OverlapPatchEmbed, trunc_normal_, 
 from .utils_mine import (
     get_grid_loc,
     gumble_top_k, index_points,
-    # map2token_agg_fast_nearest,  # map2token_agg_mat_nearest, map2token_agg_sparse_nearest
     show_tokens_merge, show_conf_merge,
-    # merge_tokens, merge_tokens_agg_dist,
-    # token2map_agg_mat,
-    # tokenconv_sparse,
-    # farthest_point_sample
 )
 
 
@@ -26,225 +21,22 @@ from .utils_mine import map2token_agg_sparse_nearest as map2token_agg_fast_neare
 # from .utils_mine import map2token_agg_sparse_nearest_new as map2token_agg_fast_nearest
 from ..builder import BACKBONES
 from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
-vis = False
-# vis = True
+from .pvt_v2_3h2_density_fix_sparse import MyMlp, MyDWConv, MyAttention, MyBlock
+from .utils_mine import token_cluster_hir
+
+# vis = False
+vis = True
 
 
 
 
 
 '''
-do not select tokens, merge tokens. weight NOT clamp, conf do not clamp
-merge feature, but not merge locs, reserve all locs.
-inherit weights when map2token, which can regarded as tokens merge
-farthest_point_sample DOWN, N_grid = 0, feature distance merge
-token2map nearest + skip token conv (this must be used together.)
-try to make it faster
-
-dist_assign, No ada dc
-fix a bug in gathering
-use sparse matrix
-
+Merge tokens in hir way
 '''
 
 
 
-
-class MyMlp(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False):
-        super().__init__()
-        out_features = out_features or in_features
-        hidden_features = hidden_features or in_features
-        self.fc1 = nn.Linear(in_features, hidden_features)
-        self.dwconv = MyDWConv(hidden_features)
-        self.act = act_layer()
-        self.fc2 = nn.Linear(hidden_features, out_features)
-        self.drop = nn.Dropout(drop)
-        self.linear = linear
-        if self.linear:
-            self.relu = nn.ReLU(inplace=True)
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
-        x = self.fc1(x)
-        if self.linear:
-            x = self.relu(x)
-        x = self.dwconv(x, loc_orig, idx_agg, agg_weight, H, W)
-        x = self.act(x)
-        x = self.drop(x)
-        x = self.fc2(x)
-        x = self.drop(x)
-        return x
-
-
-class MyDWConv(nn.Module):
-    def __init__(self, dim=768):
-        super().__init__()
-        self.dwconv = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim)
-        self.dwconv_skip = nn.Conv1d(dim, dim, 1, bias=False, groups=dim)
-
-    def forward(self, x, loc_orig, idx_agg, agg_weight, H, W):
-        B, N, C = x.shape
-        x_map, _ = token2map_agg_mat(x, None, loc_orig, idx_agg, [H, W])
-        x_map = self.dwconv(x_map)
-        x = map2token_agg_fast_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
-            self.dwconv_skip(x.permute(0, 2, 1).contiguous()).permute(0, 2, 1).contiguous()
-        return x
-
-
-class MyAttention(nn.Module):
-    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1, linear=False):
-        super().__init__()
-        assert dim % num_heads == 0, f"dim {dim} should be divided by num_heads {num_heads}."
-
-        self.dim = dim
-        self.num_heads = num_heads
-        head_dim = dim // num_heads
-        self.scale = qk_scale or head_dim ** -0.5
-
-        self.q = nn.Linear(dim, dim, bias=qkv_bias)
-        self.kv = nn.Linear(dim, dim * 2, bias=qkv_bias)
-        self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
-        self.proj_drop = nn.Dropout(proj_drop)
-
-        self.linear = linear
-        self.sr_ratio = sr_ratio
-        if not linear:
-            if sr_ratio > 1:
-                self.sr = nn.Conv2d(dim, dim, kernel_size=sr_ratio, stride=sr_ratio)
-                self.norm = nn.LayerNorm(dim)
-        else:
-            self.pool = nn.AdaptiveAvgPool2d(7)
-            self.sr = nn.Conv2d(dim, dim, kernel_size=1, stride=1)
-            self.norm = nn.LayerNorm(dim)
-            self.act = nn.GELU()
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def forward(self, x, loc_orig, x_source, idx_agg_source, H, W, conf_source=None):
-        B, N, C = x.shape
-        Ns = x_source.shape[1]
-        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3).contiguous()
-
-        if not self.linear:
-            if self.sr_ratio > 1:
-                if conf_source is None:
-                    conf_source = x_source.new_zeros(B, Ns, 1)
-                tmp = torch.cat([x_source, conf_source], dim=-1)
-                tmp, _ = token2map_agg_mat(tmp, None, loc_orig, idx_agg_source, [H, W])
-                x_source = tmp[:, :C]
-                conf_source = tmp[:, C:]
-
-                x_source = self.sr(x_source)
-                _, _, h, w = x_source.shape
-                x_source = x_source.reshape(B, C, -1).permute(0, 2, 1).contiguous()
-                x_source = self.norm(x_source)
-                conf_source = F.avg_pool2d(conf_source, kernel_size=self.sr_ratio, stride=self.sr_ratio)
-                conf_source = conf_source.reshape(B, 1, -1).permute(0, 2, 1).contiguous()
-
-        else:
-            print('error!')
-
-        kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
-        k, v = kv[0], kv[1]
-
-        # attn = (q @ k.transpose(-2, -1)) * self.scale
-        attn = (q * self.scale) @ k.transpose(-2, -1)
-
-        if conf_source is not None:
-            conf_source = conf_source.squeeze(-1)[:, None, None, :]
-            attn = attn + conf_source
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
-
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
-        x = self.proj(x)
-        x = self.proj_drop(x)
-
-        return x
-
-
-class MyBlock(nn.Module):
-
-    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
-                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, sr_ratio=1, linear=False):
-        super().__init__()
-        self.norm1 = norm_layer(dim)
-        self.attn = MyAttention(
-            dim,
-            num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
-            attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio, linear=linear)
-        # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
-        self.norm2 = norm_layer(dim)
-        mlp_hidden_dim = int(dim * mlp_ratio)
-        self.mlp = MyMlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop, linear=linear)
-
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def forward(self, x, idx_agg, agg_weight, loc_orig,
-                x_source, idx_agg_source, agg_weight_source, H, W, conf_source=None):
-        x1 = x + self.drop_path(self.attn(self.norm1(x),
-                                          loc_orig,
-                                          self.norm1(x_source),
-                                          idx_agg_source,
-                                          H, W, conf_source))
-
-        x2 = x1 + self.drop_path(self.mlp(self.norm2(x1),
-                                          loc_orig,
-                                          idx_agg,
-                                          agg_weight,
-                                          H, W))
-        return x2
-
-
-
-# from partialconv2d import PartialConv2d
 class DownLayer(nn.Module):
     """ Down sample
     """
@@ -294,39 +86,26 @@ class DownLayer(nn.Module):
         conf = self.conf(x)
         weight = conf.exp()
 
-        if grid_merge:
-            mean_weight = weight.reshape(B, 1, H, W)
-            mean_weight = F.avg_pool2d(mean_weight, kernel_size=2)
-            mean_weight = F.interpolate(mean_weight, [H, W], mode='nearest')
-            mean_weight = mean_weight.reshape(B, H*W, 1)
-            norm_weight = weight / (mean_weight + 1e-6)
+        _, _, H, W = x_map.shape
+        B, N, C = x.shape
+        sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
+        if sample_num < N_grid:
+            sample_num = N_grid
 
-            x_down = x * norm_weight
-            x_down = x_down.reshape(B, H, W, -1).permute(0, 3, 1, 2)
-            x_down = F.avg_pool2d(x_down, kernel_size=2)
-            x_down = x_down.flatten(2).permute(0, 2, 1)
+        # if N <= 256:
+        #     x_down, idx_agg_down, weight_t = token_cluster_density(
+        #         x, sample_num, idx_agg, weight, True, conf,
+        #         k=self.k, dist_assign=self.dist_assign, ada_dc=self.ada_dc,
+        #         use_conf=self.use_conf, conf_scale=self.conf_scale, conf_density=self.conf_density,
+        #     )
+        # else:
+        #     x_down, idx_agg_down, weight_t = token_cluster_hir(
+        #         x, sample_num, idx_agg, conf, weight=weight, return_weight=True
+        #     )
 
-            weight_t = norm_weight / 4
-
-            _, _, H, W = x_map.shape
-            idx_agg_down = torch.arange(H*W, device=x.device).reshape(1, 1, H, W)
-            idx_agg_down = F.interpolate(idx_agg_down.float(), [H*2, W*2], mode='nearest').long()
-            idx_agg_down = idx_agg_down.reshape(-1)[None, :].repeat([B, 1])
-
-        else:
-            _, _, H, W = x_map.shape
-            B, N, C = x.shape
-            sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
-            if sample_num < N_grid:
-                sample_num = N_grid
-
-            sr_ratio = self.block.attn.sr_ratio
-            x_down, idx_agg_down, weight_t = token_cluster_density(
-                x, sample_num, idx_agg, weight, True, conf,
-                k=self.k, dist_assign=self.dist_assign, ada_dc=self.ada_dc,
-                use_conf=self.use_conf, conf_scale=self.conf_scale, conf_density=self.conf_density,
-                # loc_orig=pos_orig, map_size=[H // sr_ratio, W // sr_ratio]
-            )
+        x_down, idx_agg_down, weight_t = token_cluster_hir(
+            x, sample_num, idx_agg, conf, weight=weight, return_weight=True
+        )
 
         agg_weight_down = agg_weight * weight_t
         agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
@@ -334,8 +113,8 @@ class DownLayer(nn.Module):
         x_down = self.block(x_down, idx_agg_down, agg_weight_down, pos_orig,
                             x, idx_agg, agg_weight, H, W, conf_source=conf)
 
-        if vis:
-            show_conf_merge(conf, None, pos_orig, idx_agg)
+        # if vis:
+        #     show_conf_merge(conf, None, pos_orig, idx_agg)
         return x_down, idx_agg_down, agg_weight_down
 
 
@@ -407,6 +186,7 @@ class MyPVT(nn.Module):
 
         self.apply(self._init_weights)
         self.init_weights(pretrained)
+        self.batch_count = 0
 
     def init_weights(self, pretrained=None):
         if isinstance(pretrained, str):
@@ -481,7 +261,7 @@ class MyPVT(nn.Module):
             outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
 
         if vis:
-            show_tokens_merge(img, outs, N_grid)
+            show_tokens_merge(img, outs, N_grid, self.batch_count)
 
         return outs
 
@@ -522,7 +302,7 @@ class MyPVT(nn.Module):
 
 
 @BACKBONES.register_module()
-class mypvt3h2_density0fs_small(MyPVT):
+class tcformer_hir_small(MyPVT):
     def __init__(self, **kwargs):
         super().__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
@@ -532,30 +312,8 @@ class mypvt3h2_density0fs_small(MyPVT):
             **kwargs)
 
 
-# @BACKBONES.register_module()
-# class mypvt3h2_density25f_small(MyPVT):
-#     def __init__(self, **kwargs):
-#         super().__init__(
-#             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
-#             qkv_bias=True,
-#             norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-#             k=5, dist_assign=True, ada_dc=False, use_conf=True, conf_scale=0.25,
-#             **kwargs)
-#
-#
-# @BACKBONES.register_module()
-# class mypvt3h2_densitycf_small(MyPVT):
-#     def __init__(self, **kwargs):
-#         super().__init__(
-#             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-#             norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-#             k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0, conf_density=True,
-#             **kwargs)
-#
-
-
 @BACKBONES.register_module()
-class mypvt3h2_density0fs_large(MyPVT):
+class tcformer_hir_large(MyPVT):
     def __init__(self, **kwargs):
         super().__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],

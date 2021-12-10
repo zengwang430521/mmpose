@@ -160,15 +160,15 @@ def imshow_keypoints(img,
                         # cv2.circle(img, (int(x_coord), int(y_coord)), radius,
                         #            (int(r), int(g), int(b)), -1)
 
-                        cv2.circle(img, (int(x_coord), int(y_coord)), radius * 2,
-                                   (int(r), int(g), int(b)), -1)
+                        # cv2.circle(img, (int(x_coord), int(y_coord)), radius * 2,
+                        #            (int(r), int(g), int(b)), -1)
 
-                        # if kid > 23:
-                        #     cv2.circle(img, (int(x_coord), int(y_coord)), radius,
-                        #                (int(r), int(g), int(b)), -1)
-                        # else:
-                        #     cv2.circle(img, (int(x_coord), int(y_coord)), radius * 2,
-                        #                (int(r), int(g), int(b)), -1)
+                        if kid > 23:
+                            cv2.circle(img, (int(x_coord), int(y_coord)), radius,
+                                       (int(r), int(g), int(b)), -1)
+                        else:
+                            cv2.circle(img, (int(x_coord), int(y_coord)), radius * 2,
+                                       (int(r), int(g), int(b)), -1)
 
         # draw links
         if skeleton is not None and pose_link_color is not None:

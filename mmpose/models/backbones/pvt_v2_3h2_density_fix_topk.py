@@ -21,7 +21,7 @@ from ..builder import BACKBONES
 from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
 
 vis = False
-# vis = True
+vis = True
 
 from .pvt_v2_3h2_density_fix import MyMlp, MyDWConv, MyAttention, MyBlock
 
@@ -135,8 +135,8 @@ class DownLayer(nn.Module):
         x_down = self.block(x_down, idx_agg_down, agg_weight_down, pos_orig,
                             x, idx_agg, agg_weight, H, W, conf_source=conf)
 
-        if vis:
-            show_conf_merge(conf, None, pos_orig, idx_agg)
+        # if vis:
+        #     show_conf_merge(conf, None, pos_orig, idx_agg)
         return x_down, idx_agg_down, agg_weight_down
 
 
@@ -208,6 +208,8 @@ class MyPVT(nn.Module):
 
         self.apply(self._init_weights)
         self.init_weights(pretrained)
+        if vis:
+            self.batch_count = 0
 
     def init_weights(self, pretrained=None):
         if isinstance(pretrained, str):
@@ -281,7 +283,7 @@ class MyPVT(nn.Module):
             outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
 
         if vis:
-            show_tokens_merge(img, outs, N_grid)
+            show_tokens_merge(img, outs, N_grid, self.batch_count)
 
         return outs
 

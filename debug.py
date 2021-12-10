@@ -14,13 +14,43 @@
 # test_top_down_demo()
 
 
-import torch
+#####################################################################
 
-from mmpose.models.backbones import mypvt3h2_density0fNC_small
-model = mypvt3h2_density0fNC_small(pretrained='data/pretrained/my_20_2_300.pth')
-input = torch.rand([1, 3, 192, 256])
+import torch
+# from mmpose.models.backbones import mypvt3h2_density0fNC_small
+# model = mypvt3h2_density0fNC_small(pretrained='data/pretrained/my_20_2_300.pth')
+
+from mmpose.models.backbones import tcformer_hir_small
+model = tcformer_hir_small().cuda()
+
+input = torch.rand([1, 3, 192, 256]).cuda()
 out = model(input)
 out = out
+
+
+
+
+
+#####################################################################
+
+# import torch
+# import mmpose.models.backbones.utils_mine as utils_mine
+# device = torch.device('cuda')
+# B, N, C, Ns = 2, 1000, 64, 400
+# x = torch.rand(B, N, C).to(device)
+# conf = torch.rand(B, N, 1).to(device)
+# idx_agg = torch.arange(N)[None, :].repeat(B, 1).to(device)
+#
+# x_down = utils_mine.token_cluster_hir(x, Ns, idx_agg, conf, return_weight=True)
+#
+
+
+
+#####################################################################
+
+
+
+
 
 
 # from mmpose.models import build_posenet

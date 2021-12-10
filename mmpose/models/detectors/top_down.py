@@ -339,21 +339,21 @@ class TopDown(BasePose):
             #     show=False)
 
 
-            # for pose in pose_result:
-            #     if pose[15, 1] > pose[17, 1]:
-            #         pose[17, 2] = 0
-            #     if pose[15, 1] > pose[18, 1]:
-            #         pose[18, 2] = 0
-            #     if pose[15, 1] > pose[19, 1]:
-            #         pose[19, 2] = 0
-            #     if pose[16, 1] > pose[20, 1]:
-            #         pose[20, 2] = 0
-            #     if pose[16, 1] > pose[21, 1]:
-            #         pose[21, 2] = 0
-            #     if pose[16, 1] > pose[22, 1]:
-            #         pose[22, 2] = 0
+            for pose in pose_result:
+                if pose[15, 1] > pose[17, 1]:
+                    pose[17, 2] = 0
+                if pose[15, 1] > pose[18, 1]:
+                    pose[18, 2] = 0
+                if pose[15, 1] > pose[19, 1]:
+                    pose[19, 2] = 0
+                if pose[16, 1] > pose[20, 1]:
+                    pose[20, 2] = 0
+                if pose[16, 1] > pose[21, 1]:
+                    pose[21, 2] = 0
+                if pose[16, 1] > pose[22, 1]:
+                    pose[22, 2] = 0
 
-            imshow_keypoints(img, pose_result, skeleton, 0.5,
+            imshow_keypoints(img, pose_result, skeleton, 0.3,
                              pose_kpt_color, pose_link_color, radius,
                              thickness)
 

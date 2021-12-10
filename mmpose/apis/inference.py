@@ -319,11 +319,31 @@ def _inference_single_pose_model(model,
 
     # forward the model
     with torch.no_grad():
-        result = model(
-            img=batch_data['img'],
-            img_metas=batch_data['img_metas'],
-            return_loss=False,
-            return_heatmap=return_heatmap)
+        if len(batch_data['img_metas']) > 3:
+            results = []
+            result = {}
+            B = len(batch_data['img_metas'])
+            for i in range(B):
+                tmp_res = model(
+                    img=batch_data['img'][[i], :],
+                    img_metas=[batch_data['img_metas'][i]],
+                    return_loss=False,
+                    return_heatmap=return_heatmap)
+                results.append(tmp_res)
+            for key in ['preds', 'boxes']:
+                result[key] = np.concatenate([tmp[key] for tmp in results], axis=0)
+            for key in ['image_paths']:
+                result[key] = [tmp[key] for tmp in results]
+            result['bbox_ids'] = [i for i in range(B)]
+            result['output_heatmap'] = None
+
+
+        else:
+            result = model(
+                img=batch_data['img'],
+                img_metas=batch_data['img_metas'],
+                return_loss=False,
+                return_heatmap=return_heatmap)
 
     return result['preds'], result['output_heatmap']
 
