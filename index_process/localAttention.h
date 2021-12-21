@@ -44,4 +44,10 @@ torch::Tensor distance_cuda_forward(
         const torch::Tensor &key,
         const torch::Tensor &idx);
 
+
+torch::Tensor attn_cuda_forward(
+        const torch::Tensor &query,
+        const torch::Tensor &key,
+        const torch::Tensor &idx);
+
 #endif //LOCALATTENTION_LOCALATTENTION_H

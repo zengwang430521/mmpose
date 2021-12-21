@@ -9,9 +9,11 @@ from localAttention import (similar_forward,
                             weighting_backward_ori,
                             weighting_backward_weight,
                             distance_forward,
+                            attn_forward
                             )
 
-__all__ = ['f_similar', 'f_weighting', 'LocalAttention', 'TorchLocalAttention']
+__all__ = ['f_similar', 'f_weighting', 'LocalAttention', 'TorchLocalAttention',
+           'f_distance', 'f_attn']
 
 
 class similarFunction(Function):
@@ -142,6 +144,16 @@ class distanceFunction(Function):
 
 
 f_distance = distanceFunction.apply
+
+
+class attnFunction(Function):
+    @staticmethod
+    def forward(ctx, query, key, idx):
+        output = attn_forward(query, key, idx)
+        return output
+
+
+f_attn = attnFunction.apply
 
 
 if __name__ == '__main__':

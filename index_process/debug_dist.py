@@ -12,8 +12,9 @@
 
 
 import torch
-from function import f_distance
+from function import f_distance, f_attn
 import time
+
 
 def indexed_dist(x1, x2, idx):
     B, N, K = idx.shape
@@ -24,6 +25,17 @@ def indexed_dist(x1, x2, idx):
     dist = x1[:, :, None, :] - xk
     dist = (dist ** 2).mean(-1).sqrt()
     return dist
+
+
+def indexed_attn(query, key, idx):
+    B, N, K = idx.shape
+    C = query.shape[-1]
+    idx_batch = torch.arange(B)[:, None, None].expand([B, N, K])
+    xk = key[idx_batch.reshape(-1), idx.reshape(-1), :]
+    xk = xk.reshape(B, N, K, C)
+    attn = query[:, :, None, :] * xk
+    attn = attn.sum(dim=-1)
+    return attn
 
 
 B, N, M, C, K = 16, 256, 64, 64, 16
@@ -43,4 +55,22 @@ err = dist - dist_gt
 print(err.abs().max())
 print(t1-t0)
 print(t2-t1)
-t=0
+print((t2-t1) / (t1-t0))
+
+
+
+t0 = time.time()
+attn = f_attn(x1, x2, idx.int())
+t1 = time.time()
+attn_gt = indexed_attn(x1, x2, idx)
+t2 = time.time()
+
+err = attn - attn_gt
+# print(dist)
+print(err.abs().max())
+print(t1-t0)
+print(t2-t1)
+print((t2-t1) / (t1-t0))
+
+
+print('finish')
