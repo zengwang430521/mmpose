@@ -76,6 +76,14 @@ torch::Tensor attn_forward(
 }
 
 
+torch::Tensor attn_backward_query(
+        const torch::Tensor &attn,
+        const torch::Tensor &key,
+        const torch::Tensor &idx) {
+    return attn_cuda_backward_query(
+            attn, key, idx);
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("similar_forward", &similar_forward,
             "similar_forward (CUDA)");
@@ -93,4 +101,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         "distance_forward (CUDA)");
     m.def("attn_forward", &attn_forward,
         "attn_forward (CUDA)");
+    m.def("attn_backward_query", &attn_backward_query,
+        "attn_backward_query (CUDA)");
 }

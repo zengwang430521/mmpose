@@ -147,3 +147,33 @@ torch::Tensor attn_cuda_forward(
     );
     return output;
 }
+
+
+// backward from attn to query
+
+torch::Tensor attn_cuda_backward_query(
+        const torch::Tensor &attn,
+        const torch::Tensor &key,
+        const torch::Tensor &idx
+) {
+    TypeCheck(attn);
+    TypeCheck(key);
+
+    const int batch = key.size(0);
+    const int Nkey = key.size(1);
+    const int channels = key.size(2);
+    const int Nquery = idx.size(1);
+    const int kernel = idx.size(2);
+
+    auto output = torch::empty({batch, Nquery, channels}, attn.options());
+
+    f_attn_key2query<float, double>(
+            at::cuda::getCurrentCUDAStream(),
+            attn.data_ptr<float>(),
+            key.data_ptr<float>(),
+            idx.data_ptr<int>(),
+            batch, Nquery, Nkey, kernel, channels,
+            output.data_ptr<float>()
+    );
+    return output;
+}

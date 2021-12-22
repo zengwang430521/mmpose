@@ -9,7 +9,7 @@ from localAttention import (similar_forward,
                             weighting_backward_ori,
                             weighting_backward_weight,
                             distance_forward,
-                            attn_forward
+                            attn_forward, attn_backward_query,
                             )
 
 __all__ = ['f_similar', 'f_weighting', 'LocalAttention', 'TorchLocalAttention',
@@ -149,8 +149,22 @@ f_distance = distanceFunction.apply
 class attnFunction(Function):
     @staticmethod
     def forward(ctx, query, key, idx):
+        query, key, idx = query.contiguous(), key.contiguous(), idx.contiguous()
+        ctx.save_for_backward(query, key, idx)
         output = attn_forward(query, key, idx)
         return output
+
+    @staticmethod
+    #@once_differentiable
+    def backward(ctx, grad_output):
+
+        query, key, idx = ctx.saved_variables
+        grad_query = grad_key = grad_idx = None
+        if ctx.needs_input_grad[0]:
+            grad_query = attn_backward_query(grad_output.contiguous(), key, idx)
+        if ctx.needs_input_grad[1]:
+            grad_key = None
+        return grad_query, grad_key, grad_idx
 
 
 f_attn = attnFunction.apply

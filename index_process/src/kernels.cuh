@@ -241,7 +241,7 @@ __global__ void mydist(
             p_query += 1;
             p_key += 1;
         }
-        val = sqrt(val / static_cast<dtc> (channels));
+        val = sqrt(val);
         y[idx_all] = static_cast<dt> (val);
 
 
@@ -345,5 +345,76 @@ void f_qk2attn(
             y);
 }
 
+
+
+// backward from attn, key to query
+// FLOPs: B * N * K * C
+// parallel in channels B, N, C, loop in channels K
+template<typename dt, typename dtc>
+__global__ void attn_key2query(
+        const dt *attn,
+        const dt *key,
+        const int *idx,
+        const int batch,
+        const int Nquery,
+        const int Nkey,
+        const int kernel,
+        const int channels,
+        dt *query) {
+    // attn: {batch, Nquery, kernel}
+    // key: {batch, Nkey, channels}
+    // idx: {batch, Nquery, kernel}
+    // query: {batch, Nquery, channels}
+
+    int idx_begin = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int idx_end = batch * Nquery * channels;
+
+    for (int idx_all=idx_begin; idx_all < idx_end; idx_all += stride)
+    {
+        int tmp = idx_all;
+        int idx_C = tmp % channels;
+        tmp = tmp / channels;
+        int idx_N = tmp % Nquery;
+        tmp = tmp / Nquery;
+        int idx_B = tmp;
+
+        const dt *p_attn = attn + idx_B * Nquery * kernel + idx_N * kernel + 0;
+        const int *p_idx_M = idx + idx_B * Nquery * kernel + idx_N * kernel + 0;
+
+        dtc val = dtc(0);
+        for (int idx_K = 0; idx_K < kernel; ++idx_K) {
+            const dt *p_key = key + idx_B * Nkey * channels + __ldg(p_idx_M) * channels + idx_C;
+            val += static_cast<dtc> (__ldg(p_attn) * __ldg(p_key));
+            p_attn += 1;
+            p_idx_M += 1;
+        }
+        query[idx_B * Nquery * channels + idx_N * channels + idx_C] = static_cast<dt> (val);
+    }
+}
+
+
+
+template<typename dt, typename dtc>
+void f_attn_key2query(
+        cudaStream_t stream,
+        const dt *attn,
+        const dt *key,
+        const int *idx,
+        const int batch,
+        const int Nquery,
+        const int Nkey,
+        const int kernel,
+        const int channels,
+        dt *query) {
+
+        dim3 blockSize(CUDA_NUM_THREADS);
+        dim3 gridSize( min( (batch*Nquery*channels+blockSize.x-1)/blockSize.x, MAX_PIXELS_2d) );
+
+        attn_key2query<dt, dtc> <<< gridSize, blockSize, 0, stream >>> (
+            attn, key, idx,
+            batch, Nquery, Nkey, kernel, channels,
+            query);
+}
 
 

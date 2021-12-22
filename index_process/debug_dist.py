@@ -14,6 +14,7 @@
 import torch
 from function import f_distance, f_attn
 import time
+from function import attn_backward_query
 
 
 def indexed_dist(x1, x2, idx):
@@ -23,7 +24,7 @@ def indexed_dist(x1, x2, idx):
     xk = x2[idx_batch.reshape(-1), idx.reshape(-1), :]
     xk = xk.reshape(B, N, K, C)
     dist = x1[:, :, None, :] - xk
-    dist = (dist ** 2).mean(-1).sqrt()
+    dist = (dist ** 2).sum(-1).sqrt()
     return dist
 
 
@@ -38,39 +39,102 @@ def indexed_attn(query, key, idx):
     return attn
 
 
-B, N, M, C, K = 16, 256, 64, 64, 16
-x1 = torch.rand([B, N, C]).cuda()
-x2 = torch.rand([B, M, C]).cuda()
+def indexed_back_query(attn, key, idx):
+    B, N, K = idx.shape
+    C = key.shape[-1]
+    out = attn.new_zeros(B, N, C)
+
+    idx_batch = torch.arange(B)[:, None, None].expand([B, N, K]).to(key.device)
+    xk = key[idx_batch.reshape(-1), idx.reshape(-1), :]
+    xk = xk.reshape(B, N, K, C)
+
+    out = xk * attn.unsqueeze(-1)   # B, N, K, C
+    out = out.sum(dim=2)
+    return out
+
+
+
+# B, N, M, C, K = 16, 256, 64, 64, 16
+# x1 = torch.rand([B, N, C]).cuda()
+# x2 = torch.rand([B, M, C]).cuda()
+# idx = torch.rand([B, N, K]) * (M-1)
+# idx = idx.round().long().cuda().clamp(0, M-1)
+#
+# t0 = time.time()
+# dist = f_distance(x1, x2, idx.int())
+# t1 = time.time()
+# dist_gt = indexed_dist(x1, x2, idx)
+# t2 = time.time()
+#
+# err = dist - dist_gt
+# # print(dist)
+# print(err.abs().max())
+# print(t1-t0)
+# print(t2-t1)
+# print((t2-t1) / (t1-t0))
+#
+#
+#
+# t0 = time.time()
+# attn = f_attn(x1, x2, idx.int())
+# t1 = time.time()
+# attn_gt = indexed_attn(x1, x2, idx)
+# t2 = time.time()
+#
+# err = attn - attn_gt
+# # print(dist)
+# print(err.abs().max())
+# print(t1-t0)
+# print(t2-t1)
+# print((t2-t1) / (t1-t0))
+
+# test backwrads
+B, N, M, C, K = 1, 4, 3, 3, 2
+q = torch.rand([B, N, C]).cuda()
+k = torch.rand([B, M, C]).cuda()
 idx = torch.rand([B, N, K]) * (M-1)
 idx = idx.round().long().cuda().clamp(0, M-1)
 
-t0 = time.time()
-dist = f_distance(x1, x2, idx.int())
-t1 = time.time()
-dist_gt = indexed_dist(x1, x2, idx)
-t2 = time.time()
+q1 = q.clone().requires_grad_(True)
+k1 = k.clone().requires_grad_(True)
+attn1 = f_attn(q1, k1, idx.int())
+attn1.retain_grad()
+l1 = attn1.sum()
+# t = attn1.grad_fn.saved_tensors
+# grad_t = attn1.new_ones(attn1.shape)
+# q_grad1 = attn_backward_query(grad_t, t[1], t[2])
+l1.backward()
 
-err = dist - dist_gt
-# print(dist)
-print(err.abs().max())
-print(t1-t0)
-print(t2-t1)
-print((t2-t1) / (t1-t0))
+q_grad1 = attn_backward_query(attn1.grad, k1, idx.int())
+print('q_grad1 is:')
+print(q_grad1)
 
+err = q1.grad - q_grad1
+print('err is:')
+print(err)
 
-
-t0 = time.time()
-attn = f_attn(x1, x2, idx.int())
-t1 = time.time()
-attn_gt = indexed_attn(x1, x2, idx)
-t2 = time.time()
-
-err = attn - attn_gt
-# print(dist)
-print(err.abs().max())
-print(t1-t0)
-print(t2-t1)
-print((t2-t1) / (t1-t0))
-
-
-print('finish')
+# q2 = q.clone().requires_grad_(True)
+# k2 = k.clone().requires_grad_(True)
+# attn2 = indexed_attn(q2, k2, idx.long())
+# attn2.retain_grad()
+# l2 = attn2.sum()
+# l2.backward()
+#
+# err = q1.grad - q2.grad
+# # err = q_grad1 - q2.grad
+# print('err:')
+# print(err.abs().max())
+#
+# q_grad1 = attn_backward_query(attn1.grad, k1, idx.int())
+# q_grad2 = indexed_back_query(attn2.grad, k2, idx)
+#
+# err = q_grad1 - q2.grad
+# print('err:')
+# print(err.abs().max())
+#
+# err = q_grad2 - q2.grad
+# print('err:')
+# print(err.abs().max())
+#
+#
+# print('finish')
