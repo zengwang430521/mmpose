@@ -67,22 +67,33 @@ torch::Tensor distance_forward(
 }
 
 
-torch::Tensor attn_forward(
+torch::Tensor query_key2attn(
         const torch::Tensor &query,
         const torch::Tensor &key,
         const torch::Tensor &idx) {
-    return attn_cuda_forward(
+    return query_key2attn_cuda(
             query, key, idx);
 }
 
 
-torch::Tensor attn_backward_query(
+torch::Tensor attn_key2query(
         const torch::Tensor &attn,
         const torch::Tensor &key,
         const torch::Tensor &idx) {
-    return attn_cuda_backward_query(
+    return attn_key2query_cuda(
             attn, key, idx);
 }
+
+
+torch::Tensor attn_query2key(
+        const torch::Tensor &attn,
+        const torch::Tensor &query,
+        const torch::Tensor &idx,
+        const int Nkey) {
+    return attn_query2key_cuda(
+            attn, query, idx, Nkey);
+}
+
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("similar_forward", &similar_forward,
@@ -99,8 +110,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
     m.def("distance_forward", &distance_forward,
         "distance_forward (CUDA)");
-    m.def("attn_forward", &attn_forward,
-        "attn_forward (CUDA)");
-    m.def("attn_backward_query", &attn_backward_query,
-        "attn_backward_query (CUDA)");
+
+    m.def("query_key2attn", &query_key2attn,
+        "query_key2attn");
+    m.def("attn_key2query", &attn_key2query,
+        "attn_key2query (CUDA)");
+    m.def("attn_query2key", &attn_query2key,
+        "attn_query2key (CUDA)");
 }

@@ -44,6 +44,8 @@ from .pvt_v2_3h2_density_fix_topk import mypvt3h2_density0ftopk_small
 from .tcformer_hir import tcformer_hir_small
 from .hrformer import HRFormer
 from .hrt import HRT
+from .tc_module.tcformer_partpad import tcformer_partpad_small, tcformer_partpad_small2
+from .tc_module.mta_head import MTA
 
 
 __all__ = [

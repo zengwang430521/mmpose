@@ -9,7 +9,9 @@ from localAttention import (similar_forward,
                             weighting_backward_ori,
                             weighting_backward_weight,
                             distance_forward,
-                            attn_forward, attn_backward_query,
+                            query_key2attn,
+                            attn_key2query,
+                            attn_query2key,
                             )
 
 __all__ = ['f_similar', 'f_weighting', 'LocalAttention', 'TorchLocalAttention',
@@ -149,25 +151,49 @@ f_distance = distanceFunction.apply
 class attnFunction(Function):
     @staticmethod
     def forward(ctx, query, key, idx):
-        query, key, idx = query.contiguous(), key.contiguous(), idx.contiguous()
+        query, key, idx = query.contiguous(), key.contiguous(), idx.contiguous().int()
         ctx.save_for_backward(query, key, idx)
-        output = attn_forward(query, key, idx)
+        output = query_key2attn(query, key, idx)
         return output
 
     @staticmethod
     #@once_differentiable
     def backward(ctx, grad_output):
-
         query, key, idx = ctx.saved_variables
+        grad_output = grad_output.contiguous()
         grad_query = grad_key = grad_idx = None
         if ctx.needs_input_grad[0]:
-            grad_query = attn_backward_query(grad_output.contiguous(), key, idx)
+            grad_query = attn_key2query(grad_output, key, idx)
         if ctx.needs_input_grad[1]:
-            grad_key = None
+            grad_key = attn_query2key(grad_output, query, idx, key.shape[1])
         return grad_query, grad_key, grad_idx
 
 
 f_attn = attnFunction.apply
+
+
+class weighted_sum_Function(Function):
+    @staticmethod
+    def forward(ctx, attn, value, idx):
+        attn, value, idx = attn.contiguous(), value.contiguous(), idx.contiguous().int()
+        ctx.save_for_backward(attn, value, idx)
+        output = attn_key2query(attn, value, idx)
+        return output
+
+    @staticmethod
+    #@once_differentiable
+    def backward(ctx, grad_output):
+        attn, value, idx = ctx.saved_variables
+        grad_output = grad_output.contiguous()
+        grad_attn = grad_value = grad_idx = None
+        if ctx.needs_input_grad[0]:
+            grad_attn = query_key2attn(grad_output, value, idx)
+        if ctx.needs_input_grad[1]:
+            grad_value = attn_query2key(attn, grad_output, idx, value.shape[1])
+        return grad_attn, grad_value, grad_idx
+
+
+f_weighted_sum = weighted_sum_Function.apply
 
 
 if __name__ == '__main__':

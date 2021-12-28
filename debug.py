@@ -286,3 +286,58 @@ from typing import List
 # for t in y_list:
 #     print(torch.isinf(t['x']).any())
 #     print(torch.isnan(t['x']).any())
+
+
+from mmpose.models.backbones.tc_module.hr_tcformer import HRTCFormer
+
+norm_cfg = dict(type='BN', requires_grad=True)
+model_dict = dict(
+    in_channels=3,
+    norm_cfg=norm_cfg,
+    extra=dict(
+        drop_path_rate=0.1,
+        stage1=dict(
+            num_modules=1,
+            num_branches=1,
+            block='BOTTLENECK',
+            num_blocks=(2,),
+            num_channels=(64,),
+            num_heads=[2],
+            num_mlp_ratios=[4]),
+        stage2=dict(
+            num_modules=1,
+            num_branches=2,
+            block='TRANSFORMER_BLOCK',
+            num_blocks=(2, 2),
+            num_channels=(32, 64),
+            num_heads=[1, 2],
+            num_mlp_ratios=[4, 4],
+            num_window_sizes=[7, 7]),
+        stage3=dict(
+            num_modules=4,
+            num_branches=3,
+            block='TCWIN_BLOCK',
+            num_blocks=(2, 2, 2),
+            num_channels=(32, 64, 128),
+            num_heads=[1, 2, 4],
+            num_mlp_ratios=[4, 4, 4],
+            num_window_sizes=[7, 7, 7]),
+        stage4=dict(
+            num_modules=2,
+            num_branches=4,
+            block='TCWIN_BLOCK',
+            num_blocks=(2, 2, 2, 2),
+            num_channels=(32, 64, 128, 256),
+            num_heads=[1, 2, 4, 8],
+            num_mlp_ratios=[4, 4, 4, 4],
+            num_window_sizes=[7, 7, 7, 7])
+    )
+)
+
+device = torch.device('cuda')
+model = HRTCFormer(**model_dict).to(device)
+
+B, H, W, C = 1, 257, 192, 3
+img = torch.zeros([B, C, H, W], device=device)
+
+out = model(img)

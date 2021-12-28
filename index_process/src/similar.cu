@@ -123,7 +123,8 @@ torch::Tensor distance_cuda_forward(
 
 ////////////////////////////////////////////////////////////////////
 
-torch::Tensor attn_cuda_forward(
+// from query, key to attn
+torch::Tensor query_key2attn_cuda(
         const torch::Tensor &query,
         const torch::Tensor &key,
         const torch::Tensor &idx
@@ -149,9 +150,9 @@ torch::Tensor attn_cuda_forward(
 }
 
 
-// backward from attn to query
+// from attn, key to query
 
-torch::Tensor attn_cuda_backward_query(
+torch::Tensor attn_key2query_cuda(
         const torch::Tensor &attn,
         const torch::Tensor &key,
         const torch::Tensor &idx
@@ -177,3 +178,36 @@ torch::Tensor attn_cuda_backward_query(
     );
     return output;
 }
+
+
+//from attn, query to key
+
+torch::Tensor attn_query2key_cuda(
+        const torch::Tensor &attn,
+        const torch::Tensor &query,
+        const torch::Tensor &idx,
+        const int Nkey
+
+) {
+    TypeCheck(attn);
+    TypeCheck(query);
+
+    const int batch = query.size(0);
+    const int Nquery = query.size(1);
+    const int channels = query.size(2);
+    const int kernel = idx.size(2);
+
+    // some elements may not be updated, so zeros is needed
+    auto output = torch::zeros({batch, Nkey, channels}, attn.options());
+
+    f_attn_query2key<float, double>(
+            at::cuda::getCurrentCUDAStream(),
+            attn.data_ptr<float>(),
+            query.data_ptr<float>(),
+            idx.data_ptr<int>(),
+            batch, Nquery, Nkey, kernel, channels,
+            output.data_ptr<float>()
+    );
+    return output;
+}
+

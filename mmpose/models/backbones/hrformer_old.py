@@ -1,17 +1,15 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 
-import copy
-
+from torch.nn import functional as F
+from timm.models.layers import to_2tuple, trunc_normal_
+from ..builder import BACKBONES
 import torch
 import torch.nn as nn
-from mmcv.cnn import build_activation_layer, build_conv_layer, build_norm_layer
-from mmcv.cnn.bricks.transformer import build_dropout
+import copy
+from mmcv.cnn import build_activation_layer, build_norm_layer, build_conv_layer
+from .hrnet import BasicBlock, Bottleneck, HRNet, HRModule
 from mmcv.runner import BaseModule
-from timm.models.layers import to_2tuple, trunc_normal_
-from torch.nn import functional as F
-
-from ..builder import BACKBONES
-from .hrnet import BasicBlock, Bottleneck, HRModule, HRNet
+from mmcv.cnn.bricks.transformer import build_dropout
 
 
 class WindowMSA(BaseModule):
@@ -97,7 +95,7 @@ class WindowMSA(BaseModule):
                 -1)  # Wh*Ww,Wh*Ww,nH
         relative_position_bias = relative_position_bias.permute(
             2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
-        attn = attn  # + relative_position_bias.unsqueeze(0)
+        attn = attn # + relative_position_bias.unsqueeze(0)
 
         if mask is not None:
             nW = mask.shape[0]
@@ -182,8 +180,7 @@ class ShiftWindowMSA(BaseModule):
         pad_r = (self.window_size - W % self.window_size) % self.window_size
         pad_b = (self.window_size - H % self.window_size) % self.window_size
         # query = F.pad(query, (0, 0, 0, pad_r, 0, pad_b))
-        query = F.pad(query, (0, 0, pad_r // 2, pad_r - pad_r // 2, pad_b // 2,
-                              pad_b - pad_b // 2))
+        query = F.pad(query, (0, 0, pad_r // 2, pad_r - pad_r // 2, pad_b // 2, pad_b - pad_b // 2))
         H_pad, W_pad = query.shape[1], query.shape[2]
 
         # cyclic shift
@@ -244,8 +241,7 @@ class ShiftWindowMSA(BaseModule):
 
         if pad_r > 0 or pad_b:
             # x = x[:, :H, :W, :].contiguous()
-            x = x[:, pad_b // 2:pad_b // 2 + H,
-                  pad_r // 2:pad_r // 2 + W, :].contiguous()
+            x = x[:, pad_b // 2:pad_b // 2 + H, pad_r // 2:pad_r // 2 + W, :].contiguous()
 
         x = x.view(B, H * W, C)
 
@@ -285,18 +281,17 @@ class ShiftWindowMSA(BaseModule):
 
 
 class MlpDWBN(nn.Module):
-
     def __init__(
-            self,
-            in_channels,
-            hidden_channels=None,
-            out_channels=None,
-            act_cfg=dict(type='GELU', inplace=True),
-            dw_act_cfg=dict(type='GELU', inplace=True),
-            drop=0.0,
-            conv_cfg=None,
-            norm_cfg=dict(type='BN', requires_grad=True),
-            dropout_layer=dict(type='DropPath', drop_prob=0.),
+        self,
+        in_channels,
+        hidden_channels=None,
+        out_channels=None,
+        act_cfg=dict(type='GELU', inplace=True),
+        dw_act_cfg=dict(type='GELU', inplace=True),
+        drop=0.0,
+        conv_cfg=None,
+        norm_cfg=dict(type='BN', requires_grad=True),
+        dropout_layer=dict(type='DropPath', drop_prob=0.),
     ):
         super().__init__()
         out_channels = out_channels or in_channels
@@ -367,36 +362,36 @@ class LocalWindowTransformerBlock(nn.Module):
     expansion = 1
 
     def __init__(
-            self,
-            in_channels,
-            out_channels,
-            num_heads,
-            window_size=7,
-            mlp_ratio=4.0,
-            qkv_bias=True,
-            qk_scale=None,
-            drop=0.0,
-            attn_drop=0.0,
-            drop_path=0.0,
-            act_cfg=dict(type='GELU'),
-            dw_act_cfg=None,
-            norm_cfg=dict(type='LN', eps=1e-6),
-            conv_cfg=None,
-            mlp_norm_cfg=dict(type='BN', requires_grad=True),
+        self,
+        in_channels,
+        out_channels,
+        num_heads,
+        window_size=7,
+        mlp_ratio=4.0,
+        qkv_bias=True,
+        qk_scale=None,
+        drop=0.0,
+        attn_drop=0.0,
+        drop_path=0.0,
+        act_cfg=dict(type='GELU'),
+        dw_act_cfg=None,
+        norm_cfg=dict(type='LN', eps=1e-6),
+        conv_cfg=None,
+        mlp_norm_cfg=dict(type='BN', requires_grad=True),
     ):
         super().__init__()
         self.dim = in_channels
         self.out_dim = out_channels
-
+        self.num_heads = num_heads
+        self.window_size = window_size
+        self.mlp_ratio = mlp_ratio
+        self.conv_cfg = conv_cfg
+        self.norm_cfg = norm_cfg
 
         self.attn = ShiftWindowMSA(
-            self.dim,
-            num_heads=num_heads,
-            window_size=window_size,
-            attn_drop_rate=attn_drop,
-            qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
+            self.dim, num_heads=num_heads, window_size=window_size, attn_drop_rate=attn_drop, qkv_bias=qkv_bias, qk_scale=qk_scale,
             dropout_layer=dict(type='DropPath', drop_prob=drop_path),
+
         )
         self.norm1 = build_norm_layer(norm_cfg, self.dim)[1]
         self.norm2 = build_norm_layer(norm_cfg, self.out_dim)[1]
@@ -429,28 +424,27 @@ class LocalWindowTransformerBlock(nn.Module):
 
 
 class HRTransformerModule(HRModule):
-
-    def __init__(self,
-                 num_branches,
-                 blocks,
-                 num_blocks,
-                 in_channels,
-                 num_channels,
-                 multiscale_output,
-                 with_cp=False,
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', requires_grad=True),
-                 num_heads=None,
-                 num_window_sizes=None,
-                 num_mlp_ratios=None,
-                 drop_paths=0.0,
-                 upsample_cfg=dict(mode='bilinear', align_corners=False)):
+    def __init__(
+            self,
+            num_branches,
+            blocks,
+            num_blocks,
+            in_channels,
+            num_channels,
+            multiscale_output,
+            with_cp=False,
+            conv_cfg=None,
+            norm_cfg=dict(type="BN", requires_grad=True),
+            num_heads=None,
+            num_window_sizes=None,
+            num_mlp_ratios=None,
+            drop_paths=0.0,
+            upsample_cfg=dict(mode='bilinear', align_corners=False)):
 
         super(HRModule, self).__init__()
         # Protect mutable default arguments
         norm_cfg = copy.deepcopy(norm_cfg)
-        self._check_branches(num_branches, num_blocks, in_channels,
-                             num_channels)
+        self._check_branches(num_branches, num_blocks, in_channels, num_channels)
 
         self.in_channels = in_channels
         self.num_branches = num_branches
@@ -493,8 +487,7 @@ class HRTransformerModule(HRModule):
     ):
         """Make one branch."""
         # LocalWindowTransformerBlock does not support down sample layer yet.
-        assert stride == 1 and self.in_channels[branch_index] == num_channels[
-            branch_index]
+        assert stride == 1 and self.in_channels[branch_index] == num_channels[branch_index]
         layers = []
         for i in range(num_blocks[branch_index]):
             layers.append(
@@ -507,7 +500,8 @@ class HRTransformerModule(HRModule):
                     drop_path=drop_paths[i],
                     mlp_norm_cfg=self.norm_cfg,
                     conv_cfg=self.conv_cfg,
-                ))
+                )
+            )
         return nn.Sequential(*layers)
 
     def _make_branches(
@@ -535,7 +529,8 @@ class HRTransformerModule(HRModule):
                     num_window_sizes,
                     num_mlp_ratios,
                     drop_paths,
-                ))
+                )
+            )
 
         return nn.ModuleList(branches)
 
@@ -567,9 +562,9 @@ class HRTransformerModule(HRModule):
                             nn.Upsample(
                                 scale_factor=2**(j - i),
                                 mode=self.upsample_cfg['mode'],
-                                align_corners=self.
-                                upsample_cfg['align_corners']),
-                        ))
+                                align_corners=self.upsample_cfg['align_corners']),
+                        )
+                    )
                 elif j == i:
                     fuse_layer.append(None)
                 else:
@@ -588,8 +583,7 @@ class HRTransformerModule(HRModule):
                                         groups=in_channels[j],
                                         bias=False,
                                     ),
-                                    build_norm_layer(self.norm_cfg,
-                                                     in_channels[j])[1],
+                                    build_norm_layer(self.norm_cfg, in_channels[j])[1],
                                     build_conv_layer(
                                         self.conv_cfg,
                                         in_channels[j],
@@ -598,9 +592,9 @@ class HRTransformerModule(HRModule):
                                         stride=1,
                                         bias=False,
                                     ),
-                                    build_norm_layer(self.norm_cfg,
-                                                     in_channels[i])[1],
-                                ))
+                                    build_norm_layer(self.norm_cfg, in_channels[i])[1],
+                                )
+                            )
                         else:
                             conv_downsamples.append(
                                 nn.Sequential(
@@ -614,8 +608,7 @@ class HRTransformerModule(HRModule):
                                         groups=in_channels[j],
                                         bias=False,
                                     ),
-                                    build_norm_layer(self.norm_cfg,
-                                                     in_channels[j])[1],
+                                    build_norm_layer(self.norm_cfg, in_channels[j])[1],
                                     build_conv_layer(
                                         self.conv_cfg,
                                         in_channels[j],
@@ -624,19 +617,19 @@ class HRTransformerModule(HRModule):
                                         stride=1,
                                         bias=False,
                                     ),
-                                    build_norm_layer(self.norm_cfg,
-                                                     in_channels[j])[1],
+                                    build_norm_layer(self.norm_cfg, in_channels[j])[1],
                                     nn.ReLU(inplace=True),
-                                ))
+                                )
+                            )
                     fuse_layer.append(nn.Sequential(*conv_downsamples))
             fuse_layers.append(nn.ModuleList(fuse_layer))
         return nn.ModuleList(fuse_layers)
 
 
+
 @BACKBONES.register_module()
 class HRFormer(HRNet):
     """HRFormer backbone.
-
     High Resolution Transformer Backbone
     """
 
@@ -656,17 +649,12 @@ class HRFormer(HRNet):
                  zero_init_residual=False,
                  frozen_stages=-1):
         # generate drop path rate list
-        depth_s2 = (
-            extra['stage2']['num_blocks'][0] * extra['stage2']['num_modules'])
-        depth_s3 = (
-            extra['stage3']['num_blocks'][0] * extra['stage3']['num_modules'])
-        depth_s4 = (
-            extra['stage4']['num_blocks'][0] * extra['stage4']['num_modules'])
+        depth_s2 = (extra['stage2']['num_blocks'][0] * extra['stage2']['num_modules'])
+        depth_s3 = (extra['stage3']['num_blocks'][0] * extra['stage3']['num_modules'])
+        depth_s4 = (extra['stage4']['num_blocks'][0] * extra['stage4']['num_modules'])
         depths = [depth_s2, depth_s3, depth_s4]
         drop_path_rate = extra['drop_path_rate']
-        dpr = [
-            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
-        ]
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
         extra['stage2']['drop_path_rates'] = dpr[0:depth_s2]
         extra['stage3']['drop_path_rates'] = dpr[depth_s2:depth_s2 + depth_s3]
         extra['stage4']['drop_path_rates'] = dpr[depth_s2 + depth_s3:]
@@ -677,8 +665,16 @@ class HRFormer(HRNet):
         })
         extra['upsample'] = upsample_cfg
 
-        super().__init__(extra, in_channels, conv_cfg, norm_cfg, norm_eval,
-                         with_cp, zero_init_residual, frozen_stages)
+        super().__init__(
+            extra,
+            in_channels,
+            conv_cfg,
+            norm_cfg,
+            norm_eval,
+            with_cp,
+            zero_init_residual,
+            frozen_stages
+        )
 
     def _make_stage(self, layer_config, in_channels, multiscale_output=True):
         """Make stage."""
@@ -716,8 +712,8 @@ class HRFormer(HRNet):
                     num_heads=num_heads,
                     num_window_sizes=num_window_sizes,
                     num_mlp_ratios=num_mlp_ratios,
-                    drop_paths=drop_path_rates[num_blocks[0] *
-                                               i:num_blocks[0] * (i + 1)],
-                ))
+                    drop_paths=drop_path_rates[num_blocks[0] * i:num_blocks[0] * (i + 1)],
+                )
+            )
 
         return nn.Sequential(*hr_modules), in_channels
