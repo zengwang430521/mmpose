@@ -49,7 +49,7 @@ class CTM_partpad_dict(nn.Module):
         self.agg_weight_detach = agg_weight_detach
         self.with_act = with_act
         if self.with_act:
-            self.act = nn.ReLU(inplace=True)
+            self.act = nn.ReLU(inplace=False)
 
     def forward(self, input_dict):
         input_dict = input_dict.copy()
