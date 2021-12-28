@@ -16,9 +16,10 @@ srun -p mm_human --quotatype=auto\
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192_fine.py \
     --work-dir=work_dirs/coco/hrtc_32_fine --launcher="slurm"
 
+
+
     --job-name=ablation python -u tools/train.py  configs/ablation_topk.py \
     --work-dir=work_dirs/ablation_topk --launcher="slurm"
-
 
     --job-name=ablation python -u tools/train.py  configs/ablation_noconf.py \
     --work-dir=work_dirs/ablation_noconf16 --launcher="slurm"
