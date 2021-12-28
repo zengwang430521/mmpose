@@ -43,7 +43,7 @@ channel_cfg = dict(
 
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
-model_cfg = dict(
+model = dict(
     type='TopDown',
     pretrained='models/hrtcformer_small_coco_256x192.pth',
     backbone=dict(
@@ -107,7 +107,7 @@ model_cfg = dict(
         modulate_kernel=11)
 )
 
-data_root = "/path/to/dataset/coco" # Set the data path here
+data_root = "data/coco"     # Set the data path here
 data_cfg = dict(
     image_size=[192, 256],
     heatmap_size=[48, 64],
