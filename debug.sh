@@ -113,6 +113,11 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 
 srun -p pat_earth \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=eval python -u tools/test.py   \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192.py \
+    models/hrtcformer_small_coco_256x192.pth --launcher="slurm"
+
+
     --job-name=eval python -u tools/test.py   configs/fine_pvt2.py work_dirs/fine_pvt/latest.pth --launcher="slurm"
 
     --job-name=eval python -u tools/test.py  configs/wholebody/2d_kpt_sview_rgb_img/topdown_heatmap/coco-wholebody/res50_coco_wholebody_256x192.py\
