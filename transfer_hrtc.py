@@ -202,7 +202,10 @@ print(len(model_left))
 
 print('Unloaded parameters:')
 for key in model_left.keys():
-    out_dict[key] = model_left[key]
+    if '.bias' in key:
+        out_dict[key] = model_left[key] * 0
+    else:
+        out_dict[key] = model_left[key]
     print(key)
 
 # try to load
