@@ -678,7 +678,7 @@ class HRFormer(HRNet):
         extra['upsample'] = upsample_cfg
 
         super().__init__(extra, in_channels, conv_cfg, norm_cfg, norm_eval,
-                         with_cp, zero_init_residual, frozen_stages)
+                         with_cp, zero_init_residual)
 
     def _make_stage(self, layer_config, in_channels, multiscale_output=True):
         """Make stage."""
