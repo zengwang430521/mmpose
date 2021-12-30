@@ -8,7 +8,8 @@ evaluation = dict(interval=10, metric='mAP', key_indicator='AP')
 
 optimizer = dict(
     type='AdamW',
-    lr=5e-4,
+    # lr=5e-4,
+    lr=5e-5,
     betas=(0.9, 0.999),
     weight_decay=0.01,
     paramwise_cfg=dict(

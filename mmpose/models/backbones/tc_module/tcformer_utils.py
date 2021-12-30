@@ -786,7 +786,7 @@ def show_tokens_merge(x, out, count=0):
     IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
     x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
     save_x = False
-    save_img = False
+    save_img = True
     save_fig = True
 
     if save_x:

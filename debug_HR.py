@@ -24,7 +24,12 @@ device = torch.device('cuda')
 model = model.to(device)
 model.eval()
 # x = torch.ones([1, 3, 256, 192], device=device)
-x = torch.ones([1, 3, 224, 224], device=device)
+# x = torch.ones([1, 3, 224, 224], device=device)
+import cv2
+x = cv2.imread('/home/wzeng/mycodes/mmpose_mine/vis/0_img.png')
+x = cv2.resize(x, [224, 224])
+x = torch.tensor(x).float().to(device).permute(2, 0, 1)[None, ...]
+x = x / 255.0 - 0.5
 y = model.backbone(x)
-y = model.head(y)
+z = model.keypoint_head(y)
 
