@@ -14,7 +14,7 @@ srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=coco python -u tools/train.py \
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192_fine.py \
-    --work-dir=work_dirs/coco/hrtc_32_fine --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_32_fine --launcher="slurm"  --finetune-from=models/hrtcformer_small_coco_256x192.pth
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192_nopretrain.py \
     --work-dir=work_dirs/coco/hrtc_32_nopretrain --launcher="slurm"
