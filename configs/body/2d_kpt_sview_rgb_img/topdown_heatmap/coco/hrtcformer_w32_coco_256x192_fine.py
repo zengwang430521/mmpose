@@ -1,5 +1,5 @@
 log_level = 'INFO'
-load_from = None
+load_from = 'models/hrtcformer_small_coco_256x192.pth'
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
@@ -46,7 +46,8 @@ channel_cfg = dict(
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    pretrained='models/hrtcformer_small_coco_256x192.pth',
+    load_from='models/hrtcformer_small_coco_256x192.pth',
+    pretrained=None,
     backbone=dict(
         type='HRTCFormer',
         in_channels=3,

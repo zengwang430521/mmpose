@@ -94,6 +94,8 @@ def main():
                                 osp.splitext(osp.basename(args.config))[0])
     if args.resume_from is not None:
         cfg.resume_from = args.resume_from
+    if args.finetune_from is not None:
+        cfg.finetune_from = args.finetune_from
     if args.gpu_ids is not None:
         cfg.gpu_ids = args.gpu_ids
     else:

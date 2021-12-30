@@ -1,5 +1,5 @@
 log_level = 'INFO'
-load_from = None
+load_from = 'models/hrtcformer_small_coco_256x192.pth'
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
@@ -40,6 +40,7 @@ channel_cfg = dict(
     inference_channel=[
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
     ])
+
 
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
