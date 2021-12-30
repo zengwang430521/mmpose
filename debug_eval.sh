@@ -3,11 +3,13 @@ srun -p pat_earth \
 srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=eval python -u tools/test.py   \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192.py \
+    models/hrtcformer_small_coco_256x192.pth --launcher="slurm"
+
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrformer_small_coco_256x192_debug.py \
     models/hrformer_small_coco_256x192.pth --launcher="slurm"
 
-    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192.py \
-    models/hrtcformer_small_coco_256x192.pth --launcher="slurm"
+
 
 
 
