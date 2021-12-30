@@ -48,6 +48,9 @@ model = dict(
         in_channels=3,
         norm_cfg=norm_cfg,
         extra=dict(
+            upsample=dict(
+                mode='nearest',
+                align_corners=None),
             drop_path_rate=0.1,
             stage1=dict(
                 num_modules=1,
@@ -100,8 +103,8 @@ model = dict(
 
 data_root = 'data/coco'
 data_cfg = dict(
-    image_size=[288, 384],
-    heatmap_size=[72, 96],
+    image_size=[192, 256],
+    heatmap_size=[48, 64],
     num_output_channels=channel_cfg['num_output_channels'],
     num_joints=channel_cfg['dataset_joints'],
     dataset_channel=channel_cfg['dataset_channel'],
@@ -131,7 +134,7 @@ train_pipeline = [
         type='NormalizeTensor',
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]),
-    dict(type='TopDownGenerateTarget', sigma=3),
+    dict(type='TopDownGenerateTarget', sigma=2),
     dict(
         type='Collect',
         keys=['img', 'target', 'target_weight'],
@@ -149,7 +152,6 @@ val_pipeline = [
         type='NormalizeTensor',
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]),
-    dict(type='TopDownGenerateTarget', sigma=3),
     dict(
         type='Collect',
         keys=['img'],
@@ -164,8 +166,8 @@ test_pipeline = val_pipeline
 data = dict(
     samples_per_gpu=32,
     workers_per_gpu=2,
-    val_dataloader=dict(samples_per_gpu=256),
-    test_dataloader=dict(samples_per_gpu=256),
+    val_dataloader=dict(samples_per_gpu=64),
+    test_dataloader=dict(samples_per_gpu=64),
     train=dict(
         type='TopDownCocoDataset',
         ann_file=f'{data_root}/annotations/person_keypoints_train2017.json',
