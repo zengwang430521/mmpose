@@ -667,7 +667,8 @@ class HRTCFormer(HRNet):
         self.nw_list = extra.get('nw_list', [1, 1, 1])
 
         self.ctm_with_act = extra.get('ctm_with_act', True)
-
+        if vis:
+            self.count = 0
         super().__init__(extra, in_channels, conv_cfg, norm_cfg, norm_eval,
                          with_cp, zero_init_residual)
 
@@ -830,6 +831,7 @@ class HRTCFormer(HRNet):
             y_list = self.tran2map(y_list)
 
         if vis:
-            show_tokens_merge(img, x_list, 0)
+            show_tokens_merge(img, x_list, self.count)
+            self.count += 1
 
         return y_list
