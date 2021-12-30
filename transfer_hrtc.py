@@ -204,6 +204,8 @@ print('Unloaded parameters:')
 for key in model_left.keys():
     if '.bias' in key:
         out_dict[key] = model_left[key] * 0
+    elif '.conf' in key:
+        out_dict[key] = model_left[key] * 0
     else:
         out_dict[key] = model_left[key]
     print(key)

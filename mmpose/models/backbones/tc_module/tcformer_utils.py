@@ -1733,7 +1733,7 @@ def token_cluster_grid(input_dict, Ns, conf, weight=None, k=5):
     agg_weight = input_dict['agg_weight']
     loc_orig = input_dict['loc_orig']
     H, W = input_dict['map_size']
-    idx_k_loc = input_dict['idx_k_loc']
+    # idx_k_loc = input_dict['idx_k_loc']
 
     dtype = x.dtype
     device = x.device
