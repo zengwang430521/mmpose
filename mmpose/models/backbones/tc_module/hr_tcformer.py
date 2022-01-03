@@ -193,15 +193,15 @@ class CTM_partpad_dict_BN(nn.Module):
         Ns = x_map.shape[1] * x_map.shape[2]
         x_down, idx_agg_down, weight_t, _ = token_cluster_grid(input_dict, Ns, conf, weight=None, k=5)
 
-        if self.nh_list is not None and self.nw_list is not None:
-            x_down, idx_agg_down, weight_t = token_cluster_part_pad(
-                input_dict, sample_num, weight=weight, k=self.k,
-                nh_list=self.nh_list, nw_list=self.nw_list
-            )
-        else:
-            x_down, idx_agg_down, weight_t = token_cluster_part_follow(
-                input_dict, sample_num, weight=weight, k=self.k, nh=nh, nw=nw
-            )
+        # if self.nh_list is not None and self.nw_list is not None:
+        #     x_down, idx_agg_down, weight_t = token_cluster_part_pad(
+        #         input_dict, sample_num, weight=weight, k=self.k,
+        #         nh_list=self.nh_list, nw_list=self.nw_list
+        #     )
+        # else:
+        #     x_down, idx_agg_down, weight_t = token_cluster_part_follow(
+        #         input_dict, sample_num, weight=weight, k=self.k, nh=nh, nw=nw
+        #     )
 
         if agg_weight is not None:
             agg_weight_down = agg_weight * weight_t
