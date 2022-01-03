@@ -319,6 +319,8 @@ class HRNet(nn.Module):
             'align_corners': None
         })
 
+        self.bilinear_upsample = self.extra.get('bilinear_upsample', False)
+
         # stage 1
         self.stage1_cfg = self.extra['stage1']
         num_channels = self.stage1_cfg['num_channels'][0]

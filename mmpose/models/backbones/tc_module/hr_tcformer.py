@@ -388,10 +388,10 @@ class TokenFuseLayer(nn.Module):
             conv_cfg,
             norm_cfg,
             remerge=False,
-            avg_filt=False,
+            bilinear_upsample=False,
     ):
         super().__init__()
-        self.avg_filt = avg_filt
+        self.bilinear_upsample = bilinear_upsample
         self.remerge = remerge
         self.norm_cfg = norm_cfg
         self.num_branches = num_branches
@@ -457,7 +457,26 @@ class TokenFuseLayer(nn.Module):
                     # upsample
                     src_dict = input_lists[j].copy()
                     src_dict = self.fuse_layers[i][j](src_dict)
-                    x_tmp = token_downup(target_dict=out_dict, source_dict=src_dict)
+                    if self.bilinear_upsample:
+                        x_tmp, _ = token2map(
+                            src_dict['x'],
+                            None,
+                            src_dict['loc_orig'],
+                            src_dict['idx_agg'],
+                            out_dict['map_size'],
+                        )
+                        avg_k = 2**(j-i) + 1
+                        pad = (avg_k - 1) // 2
+                        x_tmp = F.avg_pool2d(F.pad(x_tmp, [pad, pad, pad, pad], mode='replicate'), kernel_size=avg_k, stride=1, padding=0)
+                        # x2 = F.avg_pool2d(x_tmp, kernel_size=avg_k, stride=1, padding=pad, count_include_pad=False)
+                        x_tmp = map2token(
+                            x_tmp,
+                            out_dict['x'].shape[1],
+                            out_dict['loc_orig'],
+                            out_dict['idx_agg'],
+                            out_dict['agg_weight'])
+                    else:
+                        x_tmp = token_downup(target_dict=out_dict, source_dict=src_dict)
 
                     out_dict['x'] = out_dict['x'] + x_tmp
 
@@ -494,7 +513,9 @@ class HRTCModule(HRModule):
                  num_window_sizes=None,
                  num_mlp_ratios=None,
                  drop_paths=0.0,
-                 upsample_cfg=dict(mode='bilinear', align_corners=False)):
+                 upsample_cfg=dict(mode='bilinear', align_corners=False),
+                 bilinear_upsample=False
+                 ):
 
         super(HRModule, self).__init__()
         # Protect mutable default arguments
@@ -515,6 +536,7 @@ class HRTCModule(HRModule):
         self.in_channels = in_channels
         self.num_branches = num_branches
         self.drop_paths = drop_paths
+        self.bilinear_upsample = bilinear_upsample
 
         self.branches = self._make_branches(
             num_branches,
@@ -598,7 +620,8 @@ class HRTCModule(HRModule):
             self.in_channels,
             self.multiscale_output,
             conv_cfg=self.conv_cfg,
-            norm_cfg=self.norm_cfg
+            norm_cfg=self.norm_cfg,
+            bilinear_upsample=self.bilinear_upsample
         )
 
     def forward(self, x):
@@ -713,6 +736,7 @@ class HRTCFormer(HRNet):
                     num_mlp_ratios=num_mlp_ratios,
                     drop_paths=drop_path_rates[num_blocks[0] *
                                                i:num_blocks[0] * (i + 1)],
+                    bilinear_upsample=self.bilinear_upsample
                 ))
 
         return nn.Sequential(*hr_modules), in_channels
