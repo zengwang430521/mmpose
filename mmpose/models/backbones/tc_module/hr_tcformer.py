@@ -22,6 +22,7 @@ from .tcformer_utils import (
 import math
 
 vis = False
+vis = True
 
 # part wise merge with padding with dict as input and output
 # no block in this layer, use BN layer.

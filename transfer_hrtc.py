@@ -87,11 +87,13 @@ model = build_posenet(model_cfg)
 model_dict = model.state_dict()
 
 
-src_file = 'models/hrt_small_coco_256x192.pth'
+# src_file = 'models/hrt_small_coco_256x192.pth'
+src_file = 'models/hrt_small.pth'
+
 out_file = src_file.replace('hrt', 'hrtcformer')
 
 src_dict = torch.load(src_file)
-src_dict = src_dict['state_dict']
+src_dict = src_dict['state_dict'] if 'state_dict' in src_dict.keys() else src_dict['model']
 
 
 
@@ -106,8 +108,9 @@ for src_key in src_dict.keys():
 
 
 for model_key in model_dict.keys():
-    if model_key in src_dict.keys():
-        src_key = model_key
+    src_key = model_key.replace('backbone.', '')
+
+    if src_key in src_dict.keys():
         out_dict[model_key] = src_dict[src_key]
         src_left.pop(src_key)
         model_left.pop(model_key)
@@ -119,7 +122,7 @@ for model_key in model_dict.keys():
     elif '.transition' in model_key:
         # transition without cluster
         if '.layer.' in model_key:
-            src_key = model_key.replace('.layer.', '.')
+            src_key = src_key.replace('.layer.', '.')
             src_key = src_key.replace('.norm.', '.')
             if src_key in src_dict:
                 out_dict[model_key] = src_dict[src_key]
@@ -134,7 +137,6 @@ for model_key in model_dict.keys():
 
         # transition with cluster
         else:
-            src_key = model_key
             src_key = src_key.replace('.conv.', '.0.0.')
             src_key = src_key.replace('.norm.', '.0.1.')
             if src_key in src_dict:
@@ -149,7 +151,6 @@ for model_key in model_dict.keys():
 
     # attn
     elif '.attn.' in model_key:
-        src_key = model_key
         src_key = src_key.replace('.attn.', '.attn.attn.')
         src_key = src_key.replace('.q.', '.q_proj.')
         src_key = src_key.replace('.proj.', '.out_proj.')
@@ -175,7 +176,6 @@ for model_key in model_dict.keys():
 
     # fuse layer
     elif 'fuse_layers' in model_key:
-        src_key = model_key
         src_key = src_key.replace('.fuse_layers.fuse_layers.', '.fuse_layers.')
         src_key = src_key.replace('.layer.', '.')
         src_key = src_key.replace('.dw_conv.', '.0.')
@@ -195,6 +195,8 @@ for model_key in model_dict.keys():
                 model_left.pop(model_key)
         else:
             print(src_key)
+    else:
+        print(src_key)
 
 print(len(out_dict))
 print(len(src_left))

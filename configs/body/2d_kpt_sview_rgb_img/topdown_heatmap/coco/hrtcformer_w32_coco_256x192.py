@@ -46,7 +46,7 @@ channel_cfg = dict(
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    pretrained='models/hrtcformer_small_coco_256x192.pth',
+    pretrained='models/hrtcformer_small.pth',
     backbone=dict(
         type='HRTCFormer',
         in_channels=3,
