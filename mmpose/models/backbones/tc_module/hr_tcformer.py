@@ -22,7 +22,6 @@ from .tcformer_utils import (
 import math
 
 vis = False
-vis = True
 
 # part wise merge with padding with dict as input and output
 # no block in this layer, use BN layer.
@@ -389,8 +388,10 @@ class TokenFuseLayer(nn.Module):
             conv_cfg,
             norm_cfg,
             remerge=False,
+            avg_filt=False,
     ):
         super().__init__()
+        self.avg_filt = avg_filt
         self.remerge = remerge
         self.norm_cfg = norm_cfg
         self.num_branches = num_branches
@@ -457,6 +458,7 @@ class TokenFuseLayer(nn.Module):
                     src_dict = input_lists[j].copy()
                     src_dict = self.fuse_layers[i][j](src_dict)
                     x_tmp = token_downup(target_dict=out_dict, source_dict=src_dict)
+
                     out_dict['x'] = out_dict['x'] + x_tmp
 
                 elif j == i:
