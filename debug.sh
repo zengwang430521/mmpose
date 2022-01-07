@@ -8,13 +8,13 @@ srun -p mm_human \
 
 
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
-srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p pat_earth \
 srun -p mm_human --quotatype=auto\
+srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=coco python -u tools/train.py \
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_bi_w32_coco_256x192_scratch_16.py \
-    --work-dir=work_dirs/coco/hrtc_bi_32_scratch_16 --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_bi_32_scratch_16 --launcher="slurm" --resume-from=work_dirs/coco/hrtc_bi_32_scratch_16/latest.pth
 
 
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \

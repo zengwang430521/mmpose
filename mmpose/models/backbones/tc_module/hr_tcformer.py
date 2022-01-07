@@ -17,7 +17,7 @@ from .tc_layers import TCWinBlock
 from .tcformer_utils import (
     map2token, token2map, token_downup, get_grid_loc,
     token_cluster_part_pad, token_cluster_part_follow,
-    show_tokens_merge, token_cluster_grid
+    show_tokens_merge, token_cluster_grid, pca_feature
 )
 import math
 
@@ -178,6 +178,8 @@ class CTM_partpad_dict_BN(nn.Module):
         x_map = self.conv(x_map)
         x = map2token(x_map, N, loc_orig, idx_agg, agg_weight) + self.conv_skip(x)
         x = token_norm(self.norm, self.norm_name, x)
+        # if self.with_act:
+        #     x = self.act(x)
 
         conf = self.conf(x)
         weight = conf.exp()
@@ -192,6 +194,15 @@ class CTM_partpad_dict_BN(nn.Module):
         # print('ONLY FOR DEBUG')
         # Ns = x_map.shape[1] * x_map.shape[2]
         # x_down, idx_agg_down, weight_t, _ = token_cluster_grid(input_dict, Ns, conf, weight=None, k=5)
+
+
+        # print('for debug only')
+        # import matplotlib.pyplot as plt
+        # plt.subplot(1, 2, 2)
+        # tmp = pca_feature(input_dict['x'].detach().float())
+        # tmp_map = token2map(tmp, None, input_dict['loc_orig'], input_dict['idx_agg'], input_dict['map_size'])[0]
+        # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
+
 
         if self.nh_list is not None and self.nw_list is not None:
             x_down, idx_agg_down, weight_t = token_cluster_part_pad(
@@ -829,6 +840,20 @@ class HRTCFormer(HRNet):
         x = self.relu(x)
         x = self.layer1(x)
         x = self.init_dict(x)
+
+        # for debug
+        # print('for debug only')
+        # import matplotlib.pyplot as plt
+        # IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=img.device)[None, :, None, None]
+        # IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=img.device)[None, :, None, None]
+        # tmp = img * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+        #
+        # plt.subplot(1, 2, 1)
+        # plt.imshow(tmp[0].permute(1, 2, 0).detach().cpu().float())
+        # plt.subplot(1, 2, 2)
+        # tmp = pca_feature(x['x'].detach().float())
+        # tmp_map = token2map(tmp, None, x['loc_orig'], x['idx_agg'], x['map_size'])[0]
+        # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
 
         x_list = []
         for i in range(self.stage2_cfg["num_branches"]):

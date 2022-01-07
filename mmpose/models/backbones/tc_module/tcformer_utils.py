@@ -823,7 +823,8 @@ def show_tokens_merge(x, out, count=0):
 
         B, N, _ = x.shape
 
-        tmp = torch.arange(N, device=x.device)[None, :, None].expand(B, N, 1).float()
+        # tmp = torch.arange(N, device=x.device)[None, :, None].expand(B, N, 1).float()
+        tmp = torch.rand([N, 3], device=x.device)[None, :, :].expand(B, N, 3).float()
         H, W, _ = img.shape
         idx_map, _ = token2map(tmp, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
         idx_map = F.interpolate(idx_map, [H, W], mode='nearest')
@@ -839,7 +840,9 @@ def show_tokens_merge(x, out, count=0):
             agg_weight = out[lv]['agg_weight']
             B, N, _ = x.shape
 
-            token_c = map2token(color_map, N, loc_orig, idx_agg, agg_weight)
+            # token_c = map2token(color_map, N, loc_orig, idx_agg, agg_weight)
+            token_c = torch.rand([N, 3], device=x.device)[None, :, :].expand(B, N, 3).float()
+
             idx_map, _ = token2map(token_c, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
             idx_map_grid = F.avg_pool2d(color_map, kernel_size=2**lv)
 
@@ -1967,6 +1970,11 @@ def token_cluster_part_pad(input_dict, Ns, weight=None, k=5, nh_list=[1, 1], nw_
         # get local density
         dist_nearest, index_nearest = torch.topk(dist_matrix, k=k, dim=-1, largest=False)
         density = (-(dist_nearest ** 2).mean(dim=-1)).exp()
+
+        # add a small random noise for the situation where some tokens have totally the same feature
+        # (for the images with balck edges)
+        density = density + torch.rand(density.shape, device=device, dtype=density.dtype) * 1e-6
+
         # masked tokens density should be 0
         density = density * pad_mask_sort.squeeze(-1)
 
@@ -1980,6 +1988,12 @@ def token_cluster_part_pad(input_dict, Ns, weight=None, k=5, nh_list=[1, 1], nw_
         score = dist * density
         _, index_down = torch.topk(score, k=Ns_p, dim=-1)
 
+        # only for debug
+        # print('for debug only!')
+        # show_conf_merge(index_points(density.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=1, vmin=None)
+        # show_conf_merge(index_points(dist.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=2, vmin=None)
+        # show_conf_merge(index_points(score.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=3, vmin=None)
+        #
 
         # assign tokens to the nearest center
         dist_matrix = index_points(dist_matrix, index_down)
@@ -2202,3 +2216,13 @@ def gaussian_filt(x, kernel_size=5, sigma=None):
         groups=channels
     )
     return y
+
+
+def pca_feature(x):
+    with torch.cuda.amp.autocast(enabled=False):
+        U, S, V = torch.pca_lowrank(x[0].float(), q=3)
+        tmp = x @ V
+        tmp = tmp - tmp.min(dim=1, keepdim=True)[0]
+        # tmp = tmp / tmp.max(dim=1, keepdim=True)[0]
+        tmp = tmp / tmp.max()
+    return tmp
