@@ -657,6 +657,9 @@ class TCWinBlock(nn.Module):
                  norm_cfg=dict(type='LN', eps=1e-6),
                  conv_cfg=None,
                  mlp_norm_cfg=dict(type='BN', requires_grad=True),
+                 attn_type='window',
+                 num_parts=(1, 1),
+                 after_cluster=False,
                  ):
         super().__init__()
         self.dim = in_channels
@@ -667,14 +670,26 @@ class TCWinBlock(nn.Module):
         self.conv_cfg = conv_cfg
         self.norm_cfg = norm_cfg
 
-        self.attn = TCWindowAttention(
-            self.dim,
-            window_size=(window_size, window_size),
-            num_heads=num_heads,
-            qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
-            attn_drop=attn_drop,
-        )
+        self.attn_type = attn_type
+        if attn_type == 'window':
+            self.attn = TCWindowAttention(
+                self.dim,
+                window_size=(window_size, window_size),
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                attn_drop=attn_drop,
+            )
+        else:
+            self.attn = TCPartAttention(
+                self.dim,
+                num_parts=num_parts,
+                after_cluster=after_cluster,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                attn_drop=attn_drop,
+            )
 
         self.norm1 = build_norm_layer(norm_cfg, self.dim)[1]
         self.norm2 = build_norm_layer(norm_cfg, self.out_dim)[1]
@@ -747,3 +762,170 @@ class TCWinBlock(nn.Module):
         }
         return out_dict
 
+
+# part attention for dynamic tokens
+class TCPartAttention(nn.Module):
+    def __init__(self, dim, num_heads=8, num_parts=(1, 1), after_cluster=False, rpe=False,
+                 qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.):
+        super().__init__()
+        assert dim % num_heads == 0, f"dim {dim} should be divided by num_heads {num_heads}."
+
+        self.dim = dim
+        self.num_heads = num_heads
+        head_dim = dim // num_heads
+        self.scale = qk_scale or head_dim ** -0.5
+
+        self.q = nn.Linear(dim, dim, bias=qkv_bias)
+        self.kv = nn.Linear(dim, dim * 2, bias=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim, dim)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+        self.num_parts = num_parts
+        self.after_cluster = after_cluster
+        self.rpe = rpe
+        if self.rpe:
+            print('Not support relative position embedding yet.')
+
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+        if self.rpe:
+            trunc_normal_(self.relative_position_bias_table, std=0.02)
+
+    def forward_qkv(self, q, kv, conf=None):
+        B, N, C = q.shape
+        N_kv = kv.shape[1]
+        q = self.q(q).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3).contiguous()
+        kv = self.kv(kv).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
+        k, v = kv[0], kv[1]     # B, num_head, N, Ch
+
+        attn = (q * self.scale) @ k.transpose(-2, -1)
+
+        if conf is not None:
+            conf = conf.squeeze(-1)[:, None, None, :]
+            attn = attn + conf
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        return x
+
+    def forward_before_cluster(self, tar_dict, src_dict):
+        x = tar_dict['x']
+        x_source = src_dict['x']
+        H, W = src_dict['map_size']
+        conf_source = src_dict['conf'] if 'conf' in src_dict.keys() else None
+        B, N, C = x.shape
+        Ns = x_source.shape[1]
+
+        # transfer x, x_source, conf to 2D map
+        # x_map = token2map(x, None, loc_orig, idx_agg, [H, W])
+        x_map = x.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+
+        x_source = x_source.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+        if conf_source is None:
+            conf_source = x_source.new_zeros(B, Ns, 1)
+        conf_source = conf_source.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+
+        # pad feature map and conf
+        nh, nw = self.num_parts
+        pad_h = (nh - H % nh) % nh
+        pad_w = (nw - W % nw) % nw
+        x_pad = F.pad(x_map, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
+        x_source_pad = F.pad(x_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
+        conf_pad = F.pad(conf_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2],
+                         mode='constant', value=-float('Inf'))
+
+        # reshape
+        B, _, H_pad, W_pad = x_pad.shape
+        h, w = H_pad // nh, W_pad // nw
+        q = self.part_reshape(x_pad, nh, nw, h, w)
+        kv = self.part_reshape(x_source_pad, nh, nw, h, w)
+        conf = self.part_reshape(conf_pad, nh, nw, h, w)
+
+        out = self.forward_qkv(q, kv, conf)
+
+        out = out.reshape(B, nh, nw, h, w, C)
+        out = out.permute(0, 1, 3, 2, 4, 5)     # B, nh, h, nw, w, C
+        out = out.reshape(B, H_pad, W_pad, C)
+        if pad_h > 0 or pad_h > 0:
+            out = out[:, pad_h // 2:pad_h // 2 + H, pad_w // 2:pad_w // 2 + W, :].contiguous()
+        out = out.flatten(1, 2).contiguous()
+        return out
+
+    def part_reshape(self, x, nh, nw, h, w):
+        B = x.shape[0]
+        C = x.shape[1]
+        x = x.view(B, C, nh, h, nw, w)
+        x = x.permute(0, 2, 4, 3, 5, 1).contiguous()    # B, nh, nw, h, w, C
+        x = x.reshape(B * nh * nw, h * w, C)
+        return x
+
+    def forward_after_cluster(self, tar_dict, src_dict):
+        x = tar_dict['x']
+        x_source = src_dict['x']
+        conf_source = src_dict['conf'] if 'conf' in src_dict.keys() else None
+        idx_agg = src_dict['idx_agg']
+        N0 = idx_agg.shape[1]
+        B, N, C = x.shape
+        Ns = x_source.shape[1]
+
+        nh, nw = self.num_parts
+        num_parts = nh * nw
+
+        if conf_source is None:
+            conf_source = x_source.new_zeros(B, Ns, 1)
+
+        q = x.reshape(B * num_parts, N // num_parts, C)
+
+        if Ns == N0:
+            # first cluster, source need pad
+            H, W = src_dict['map_size']
+
+            x_source = x_source.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+            conf_source = conf_source.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+
+            # pad feature map and conf
+            pad_h = (nh - H % nh) % nh
+            pad_w = (nw - W % nw) % nw
+            x_source_pad = F.pad(x_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
+            conf_pad = F.pad(conf_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2],
+                             mode='constant', value=-float('Inf'))
+
+            # reshape
+            B, _, H_pad, W_pad = x_source_pad.shape
+            h, w = H_pad // nh, W_pad // nw
+            kv = self.part_reshape(x_source_pad, nh, nw, h, w)
+            conf = self.part_reshape(conf_pad, nh, nw, h, w)
+
+        else:
+            # late stage, only need split
+            kv = x_source.reshape(B*num_parts, Ns // num_parts, -1)
+            conf = conf_source.reshape(B * num_parts, Ns // num_parts, -1)
+
+        out = self.forward_qkv(q, kv, conf)
+        out = out.reshape(B, N, C)
+        return out
+
+    def forward(self, tar_dict, src_dict):
+        if self.after_cluster:
+            return self.forward_after_cluster(tar_dict, src_dict)
+        else:
+            return self.forward_before_cluster(tar_dict, src_dict)

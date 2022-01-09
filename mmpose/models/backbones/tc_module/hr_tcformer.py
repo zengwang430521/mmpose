@@ -131,7 +131,7 @@ class CTM_partpad_dict_BN(nn.Module):
     def __init__(self, sample_ratio, embed_dim, dim_out, drop_rate,
                  k=5, nh=1, nw=None, nh_list=None, nw_list=None,
                  use_agg_weight=True, agg_weight_detach=False, with_act=True,
-                 norm_cfg=None,
+                 norm_cfg=None, remain_res=False
                  ):
         super().__init__()
         # self.sample_num = sample_num
@@ -157,6 +157,7 @@ class CTM_partpad_dict_BN(nn.Module):
         self.with_act = with_act
         if self.with_act:
             self.act = nn.ReLU(inplace=False)
+        self.remain_res = remain_res
 
     def forward(self, input_dict):
         input_dict = input_dict.copy()
@@ -224,7 +225,8 @@ class CTM_partpad_dict_BN(nn.Module):
 
         _, _, H, W = x_map.shape
         input_dict['conf'] = conf
-        input_dict['map_size'] = [H, W]
+        if not self.remain_res:
+            input_dict['map_size'] = [H, W]
 
         out_dict = {
             'x': x_down,
@@ -525,7 +527,10 @@ class HRTCModule(HRModule):
                  num_mlp_ratios=None,
                  drop_paths=0.0,
                  upsample_cfg=dict(mode='bilinear', align_corners=False),
-                 bilinear_upsample=False
+                 bilinear_upsample=False,
+                 attn_type='window',
+                 nh_list=[1, 1, 1, 1],
+                 nw_list=[1, 1, 1, 1],
                  ):
 
         super(HRModule, self).__init__()
@@ -548,6 +553,15 @@ class HRTCModule(HRModule):
         self.num_branches = num_branches
         self.drop_paths = drop_paths
         self.bilinear_upsample = bilinear_upsample
+        self.attn_type = attn_type
+
+        for i in range(4-len(nh_list)):
+            nh_list = [nh_list[0] * 2] + nh_list
+        for i in range(4 - len(nw_list)):
+            nw_list = [nw_list[0] * 2] + nw_list
+        self.nh_list = nh_list
+        self.nw_list = nw_list
+        self.after_cluster = [False, True, True, True]
 
         self.branches = self._make_branches(
             num_branches,
@@ -573,6 +587,10 @@ class HRTCModule(HRModule):
         num_mlp_ratios,
         drop_paths,
         stride=1,
+        attn_type='window',
+        nh=1,
+        nw=1,
+        after_cluster=False
     ):
         """Make one branch."""
         # LocalWindowTransformerBlock does not support down sample layer yet.
@@ -590,6 +608,9 @@ class HRTCModule(HRModule):
                     drop_path=drop_paths[i],
                     mlp_norm_cfg=self.norm_cfg,
                     conv_cfg=self.conv_cfg,
+                    attn_type=attn_type,
+                    num_parts=(nh, nw),
+                    after_cluster=after_cluster
                 ))
         return nn.Sequential(*layers)
 
@@ -618,6 +639,10 @@ class HRTCModule(HRModule):
                     num_window_sizes,
                     num_mlp_ratios,
                     drop_paths,
+                    attn_type=self.attn_type,
+                    nh=self.nh_list[i],
+                    nw=self.nw_list[i],
+                    after_cluster=self.after_cluster[i]
                 ))
 
         return nn.ModuleList(branches)
@@ -645,9 +670,6 @@ class HRTCModule(HRModule):
 
         x_fuse = self.fuse_layers(x)
         return x_fuse
-
-
-
 
 
 
@@ -702,6 +724,7 @@ class HRTCFormer(HRNet):
         # for partwise clustering
         self.nh_list = extra.get('nh_list', [1, 1, 1])
         self.nw_list = extra.get('nw_list', [1, 1, 1])
+        self.attn_type = extra.get('attn_type', 'window')
 
         self.ctm_with_act = extra.get('ctm_with_act', True)
         if vis:
@@ -747,7 +770,10 @@ class HRTCFormer(HRNet):
                     num_mlp_ratios=num_mlp_ratios,
                     drop_paths=drop_path_rates[num_blocks[0] *
                                                i:num_blocks[0] * (i + 1)],
-                    bilinear_upsample=self.bilinear_upsample
+                    bilinear_upsample=self.bilinear_upsample,
+                    attn_type=self.attn_type,
+                    nh_list=self.nh_list,
+                    nw_list=self.nw_list,
                 ))
 
         return nn.Sequential(*hr_modules), in_channels
@@ -793,7 +819,8 @@ class HRTCFormer(HRNet):
                     nh=self.nh_list[pre_stage],
                     nw=self.nw_list[pre_stage],
                     with_act=self.ctm_with_act,
-                    norm_cfg=self.norm_cfg
+                    norm_cfg=self.norm_cfg,
+                    remain_res=(self.attn_type == 'part')
                 )
                 transition_layers.append(down_layers)
 
