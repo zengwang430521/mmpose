@@ -848,10 +848,15 @@ class TCPartAttention(nn.Module):
         nh, nw = self.num_parts
         pad_h = (nh - H % nh) % nh
         pad_w = (nw - W % nw) % nw
-        x_pad = F.pad(x_map, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
-        x_source_pad = F.pad(x_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
-        conf_pad = F.pad(conf_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2],
-                         mode='constant', value=-float('Inf'))
+        if pad_h > 0 or pad_w > 0:
+            x_pad = F.pad(x_map, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
+            x_source_pad = F.pad(x_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
+            conf_pad = F.pad(conf_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2],
+                             mode='constant', value=-float('Inf'))
+        else:
+            x_pad = x_map
+            x_source_pad = x_source
+            conf_pad = conf_source
 
         # reshape
         B, _, H_pad, W_pad = x_pad.shape
@@ -905,9 +910,13 @@ class TCPartAttention(nn.Module):
             # pad feature map and conf
             pad_h = (nh - H % nh) % nh
             pad_w = (nw - W % nw) % nw
-            x_source_pad = F.pad(x_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
-            conf_pad = F.pad(conf_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2],
-                             mode='constant', value=-float('Inf'))
+            if pad_h > 0 or pad_w > 0:
+                x_source_pad = F.pad(x_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
+                conf_pad = F.pad(conf_source, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2],
+                                 mode='constant', value=-float('Inf'))
+            else:
+                x_source_pad = x_source
+                conf_pad = conf_source
 
             # reshape
             B, _, H_pad, W_pad = x_source_pad.shape
