@@ -1,5 +1,6 @@
 log_level = 'INFO'
-load_from = 'models/hrtcformer_small_coco_256x192.pth'
+# load_from = 'models/hrtcformer_small_coco_256x192.pth'
+load_from=None
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
@@ -53,9 +54,8 @@ model = dict(
         norm_cfg=norm_cfg,
         return_map=True,
         extra=dict(
+            attn_type='part',
             bilinear_upsample=True,
-            # nh_list=[4, 2, 1],
-            # nw_list=[4, 2, 1],
             nh_list=[1, 1, 1],
             nw_list=[1, 1, 1],
             drop_path_rate=0.1,

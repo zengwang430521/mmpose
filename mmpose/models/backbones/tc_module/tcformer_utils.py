@@ -530,6 +530,10 @@ def token_cluster_merge(x, Ns, idx_agg, weight=None, return_weight=False, k=5):
         # get local density
         dist_nearest, index_nearest = torch.topk(dist_matrix, k=k, dim=-1, largest=False)
         density = (-(dist_nearest ** 2).mean(dim=-1)).exp()
+
+        density = density + torch.rand(density.shape, device=device, dtype=density.dtype) * 1e-6
+
+
         mask = density[:, None, :] > density[:, :, None]
         mask = mask.type(x.dtype)
 
@@ -2069,6 +2073,11 @@ def token_cluster_part_follow(input_dict, Ns, weight=None, k=5, nh=1, nw=1):
         # get local density
         dist_nearest, index_nearest = torch.topk(dist_matrix, k=k, dim=-1, largest=False)
         density = (-(dist_nearest ** 2).mean(dim=-1)).exp()
+
+        # add a small random noise for the situation where some tokens have totally the same feature
+        # (for the images with balck edges)
+        density = density + torch.rand(density.shape, device=device, dtype=density.dtype) * 1e-6
+
 
         # get relative-separation distance
         mask = density[:, None, :] > density[:, :, None]
