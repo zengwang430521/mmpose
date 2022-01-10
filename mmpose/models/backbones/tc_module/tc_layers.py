@@ -829,20 +829,26 @@ class TCPartAttention(nn.Module):
 
     def forward_before_cluster(self, tar_dict, src_dict):
         x = tar_dict['x']
+        H, W = tar_dict['map_size']
         x_source = src_dict['x']
-        H, W = src_dict['map_size']
         conf_source = src_dict['conf'] if 'conf' in src_dict.keys() else None
         B, N, C = x.shape
         Ns = x_source.shape[1]
+        Hs, Ws = src_dict['map_size']
 
         # transfer x, x_source, conf to 2D map
         # x_map = token2map(x, None, loc_orig, idx_agg, [H, W])
         x_map = x.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
 
-        x_source = x_source.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+        x_source = x_source.reshape(B, Hs, Ws, -1).permute(0, 3, 1, 2).contiguous()
         if conf_source is None:
             conf_source = x_source.new_zeros(B, Ns, 1)
-        conf_source = conf_source.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+        conf_source = conf_source.reshape(B, Hs, Ws, -1).permute(0, 3, 1, 2).contiguous()
+
+        if Hs != H or Ws != W:
+            x_source = F.adaptive_avg_pool2d(x_source, [H, W])
+            conf_source = F.adaptive_avg_pool2d(conf_source, [H, W])
+
 
         # pad feature map and conf
         nh, nw = self.num_parts

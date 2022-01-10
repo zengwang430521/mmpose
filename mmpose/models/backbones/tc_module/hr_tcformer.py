@@ -17,7 +17,8 @@ from .tc_layers import TCWinBlock
 from .tcformer_utils import (
     map2token, token2map, token_downup, get_grid_loc,
     token_cluster_part_pad, token_cluster_part_follow,
-    show_tokens_merge, token_cluster_grid, pca_feature
+    show_tokens_merge, token_cluster_grid, pca_feature,
+    token_remerge_part
 )
 import math
 
@@ -127,11 +128,133 @@ class CTM_partpad_dict(nn.Module):
 
 # part wise merge with padding with dict as input and output
 # no block in this layer, use BN layer.
+# class CTM_partpad_dict_BN_old(nn.Module):
+#     def __init__(self, sample_ratio, embed_dim, dim_out, drop_rate,
+#                  k=5, nh=1, nw=None, nh_list=None, nw_list=None,
+#                  use_agg_weight=True, agg_weight_detach=False, with_act=True,
+#                  norm_cfg=None, remain_res=False
+#                  ):
+#         super().__init__()
+#         # self.sample_num = sample_num
+#         self.sample_ratio = sample_ratio
+#         self.dim_out = dim_out
+#         self.norm_cfg = norm_cfg
+#
+#         self.conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=2, padding=1)
+#         self.conv_skip = nn.Linear(embed_dim, dim_out, bias=False)
+#         self.norm_name, self.norm = build_norm_layer(self.norm_cfg, self.dim_out)
+#         self.conf = nn.Linear(self.dim_out, 1)
+#
+#         # for density clustering
+#         self.k = k
+#
+#         # for partwise
+#         self.nh = nh
+#         self.nw = nw or nh
+#         self.nh_list = nh_list
+#         self.nw_list = nw_list or nh_list
+#         self.use_agg_weight = use_agg_weight
+#         self.agg_weight_detach = agg_weight_detach
+#         self.with_act = with_act
+#         if self.with_act:
+#             self.act = nn.ReLU(inplace=False)
+#         self.remain_res = remain_res
+#
+#     def forward(self, input_dict):
+#         input_dict = input_dict.copy()
+#         x = input_dict['x']
+#         loc_orig = input_dict['loc_orig']
+#         idx_agg = input_dict['idx_agg']
+#         agg_weight = input_dict['agg_weight']
+#         H, W = input_dict['map_size']
+#
+#         if not self.use_agg_weight:
+#             agg_weight = None
+#
+#         if agg_weight is not None and self.agg_weight_detach:
+#             agg_weight = agg_weight.detach()
+#
+#         B, N, C = x.shape
+#         x_map, _ = token2map(x, None, loc_orig, idx_agg, [H, W])
+#
+#         x_map = self.conv(x_map)
+#         x = map2token(x_map, N, loc_orig, idx_agg, agg_weight) + self.conv_skip(x)
+#         x = token_norm(self.norm, self.norm_name, x)
+#         # if self.with_act:
+#         #     x = self.act(x)
+#
+#         conf = self.conf(x)
+#         weight = conf.exp()
+#         input_dict['x'] = x
+#
+#         B, N, C = x.shape
+#         sample_num = max(math.ceil(N * self.sample_ratio), 1)
+#         nh, nw = self.nh, self.nw
+#         num_part = nh * nw
+#         sample_num = round(sample_num // num_part) * num_part
+#
+#         # print('ONLY FOR DEBUG')
+#         # Ns = x_map.shape[1] * x_map.shape[2]
+#         # x_down, idx_agg_down, weight_t, _ = token_cluster_grid(input_dict, Ns, conf, weight=None, k=5)
+#
+#
+#         # print('for debug only')
+#         # import matplotlib.pyplot as plt
+#         # plt.subplot(1, 2, 2)
+#         # tmp = pca_feature(input_dict['x'].detach().float())
+#         # tmp_map = token2map(tmp, None, input_dict['loc_orig'], input_dict['idx_agg'], input_dict['map_size'])[0]
+#         # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
+#
+#
+#         if self.nh_list is not None and self.nw_list is not None:
+#             x_down, idx_agg_down, weight_t = token_cluster_part_pad(
+#                 input_dict, sample_num, weight=weight, k=self.k,
+#                 nh_list=self.nh_list, nw_list=self.nw_list
+#             )
+#         else:
+#             x_down, idx_agg_down, weight_t = token_cluster_part_follow(
+#                 input_dict, sample_num, weight=weight, k=self.k, nh=nh, nw=nw
+#             )
+#
+#         if agg_weight is not None:
+#             agg_weight_down = agg_weight * weight_t
+#             agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+#             if self.agg_weight_detach:
+#                 agg_weight_down = agg_weight_down.detach()
+#         else:
+#             agg_weight_down = None
+#
+#         _, _, H, W = x_map.shape
+#         input_dict['conf'] = conf
+#         if not self.remain_res:
+#             input_dict['map_size'] = [H, W]
+#
+#         out_dict = {
+#             'x': x_down,
+#             'idx_agg': idx_agg_down,
+#             'agg_weight': agg_weight_down,
+#             'loc_orig': loc_orig,
+#             'map_size': [H, W]
+#         }
+#
+#         # print('ONLY FOR DEBUG.')
+#         # xt = x_down.permute(0, 2, 1).reshape(x_map.shape)
+#         # xt = token2map(x, None, loc_orig, idx_agg, [H, W])[0]
+#
+#         if self.with_act:
+#             out_dict['x'] = self.act(out_dict['x'])
+#             input_dict['x'] = self.act(input_dict['x'])
+#
+#         return out_dict, input_dict
+
+
+# part wise merge with padding with dict as input and output
+# no block in this layer, use BN layer.
 class CTM_partpad_dict_BN(nn.Module):
     def __init__(self, sample_ratio, embed_dim, dim_out, drop_rate,
-                 k=5, nh=1, nw=None, nh_list=None, nw_list=None,
+                 k=5, nh_list=None, nw_list=None, level=0,
                  use_agg_weight=True, agg_weight_detach=False, with_act=True,
-                 norm_cfg=None, remain_res=False
+                 norm_cfg=None, remain_res=False, cluster=False, first_cluster=False
                  ):
         super().__init__()
         # self.sample_num = sample_num
@@ -142,22 +265,24 @@ class CTM_partpad_dict_BN(nn.Module):
         self.conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=2, padding=1)
         self.conv_skip = nn.Linear(embed_dim, dim_out, bias=False)
         self.norm_name, self.norm = build_norm_layer(self.norm_cfg, self.dim_out)
+
         self.conf = nn.Linear(self.dim_out, 1)
 
         # for density clustering
         self.k = k
 
         # for partwise
-        self.nh = nh
-        self.nw = nw or nh
         self.nh_list = nh_list
         self.nw_list = nw_list or nh_list
+        self.level = level
         self.use_agg_weight = use_agg_weight
         self.agg_weight_detach = agg_weight_detach
         self.with_act = with_act
         if self.with_act:
             self.act = nn.ReLU(inplace=False)
         self.remain_res = remain_res
+        self.cluster = cluster
+        self.have_cluster = first_cluster
 
     def forward(self, input_dict):
         input_dict = input_dict.copy()
@@ -185,12 +310,7 @@ class CTM_partpad_dict_BN(nn.Module):
         conf = self.conf(x)
         weight = conf.exp()
         input_dict['x'] = x
-
         B, N, C = x.shape
-        sample_num = max(math.ceil(N * self.sample_ratio), 1)
-        nh, nw = self.nh, self.nw
-        num_part = nh * nw
-        sample_num = round(sample_num // num_part) * num_part
 
         # print('ONLY FOR DEBUG')
         # Ns = x_map.shape[1] * x_map.shape[2]
@@ -204,24 +324,25 @@ class CTM_partpad_dict_BN(nn.Module):
         # tmp_map = token2map(tmp, None, input_dict['loc_orig'], input_dict['idx_agg'], input_dict['map_size'])[0]
         # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
 
+        if self.cluster:
+            sample_num = max(math.ceil(N * self.sample_ratio), 1)
+            nh, nw = self.nh_list[self.level], self.nw_list[self.level]
+            num_part = nh * nw
+            sample_num = round(sample_num // num_part) * num_part
 
-        if self.nh_list is not None and self.nw_list is not None:
-            x_down, idx_agg_down, weight_t = token_cluster_part_pad(
-                input_dict, sample_num, weight=weight, k=self.k,
-                nh_list=self.nh_list, nw_list=self.nw_list
-            )
+            x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+                input_dict, Ns=sample_num,  weight=weight, k=self.k,
+                nh_list=self.nh_list, nw_list=self.nw_list, level=self.level,
+                output_tokens=True, first_cluster=self.have_cluster)
         else:
-            x_down, idx_agg_down, weight_t = token_cluster_part_follow(
-                input_dict, sample_num, weight=weight, k=self.k, nh=nh, nw=nw
-            )
+            x_down, idx_agg_down, weight_t, _ = token_cluster_grid(
+                input_dict, Ns=None, conf=None, weight=weight)
 
-        if agg_weight is not None:
             agg_weight_down = agg_weight * weight_t
             agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
-            if self.agg_weight_detach:
-                agg_weight_down = agg_weight_down.detach()
-        else:
-            agg_weight_down = None
+
+        if self.agg_weight_detach:
+            agg_weight_down = agg_weight_down.detach()
 
         _, _, H, W = x_map.shape
         input_dict['conf'] = conf
@@ -402,10 +523,17 @@ class TokenFuseLayer(nn.Module):
             norm_cfg,
             remerge=False,
             bilinear_upsample=False,
+            k=5, nh_list=None, nw_list=None,
     ):
         super().__init__()
-        self.bilinear_upsample = bilinear_upsample
+        # for remerge
         self.remerge = remerge
+        self.nh_list = nh_list
+        self.nw_list = nw_list
+        self.k = k
+
+
+        self.bilinear_upsample = bilinear_upsample
         self.norm_cfg = norm_cfg
         self.num_branches = num_branches
         self.num_out_branches = num_branches if multiscale_output else 1
@@ -445,16 +573,38 @@ class TokenFuseLayer(nn.Module):
         self.fuse_layers = nn.ModuleList(fuse_layers)
         self.relu = nn.ReLU(inplace=True)
 
+
+
     def forward(self, input_lists):
         assert len(input_lists) == self.num_branches
         out_lists = []
 
-        # target loop
+        # we need re-cluster and re-merge tokens from the first level to the last
         for i in range(self.num_out_branches):
+
             tar_dict = input_lists[i]
-            x = tar_dict['x']
-            idx_agg = tar_dict['idx_agg']
-            agg_weight = tar_dict['agg_weight']
+
+            if i > 0 and self.remerge:
+                # remerge
+                x, idx_agg, agg_weight = token_remerge_part(
+                    out_lists[-1],
+                    Ns=tar_dict['x'].shape[1],
+                    weight=None,
+                    k=self.k,
+                    nh_list=self.nh_list,
+                    nw_list=self.nw_list,
+                    level=i,
+                    output_tokens=False,
+                    first_cluster=(i == 1),
+                )
+                B, _, C = tar_dict['x'].shape
+                x = tar_dict['x'].new_zeros([B, x.shape[1], C])
+
+            else:
+                # NOT remerge
+                x = tar_dict['x']
+                idx_agg = tar_dict['idx_agg']
+                agg_weight = tar_dict['agg_weight']
 
             out_dict = {
                 'x': x,
@@ -464,11 +614,15 @@ class TokenFuseLayer(nn.Module):
                 'loc_orig': tar_dict['loc_orig']
             }
 
+            # append a fake output for downsample
+            out_lists.append(out_dict)
+
             # source loop
             for j in range(self.num_branches):
+                src_dict = input_lists[j].copy()
+
                 if j > i:
-                    # upsample
-                    src_dict = input_lists[j].copy()
+                    # upsample, just one step
                     src_dict = self.fuse_layers[i][j](src_dict)
                     if self.bilinear_upsample:
                         x_tmp, _ = token2map(
@@ -478,9 +632,10 @@ class TokenFuseLayer(nn.Module):
                             src_dict['idx_agg'],
                             out_dict['map_size'],
                         )
-                        avg_k = 2**(j-i) + 1
+                        avg_k = 2 ** (j - i) + 1
                         pad = (avg_k - 1) // 2
-                        x_tmp = F.avg_pool2d(F.pad(x_tmp, [pad, pad, pad, pad], mode='replicate'), kernel_size=avg_k, stride=1, padding=0)
+                        x_tmp = F.avg_pool2d(F.pad(x_tmp, [pad, pad, pad, pad], mode='replicate'),
+                                             kernel_size=avg_k, stride=1, padding=0)
                         # x2 = F.avg_pool2d(x_tmp, kernel_size=avg_k, stride=1, padding=pad, count_include_pad=False)
                         x_tmp = map2token(
                             x_tmp,
@@ -494,19 +649,22 @@ class TokenFuseLayer(nn.Module):
                     out_dict['x'] = out_dict['x'] + x_tmp
 
                 elif j == i:
-                    pass
+                    # the same level
+                    if i > 0 and self.remerge:
+                        out_dict['x'] = out_dict['x'] + token_downup(out_dict, src_dict)
 
                 else:
                     # down sample
-                    src_dict = input_lists[j].copy()
                     fuse_link = self.fuse_layers[i][j]
                     for k in range(i - j):
-                        tar_dict = input_lists[k + j + 1]
+                        tar_dict = out_lists[k + j + 1]
                         src_dict = fuse_link[k](src_dict, tar_dict)
                     out_dict['x'] = out_dict['x'] + src_dict['x']
 
             out_dict['x'] = self.relu(out_dict['x'])
-            out_lists.append(out_dict)
+            # replace fake dict with real dict
+            out_lists[-1] = out_dict
+
         return out_lists
 
 
@@ -531,6 +689,9 @@ class HRTCModule(HRModule):
                  attn_type='window',
                  nh_list=[1, 1, 1, 1],
                  nw_list=[1, 1, 1, 1],
+                 input_with_cluster=None,
+                 remerge=None,
+                 k=5,
                  ):
 
         super(HRModule, self).__init__()
@@ -555,13 +716,14 @@ class HRTCModule(HRModule):
         self.bilinear_upsample = bilinear_upsample
         self.attn_type = attn_type
 
-        for i in range(4-len(nh_list)):
-            nh_list = [nh_list[0] * 2] + nh_list
-        for i in range(4 - len(nw_list)):
-            nw_list = [nw_list[0] * 2] + nw_list
+        if input_with_cluster is None:
+            self.after_cluster = [False, True, True, True]
+        else:
+            self.after_cluster = input_with_cluster
         self.nh_list = nh_list
         self.nw_list = nw_list
-        self.after_cluster = [False, True, True, True]
+        self.remerge = remerge
+        self.k = k
 
         self.branches = self._make_branches(
             num_branches,
@@ -610,7 +772,7 @@ class HRTCModule(HRModule):
                     conv_cfg=self.conv_cfg,
                     attn_type=attn_type,
                     num_parts=(nh, nw),
-                    after_cluster=after_cluster
+                    after_cluster=after_cluster,
                 ))
         return nn.Sequential(*layers)
 
@@ -657,7 +819,11 @@ class HRTCModule(HRModule):
             self.multiscale_output,
             conv_cfg=self.conv_cfg,
             norm_cfg=self.norm_cfg,
-            bilinear_upsample=self.bilinear_upsample
+            bilinear_upsample=self.bilinear_upsample,
+            remerge=self.remerge,
+            nh_list=self.nh_list,
+            nw_list=self.nw_list,
+            k=self.k
         )
 
     def forward(self, x):
@@ -722,11 +888,56 @@ class HRTCFormer(HRNet):
         self.return_map = return_map
 
         # for partwise clustering
-        self.nh_list = extra.get('nh_list', [1, 1, 1])
-        self.nw_list = extra.get('nw_list', [1, 1, 1])
+        nh_list = extra.get('nh_list', [1, 1, 1, 1])
+        nw_list = extra.get('nw_list', [1, 1, 1, 1])
+        for i in range(4-len(nh_list)):
+            nh_list = [nh_list[0] * 2] + nh_list
+        for i in range(4 - len(nw_list)):
+            nw_list = [nw_list[0] * 2] + nw_list
+        self.nh_list = nh_list
+        self.nw_list = nw_list
+
         self.attn_type = extra.get('attn_type', 'window')
 
         self.ctm_with_act = extra.get('ctm_with_act', True)
+
+        # cluster
+        self.cluster_tran = extra.get('cluster_tran', [False, True, True, True])
+        self.have_cluster = [False]
+        input_with_cluster = [False]
+
+        # stage1
+        extra['stage1']['input_with_cluster'] = input_with_cluster
+
+        # tran1
+        self.have_cluster.append(input_with_cluster[-1])
+        input_with_cluster.append(self.cluster_tran[1])
+
+        # stage2
+        extra['stage2']['input_with_cluster'] = input_with_cluster
+        remerge = extra['stage2'].get('remerge', [False] * extra['stage2']['num_modules'])
+        remerge = sum(remerge)
+        if remerge:
+            input_with_cluster = [False, True]
+
+        # tran2
+        self.have_cluster.append(input_with_cluster[-1])
+        input_with_cluster.append(self.cluster_tran[2])
+
+        # stage3
+        extra['stage3']['input_with_cluster'] = input_with_cluster
+        remerge = extra['stage3'].get('remerge', [False] * extra['stage3']['num_modules'])
+        remerge = sum(remerge)
+        if remerge:
+            input_with_cluster = [False, True, True]
+
+        # tran3
+        self.have_cluster.append(input_with_cluster[-1])
+        input_with_cluster.append(self.cluster_tran[3])
+
+        # stage4
+        extra['stage4']['input_with_cluster'] = input_with_cluster
+
         if vis:
             self.count = 0
         super().__init__(extra, in_channels, conv_cfg, norm_cfg, norm_eval,
@@ -744,6 +955,8 @@ class HRTCFormer(HRNet):
         num_window_sizes = layer_config['num_window_sizes']
         num_mlp_ratios = layer_config['num_mlp_ratios']
         drop_path_rates = layer_config['drop_path_rates']
+        remerge = layer_config.get('remerge', [False] * num_modules)
+        input_with_cluster = layer_config['input_with_cluster']
 
         hr_modules = []
         for i in range(num_modules):
@@ -774,7 +987,12 @@ class HRTCFormer(HRNet):
                     attn_type=self.attn_type,
                     nh_list=self.nh_list,
                     nw_list=self.nw_list,
-                ))
+                    remerge=remerge[i],
+                    input_with_cluster=input_with_cluster,
+                )
+            )
+            if remerge[i]:
+                input_with_cluster = [False] + [True] * (num_branches - 1)
 
         return nn.Sequential(*hr_modules), in_channels
 
@@ -814,13 +1032,14 @@ class HRTCFormer(HRNet):
                     dim_out=num_channels_cur_layer[i],
                     drop_rate=0,
                     sample_ratio=0.25,
-                    nh_list=self.nh_list if pre_stage == 0 else None,
-                    nw_list=self.nw_list if pre_stage == 0 else None,
-                    nh=self.nh_list[pre_stage],
-                    nw=self.nw_list[pre_stage],
+                    nh_list=self.nh_list,
+                    nw_list=self.nw_list,
+                    level=pre_stage + 1,
                     with_act=self.ctm_with_act,
                     norm_cfg=self.norm_cfg,
-                    remain_res=(self.attn_type == 'part')
+                    remain_res=(self.attn_type == 'part'),
+                    cluster=self.cluster_tran[num_branches_cur-1],
+                    first_cluster=(not self.have_cluster[num_branches_cur-1]),
                 )
                 transition_layers.append(down_layers)
 
