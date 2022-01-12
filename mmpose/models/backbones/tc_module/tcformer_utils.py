@@ -808,10 +808,12 @@ def show_tokens_merge(x, out, count=0):
 
 
     N0 = h*w
+    # num_fig = len(out) + 2
+    num_fig = 6
 
     for i in range(1):
         img = x[i].permute(1, 2, 0).detach().cpu()
-        ax = plt.subplot(1, 6, 1)
+        ax = plt.subplot(1, num_fig, 1)
         ax.clear()
         ax.imshow(img)
 
@@ -820,7 +822,8 @@ def show_tokens_merge(x, out, count=0):
             import cv2
             cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
 
-        lv = 3
+        lv = len(out) - 1
+
         x = out[lv]['x']
         idx_agg = out[lv]['idx_agg']
         loc_orig = out[lv]['loc_orig']
@@ -833,7 +836,7 @@ def show_tokens_merge(x, out, count=0):
         idx_map, _ = token2map(tmp, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
         idx_map = F.interpolate(idx_map, [H, W], mode='nearest')
         # idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
-        ax = plt.subplot(1, 6, 6)
+        ax = plt.subplot(1, num_fig, num_fig)
         ax.imshow(idx_map[0].permute(1, 2, 0).detach().cpu().float())
 
         for lv in range(len(out)):
@@ -886,7 +889,7 @@ def show_tokens_merge(x, out, count=0):
                 import cv2
                 cv2.imwrite(fname, idx_map_grid[0].permute(1, 2, 0).detach().cpu().float().numpy()[:, :, ::-1] * 255)
 
-            ax = plt.subplot(1, 6, lv+2)
+            ax = plt.subplot(1, num_fig, lv+2)
             ax.clear()
             ax.imshow(idx_map_our[0].permute(1, 2, 0).detach().cpu().float())
 
@@ -2237,7 +2240,7 @@ def pca_feature(x):
     return tmp
 
 
-def get_idx_agg(x_sort, Ns_p, k=5, pad_mask_sort=None):
+def get_idx_agg(x_sort, Ns_p, k=5, pad_mask_sort=None, ignore_density=False):
     C = x_sort.shape[-1]
 
     dist_matrix = torch.cdist(x_sort, x_sort, p=2) / (C ** 0.5)
@@ -2265,7 +2268,8 @@ def get_idx_agg(x_sort, Ns_p, k=5, pad_mask_sort=None):
                           dist_matrix.flatten(1).max(dim=-1)[0][:, None, None] * (1 - mask)).min(dim=-1)
 
     # select clustering center according to score
-    score = dist * density
+    score = dist if ignore_density else dist * density
+
     _, index_down = torch.topk(score, k=Ns_p, dim=-1)
 
     dist_matrix = index_points(dist_matrix, index_down)
@@ -2276,11 +2280,11 @@ def get_idx_agg(x_sort, Ns_p, k=5, pad_mask_sort=None):
     idx_batch = torch.arange(B, device=x_sort.device)[:, None].expand(B, Ns_p)
     idx_tmp = torch.arange(Ns_p, device=x_sort.device)[None, :].expand(B, Ns_p)
     idx_agg_t[idx_batch.reshape(-1), index_down.reshape(-1)] = idx_tmp.reshape(-1)
-    return idx_agg_t
+    return idx_agg_t, density, dist, score
 
 
 def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], nw_list=[1, 1, 1, 1],
-                       level=0, output_tokens=False, first_cluster=False):
+                       level=0, output_tokens=False, first_cluster=False, ignore_density=False):
     # assert multiple stage seg is compatiable
     assert len(nh_list) == len(nw_list)
     for i in range(len(nh_list) - 1):
@@ -2299,11 +2303,29 @@ def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], n
     B, N, C = x.shape
     N0 = idx_agg.shape[1]
 
+    # only for debug
+    # print('for debug only!')
+    # if not output_tokens:
+    #     # tmp = pca_feature(x)
+    #     # tmp = token2map(tmp, None, loc_orig, idx_agg, [H, W])[0]
+    #     # plt.imshow(tmp[0].detach().cpu().float().permute(1, 2, 0))
+    #     # nh, nw = 1, 1
+    #     x = x / C
+
     # get clustering and merge way
     with torch.no_grad():
         if (nh <= 1 and nw <= 1):
             # no part seg
-            idx_agg_t = get_idx_agg(x, Ns, k, pad_mask_sort=None)
+            idx_agg_t, density, dist, score = get_idx_agg(x, Ns, k, pad_mask_sort=None, ignore_density=ignore_density)
+            # only for debug
+            # if not output_tokens:
+            #     print('for debug only!')
+            #     show_conf_merge(density[..., None], None, loc_orig, idx_agg, n=1, vmin=None)
+            #     show_conf_merge(dist[..., None], None, loc_orig, idx_agg, n=2, vmin=None)
+            #     show_conf_merge(score[..., None], None, loc_orig, idx_agg, n=3, vmin=None)
+            #     t=0
+
+
 
         elif first_cluster:
             '''we need to sort tokens in the first cluster process'''
@@ -2347,7 +2369,18 @@ def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], n
             x_sort = x_sort.reshape(B * num_part, N_p, C)
             pad_mask_sort = pad_mask_sort.reshape(B*num_part, N_p, 1)
 
-            idx_agg_t = get_idx_agg(x_sort, Ns_p, k, pad_mask_sort)
+
+
+            idx_agg_t, density, dist, score = get_idx_agg(x_sort, Ns_p, k, pad_mask_sort, ignore_density=ignore_density)
+
+            # # only for debug
+            # if not output_tokens:
+            #     print('for debug only!')
+            #     show_conf_merge(index_points(density.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=1, vmin=None)
+            #     show_conf_merge(index_points(dist.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=2, vmin=None)
+            #     show_conf_merge(index_points(score.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=3, vmin=None)
+            #
+
 
             # tansfer index_down and idx_agg_t to the original sort
             idx_agg_t = idx_agg_t.reshape(B, num_part, N_p) + torch.arange(num_part, device=device)[None, :, None] * Ns_p
@@ -2371,7 +2404,16 @@ def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], n
             x_sort = x
             x_sort = x_sort.reshape(B * num_part, N_p, C)
 
-            idx_agg_t = get_idx_agg(x_sort, Ns_p, k, pad_mask_sort=None)
+            idx_agg_t, density, dist, score = get_idx_agg(x_sort, Ns_p, k, pad_mask_sort=None, ignore_density=ignore_density)
+
+            # # only for debug
+            # if not output_tokens:
+            #     print('for debug only!')
+            #     show_conf_merge(density.reshape(B, num_part * N_p, 1), None, loc_orig, idx_agg, n=1, vmin=None)
+            #     show_conf_merge(dist.reshape(B, num_part * N_p, 1), None, loc_orig, idx_agg, n=2, vmin=None)
+            #     show_conf_merge(score.reshape(B, num_part * N_p, 1), None, loc_orig, idx_agg, n=3, vmin=None)
+
+
 
             # tansfer index_down and idx_agg_t to the original sort
             idx_agg_t = idx_agg_t.reshape(B, num_part, N_p) + torch.arange(num_part, device=device)[None, :,

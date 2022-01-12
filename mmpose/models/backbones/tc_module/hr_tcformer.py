@@ -522,12 +522,14 @@ class TokenFuseLayer(nn.Module):
             conv_cfg,
             norm_cfg,
             remerge=False,
+            ignore_density=False,
             bilinear_upsample=False,
             k=5, nh_list=None, nw_list=None,
     ):
         super().__init__()
         # for remerge
         self.remerge = remerge
+        self.ignore_density = ignore_density
         self.nh_list = nh_list
         self.nw_list = nw_list
         self.k = k
@@ -579,8 +581,54 @@ class TokenFuseLayer(nn.Module):
         assert len(input_lists) == self.num_branches
         out_lists = []
 
+        # print('only for debug!')
+        # # we need re-cluster and re-merge tokens from the first level to the last
+        # for i in range(self.num_out_branches):
+        #     tar_dict = input_lists[i]
+        #
+        #     if i > 0 and self.remerge:
+        #         # remerge
+        #         x, idx_agg, agg_weight = token_remerge_part(
+        #             out_lists[-1],
+        #             Ns=tar_dict['x'].shape[1],
+        #             weight=None,
+        #             k=self.k,
+        #             nh_list=self.nh_list,
+        #             nw_list=self.nw_list,
+        #             level=i,
+        #             output_tokens=True,
+        #             first_cluster=(i == 1),
+        #         )
+        #         B, _, C = tar_dict['x'].shape
+        #         # x = tar_dict['x'].new_zeros([B, x.shape[1], C])
+        #
+        #     else:
+        #         # NOT remerge
+        #         x = tar_dict['x']
+        #         idx_agg = tar_dict['idx_agg']
+        #         agg_weight = tar_dict['agg_weight']
+        #
+        #     out_dict = {
+        #         'x': x,
+        #         'idx_agg': idx_agg,
+        #         'agg_weight': agg_weight,
+        #         'map_size': tar_dict['map_size'],
+        #         'loc_orig': tar_dict['loc_orig']
+        #     }
+        #
+        #     # append a fake output for downsample
+        #     out_lists.append(out_dict)
+        #
+        # for i in range(self.num_out_branches):
+        #     tar_dict = input_lists[i]
+        #     if i > 0 and self.remerge:
+        #         out_lists[i]['x'] = tar_dict['x'].new_zeros(tar_dict['x'].shape)
+
+
+
         # we need re-cluster and re-merge tokens from the first level to the last
         for i in range(self.num_out_branches):
+
 
             tar_dict = input_lists[i]
 
@@ -596,6 +644,7 @@ class TokenFuseLayer(nn.Module):
                     level=i,
                     output_tokens=False,
                     first_cluster=(i == 1),
+                    ignore_density=self.ignore_density
                 )
                 B, _, C = tar_dict['x'].shape
                 x = tar_dict['x'].new_zeros([B, x.shape[1], C])
@@ -618,6 +667,7 @@ class TokenFuseLayer(nn.Module):
             out_lists.append(out_dict)
 
             # source loop
+            out_dict = out_lists[i]
             for j in range(self.num_branches):
                 src_dict = input_lists[j].copy()
 
@@ -663,7 +713,8 @@ class TokenFuseLayer(nn.Module):
 
             out_dict['x'] = self.relu(out_dict['x'])
             # replace fake dict with real dict
-            out_lists[-1] = out_dict
+            # out_lists[-1] = out_dict
+            out_lists[i] = out_dict
 
         return out_lists
 
@@ -690,7 +741,8 @@ class HRTCModule(HRModule):
                  nh_list=[1, 1, 1, 1],
                  nw_list=[1, 1, 1, 1],
                  input_with_cluster=None,
-                 remerge=None,
+                 remerge=False,
+                 ignore_density=False,
                  k=5,
                  ):
 
@@ -723,6 +775,7 @@ class HRTCModule(HRModule):
         self.nh_list = nh_list
         self.nw_list = nw_list
         self.remerge = remerge
+        self.ignore_density = ignore_density
         self.k = k
 
         self.branches = self._make_branches(
@@ -821,6 +874,7 @@ class HRTCModule(HRModule):
             norm_cfg=self.norm_cfg,
             bilinear_upsample=self.bilinear_upsample,
             remerge=self.remerge,
+            ignore_density=self.ignore_density,
             nh_list=self.nh_list,
             nw_list=self.nw_list,
             k=self.k
@@ -956,6 +1010,7 @@ class HRTCFormer(HRNet):
         num_mlp_ratios = layer_config['num_mlp_ratios']
         drop_path_rates = layer_config['drop_path_rates']
         remerge = layer_config.get('remerge', [False] * num_modules)
+        ignore_density = layer_config.get('ignore_density', [False] * num_modules)
         input_with_cluster = layer_config['input_with_cluster']
 
         hr_modules = []
@@ -988,6 +1043,7 @@ class HRTCFormer(HRNet):
                     nh_list=self.nh_list,
                     nw_list=self.nw_list,
                     remerge=remerge[i],
+                    ignore_density=ignore_density[i],
                     input_with_cluster=input_with_cluster,
                 )
             )
@@ -1115,6 +1171,13 @@ class HRTCFormer(HRNet):
                 x_list.append(self.transition2[i](y_list[-1]))
             else:
                 x_list.append(y_list[i])
+
+        # if vis:
+        #     tmp_list = [t for t in x_list]
+        #     tmp_list[-1] = tmp_list[-1][0]
+        #     show_tokens_merge(img, tmp_list, self.count)
+        #     self.count += 1
+
         y_list = self.stage3(x_list)
 
         x_list = []
@@ -1131,5 +1194,7 @@ class HRTCFormer(HRNet):
         if vis:
             show_tokens_merge(img, x_list, self.count)
             self.count += 1
+            # import matplotlib.pyplot as plt
+            # plt.close()
 
         return y_list
