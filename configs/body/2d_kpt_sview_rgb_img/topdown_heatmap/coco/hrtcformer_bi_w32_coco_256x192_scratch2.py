@@ -175,7 +175,7 @@ test_pipeline = val_pipeline
 data = dict(
     samples_per_gpu=32,
     workers_per_gpu=2,
-    val_dataloader=dict(samples_per_gpu=256),
+    val_dataloader=dict(samples_per_gpu=32),
     test_dataloader=dict(samples_per_gpu=32),
     train=dict(
         type='TopDownCocoDataset',
