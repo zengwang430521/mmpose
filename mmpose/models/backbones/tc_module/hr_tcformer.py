@@ -478,7 +478,7 @@ class TokenDownLayer(nn.Module):
         if self.with_act:
             self.act = nn.ReLU(inplace=True)
 
-    def forward(self, input_dict, tar_dict):
+    def forward(self, input_dict, tar_dict, tar_dict2=None):
         x = input_dict['x']
         loc_orig = input_dict['loc_orig']
         idx_agg = input_dict['idx_agg']
@@ -492,13 +492,14 @@ class TokenDownLayer(nn.Module):
         # real 2D
         x_map, _ = token2map(x, None, loc_orig, idx_agg, [H, W])
         x_map = self.dw_conv(x_map)
-        x_map = map2token(x_map, Nt, loc_orig, idx_agg_t, agg_weight_t)
+
+        x_back = map2token(x_map, Nt, loc_orig, idx_agg_t, agg_weight_t)
 
         # fake 2D
         x = token_downup(source_dict=input_dict, target_dict=tar_dict)
         x = x.permute(0, 2, 1)[..., None]
         x = self.dw_skip(x)
-        x = x + x_map.permute(0, 2, 1)[..., None]
+        x = x + x_back.permute(0, 2, 1)[..., None]
 
         x = self.norm1(x)
         x = self.conv(x)
@@ -510,6 +511,33 @@ class TokenDownLayer(nn.Module):
 
         out_dict = tar_dict.copy()
         out_dict['x'] = x
+
+        # if tar_dict2 is not None:
+        #     Nt = tar_dict2['x'].shape[1]
+        #     idx_agg_t = tar_dict2['idx_agg']
+        #     agg_weight_t = tar_dict2['agg_weight']
+        #
+        #     # real 2D
+        #     x_back = map2token(x_map, Nt, loc_orig, idx_agg_t, agg_weight_t)
+        #
+        #     # fake 2D
+        #     x = token_downup(source_dict=input_dict, target_dict=tar_dict2)
+        #     x = x.permute(0, 2, 1)[..., None]
+        #     x = self.dw_skip(x)
+        #     x = x + x_back.permute(0, 2, 1)[..., None]
+        #
+        #     x = self.norm1(x)
+        #     x = self.conv(x)
+        #     x = self.norm2(x)
+        #     x = x.squeeze(-1).permute(0, 2, 1)
+        #
+        #     if self.with_act:
+        #         x = self.act(x)
+        #
+        #     out_dict2 = tar_dict2.copy()
+        #     out_dict2['x'] = x
+        #     return out_dict, out_dict2
+
         return out_dict
 
 
@@ -524,12 +552,14 @@ class TokenFuseLayer(nn.Module):
             norm_cfg,
             remerge=False,
             ignore_density=False,
+            remerge_type='old',
             bilinear_upsample=False,
             k=5, nh_list=None, nw_list=None,
     ):
         super().__init__()
         # for remerge
         self.remerge = remerge
+        self.remerge_type = remerge_type
         self.ignore_density = ignore_density
         self.nh_list = nh_list
         self.nw_list = nw_list
@@ -576,9 +606,13 @@ class TokenFuseLayer(nn.Module):
         self.fuse_layers = nn.ModuleList(fuse_layers)
         self.relu = nn.ReLU(inplace=True)
 
-
-
     def forward(self, input_lists):
+        if self.remerge_type == 'new':
+            return self.forward_new(input_lists)
+        else:
+            return self.forward_old(input_lists)
+
+    def forward_old(self, input_lists):
         assert len(input_lists) == self.num_branches
         out_lists = []
 
@@ -628,6 +662,7 @@ class TokenFuseLayer(nn.Module):
 
 
         # we need re-cluster and re-merge tokens from the first level to the last
+
         for i in range(self.num_out_branches):
 
 
@@ -720,6 +755,133 @@ class TokenFuseLayer(nn.Module):
         return out_lists
 
 
+    def forward_new(self, input_lists):
+        assert len(input_lists) == self.num_branches
+
+        ori_lists = []
+        remerge_lists = []
+        out_lists = []
+
+        for i in range(self.num_out_branches):
+
+            tar_dict = input_lists[i]
+
+            # NOT remerge
+            x = tar_dict['x']
+            idx_agg = tar_dict['idx_agg']
+            agg_weight = tar_dict['agg_weight']
+
+            ori_dict = {
+                'x': x,
+                'idx_agg': idx_agg,
+                'agg_weight': agg_weight,
+                'map_size': tar_dict['map_size'],
+                'loc_orig': tar_dict['loc_orig']
+            }
+            ori_lists.append(ori_dict)
+
+            if self.remerge:
+                if i == 0:
+                    remerge_lists.append(ori_dict.copy())
+                else:
+                    # remerge
+                    x, idx_agg, agg_weight = token_remerge_part(
+                        remerge_lists[-1],
+                        Ns=tar_dict['x'].shape[1],
+                        weight=None,
+                        k=self.k,
+                        nh_list=self.nh_list,
+                        nw_list=self.nw_list,
+                        level=i,
+                        output_tokens=False,
+                        first_cluster=(i == 1),
+                        ignore_density=self.ignore_density
+                    )
+                    B, _, C = tar_dict['x'].shape
+                    x = tar_dict['x'].new_zeros([B, x.shape[1], C])
+
+                    remerge_dict = {
+                        'x': x,
+                        'idx_agg': idx_agg,
+                        'agg_weight': agg_weight,
+                        'map_size': tar_dict['map_size'],
+                        'loc_orig': tar_dict['loc_orig']
+                    }
+                    remerge_lists.append(remerge_dict)
+
+
+            # source loop
+            for j in range(self.num_branches):
+                src_dict = input_lists[j].copy()
+
+                if j > i:
+                    # upsample, just one step
+                    src_dict = self.fuse_layers[i][j](src_dict)
+
+                    if self.bilinear_upsample:
+                        x_tmp, _ = token2map(
+                            src_dict['x'],
+                            None,
+                            src_dict['loc_orig'],
+                            src_dict['idx_agg'],
+                            ori_dict['map_size'],
+                        )
+                        avg_k = 2 ** (j - i) + 1
+                        pad = (avg_k - 1) // 2
+                        x_tmp = F.avg_pool2d(F.pad(x_tmp, [pad, pad, pad, pad], mode='replicate'),
+                                             kernel_size=avg_k, stride=1, padding=0)
+                        # x2 = F.avg_pool2d(x_tmp, kernel_size=avg_k, stride=1, padding=pad, count_include_pad=False)
+                        ori_dict['x'] += map2token(
+                            x_tmp,
+                            ori_dict['x'].shape[1],
+                            ori_dict['loc_orig'],
+                            ori_dict['idx_agg'],
+                            ori_dict['agg_weight'])
+                        if self.remerge and i > 0:
+                            remerge_dict['x'] += map2token(
+                                x_tmp,
+                                remerge_dict['x'].shape[1],
+                                remerge_dict['loc_orig'],
+                                remerge_dict['idx_agg'],
+                                remerge_dict['agg_weight'])
+
+                    else:
+                        ori_dict['x'] += token_downup(target_dict=ori_dict, source_dict=src_dict)
+                        if self.remerge and i > 0:
+                            remerge_dict['x'] += token_downup(target_dict=remerge_dict, source_dict=src_dict)
+
+                elif j == i:
+                    # the same level
+                    if self.remerge and i > 0:
+                        remerge_dict['x'] + token_downup(remerge_dict, src_dict)
+
+                else:
+                    # down sample
+                    fuse_link = self.fuse_layers[i][j]
+                    if self.remerge and i > 0:
+                        src_dict2 = src_dict.copy()
+                        for k in range(i - j):
+                            tar_dict = remerge_lists[k + j + 1]
+                            src_dict2 = fuse_link[k](src_dict2, tar_dict)
+                        remerge_dict['x'] += src_dict2['x']
+
+                    for k in range(i - j):
+                        tar_dict = ori_lists[k + j + 1]
+                        src_dict = fuse_link[k](src_dict, tar_dict)
+                    ori_dict['x'] += src_dict['x']
+
+            ori_dict['x'] = self.relu(ori_dict['x'])
+            ori_lists[i] = ori_dict
+            if self.remerge and i > 0:
+                remerge_dict['x'] = self.relu(remerge_dict['x'])
+                remerge_lists[i] = remerge_dict
+                out_lists.append((ori_dict, remerge_dict))
+            else:
+                out_lists.append(ori_dict)
+
+        return out_lists
+
+
 class HRTCModule(HRModule):
 
     def __init__(self,
@@ -743,6 +905,7 @@ class HRTCModule(HRModule):
                  nw_list=[1, 1, 1, 1],
                  input_with_cluster=None,
                  remerge=False,
+                 remerge_type='old',
                  ignore_density=False,
                  k=5,
                  ):
@@ -776,6 +939,7 @@ class HRTCModule(HRModule):
         self.nh_list = nh_list
         self.nw_list = nw_list
         self.remerge = remerge
+        self.remerge_type = remerge_type
         self.ignore_density = ignore_density
         self.k = k
 
@@ -875,6 +1039,7 @@ class HRTCModule(HRModule):
             norm_cfg=self.norm_cfg,
             bilinear_upsample=self.bilinear_upsample,
             remerge=self.remerge,
+            remerge_type=self.remerge_type,
             ignore_density=self.ignore_density,
             nh_list=self.nh_list,
             nw_list=self.nw_list,
@@ -1011,6 +1176,7 @@ class HRTCFormer(HRNet):
         num_mlp_ratios = layer_config['num_mlp_ratios']
         drop_path_rates = layer_config['drop_path_rates']
         remerge = layer_config.get('remerge', [False] * num_modules)
+        remerge_type = layer_config.get('remerge_type', ['old'] * num_modules)
         ignore_density = layer_config.get('ignore_density', [False] * num_modules)
         input_with_cluster = layer_config['input_with_cluster']
 
@@ -1044,6 +1210,7 @@ class HRTCFormer(HRNet):
                     nh_list=self.nh_list,
                     nw_list=self.nw_list,
                     remerge=remerge[i],
+                    remerge_type=remerge_type[i],
                     ignore_density=ignore_density[i],
                     input_with_cluster=input_with_cluster,
                 )
