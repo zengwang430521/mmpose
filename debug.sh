@@ -13,39 +13,47 @@ srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=coco python -u tools/train.py  --launcher="slurm" \
-    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re3_w32_coco_256x192_scratch.py \
-    --work-dir=work_dirs/coco/hrtc_bi_part_re3_32 --launcher="slurm"
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_win_re2_w32_coco_256x192.py \
+    --work-dir=work_dirs/coco/hrtc_bi_win_re2_32
 
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_win_re1_w32_coco_256x192.py \
+    --work-dir=work_dirs/coco/hrtc_bi_win_re1_32
+
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re4_w32_coco_256x192_scratch.py \
+    --work-dir=work_dirs/coco/hrtc_bi_part_re4_32
+
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re3_w32_coco_256x192_scratch.py \
+    --work-dir=work_dirs/coco/hrtc_bi_part_re3_32
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_bi_w32_coco_256x192_scratch2.py \
     --work-dir=work_dirs/coco/hrtc_bi_w32_scratch2  --resume-from=work_dirs/coco/hrtc_bi_w32_scratch2/epoch_10.pth
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re2_w32_coco_256x192_scratch.py \
-    --work-dir=work_dirs/coco/hrtc_bi_part_re2_32 --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_bi_part_re2_32
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re_w32_coco_256x192_scratch.py \
-    --work-dir=work_dirs/coco/hrtc_bi_part_re_32 --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_bi_part_re_32
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_bi_part_w32_coco_256x192_scratch.py \
-    --work-dir=work_dirs/coco/hrtc_bi_part_32 --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_bi_part_32
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_bi_w32_coco_256x192_scratch_16.py \
-    --work-dir=work_dirs/coco/hrtc_bi_32_scratch_16 --launcher="slurm" --resume-from=work_dirs/coco/hrtc_bi_32_scratch_16/latest.pth
+    --work-dir=work_dirs/coco/hrtc_bi_32_scratch_16  --resume-from=work_dirs/coco/hrtc_bi_32_scratch_16/latest.pth
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_bi_w32_coco_256x192_scratch.py \
-    --work-dir=work_dirs/coco/hrtc_bi_32_scratch --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_bi_32_scratch
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_bi_w32_coco_256x192.py \
-    --work-dir=work_dirs/coco/hrtc_bi_32 --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_bi_32
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192.py \
-    --work-dir=work_dirs/coco/hrtc_32 --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_32
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192_fine.py \
-    --work-dir=work_dirs/coco/hrtc_32_fine --launcher="slurm"  --finetune-from=models/hrtcformer_small_coco_256x192.pth
+    --work-dir=work_dirs/coco/hrtc_32_fine --finetune-from=models/hrtcformer_small_coco_256x192.pth
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_w32_coco_256x192_nopretrain.py \
-    --work-dir=work_dirs/coco/hrtc_32_nopretrain --launcher="slurm"
+    --work-dir=work_dirs/coco/hrtc_32_nopretrain
 
 
 

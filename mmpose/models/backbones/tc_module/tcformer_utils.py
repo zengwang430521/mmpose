@@ -847,8 +847,8 @@ def show_tokens_merge(x, out, count=0):
             agg_weight = out[lv]['agg_weight']
             B, N, _ = x.shape
 
-            # token_c = map2token(color_map, N, loc_orig, idx_agg, agg_weight)
-            token_c = torch.rand([N, 3], device=x.device)[None, :, :].expand(B, N, 3).float()
+            token_c = map2token(color_map, N, loc_orig, idx_agg, agg_weight)
+            # token_c = torch.rand([N, 3], device=x.device)[None, :, :].expand(B, N, 3).float()
 
             idx_map, _ = token2map(token_c, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
             idx_map_grid = F.avg_pool2d(color_map, kernel_size=2**lv)
@@ -2303,7 +2303,7 @@ def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], n
     B, N, C = x.shape
     N0 = idx_agg.shape[1]
 
-    # only for debug
+    # # only for debug
     # print('for debug only!')
     # if not output_tokens:
     #     # tmp = pca_feature(x)
@@ -2311,6 +2311,7 @@ def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], n
     #     # plt.imshow(tmp[0].detach().cpu().float().permute(1, 2, 0))
     #     # nh, nw = 1, 1
     #     x = x / C
+    #     ignore_density = True
 
     # get clustering and merge way
     with torch.no_grad():
@@ -2324,8 +2325,6 @@ def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], n
             #     show_conf_merge(dist[..., None], None, loc_orig, idx_agg, n=2, vmin=None)
             #     show_conf_merge(score[..., None], None, loc_orig, idx_agg, n=3, vmin=None)
             #     t=0
-
-
 
         elif first_cluster:
             '''we need to sort tokens in the first cluster process'''
