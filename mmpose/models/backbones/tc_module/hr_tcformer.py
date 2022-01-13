@@ -22,7 +22,7 @@ from .tcformer_utils import (
 )
 import math
 
-vis = False
+vis = True
 
 
 # part wise merge with padding with dict as input and output
@@ -875,7 +875,7 @@ class TokenFuseLayer(nn.Module):
             if self.remerge and i > 0:
                 remerge_dict['x'] = self.relu(remerge_dict['x'])
                 remerge_lists[i] = remerge_dict
-                out_lists.append((ori_dict, remerge_dict))
+                out_lists.append((remerge_dict, ori_dict))
             else:
                 out_lists.append(ori_dict)
 
