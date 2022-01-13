@@ -22,7 +22,7 @@ from .tcformer_utils import (
 )
 import math
 
-# vis = True
+vis = False
 
 
 # part wise merge with padding with dict as input and output
