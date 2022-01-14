@@ -543,6 +543,8 @@ class TokenDownLayer(nn.Module):
         return out_dict
 
 
+
+
 # one step for multi-level sampling
 class TokenFuseLayer(nn.Module):
     def __init__(
@@ -1012,6 +1014,8 @@ class TokenFuseLayer(nn.Module):
         return out_lists
 
 
+
+
 class HRTCModule(HRModule):
 
     def __init__(self,
@@ -1189,6 +1193,62 @@ class HRTCModule(HRModule):
 
 
 
+def remerge_tokens(input_lists, nh_list, nw_list,
+                   k=5, ignore_density=True, merge_type='new'):
+    level = len(input_lists)
+
+    out_lists = []
+    remerge_lists = []
+    out_lists.append(input_lists[0])
+    remerge_lists.append(input_lists[0])
+
+    for i in range(1, level):
+        if merge_type == 'hir':
+            pre_dict = remerge_lists[i - 1].copy()
+        elif merge_type == 'step':
+            pre_dict = input_lists[i - 1].copy()
+        else:
+            print('error: unknown merge type')
+
+        if isinstance(input_lists[i], tuple):
+            # remerge_lists.append(input_lists[i][0])
+            # out_lists.append(input_lists[i])
+            # continue
+            cur_dict = input_lists[i][0].copy()
+        else:
+            cur_dict = input_lists[i].copy()
+        # remerge
+        x, idx_agg, agg_weight = token_remerge_part(
+            pre_dict,
+            Ns=cur_dict['x'].shape[1],
+            weight=None,
+            k=k,
+            nh_list=nh_list,
+            nw_list=nw_list,
+            level=i,
+            output_tokens=False,
+            first_cluster=(i == 1),
+            ignore_density=ignore_density
+        )
+        # B, _, C = cur_dict['x'].shape
+        # x = cur_dict['x'].new_zeros([B, x.shape[1], C])
+        remerge_dict = {
+            'x': x,
+            'idx_agg': idx_agg,
+            'agg_weight': agg_weight,
+            'map_size': cur_dict['map_size'],
+            'loc_orig': cur_dict['loc_orig']
+        }
+        x = token_downup(source_dict=cur_dict, target_dict=remerge_dict)
+        remerge_dict['x'] = x
+        remerge_lists.append(remerge_dict)
+        if isinstance(input_lists[i], tuple):
+            out_lists.append((remerge_dict, input_lists[i][1]))
+        else:
+            out_lists.append((remerge_dict, cur_dict))
+    return out_lists
+
+
 @BACKBONES.register_module()
 class HRTCFormer(HRNet):
     """HRFormer backbone.
@@ -1253,6 +1313,9 @@ class HRTCFormer(HRNet):
 
         # cluster
         self.cluster_tran = extra.get('cluster_tran', [False, True, True, True])
+        self.recluster_tran = extra.get('recluster_tran', [False, False, False, False])
+        self.recluster_tran_type = extra.get('recluster_tran_type', ['hir'] * 4)
+
         self.have_cluster = [False]
         input_with_cluster = [False]
 
@@ -1463,6 +1526,7 @@ class HRTCFormer(HRNet):
                 x_list.append(x)
         y_list = self.stage2(x_list)
 
+
         x_list = []
         for i in range(self.stage3_cfg["num_branches"]):
             if self.transition2[i] is not None:
@@ -1470,13 +1534,17 @@ class HRTCFormer(HRNet):
             else:
                 x_list.append(y_list[i])
 
-        if vis:
-            tmp_list = [t for t in x_list]
-            tmp_list[-1] = tmp_list[-1][0]
-            show_tokens_merge(img, tmp_list, self.count)
-            self.count += 1
+        if self.recluster_tran[2]:
+            if vis:
+                tmp_list = [t[0] if isinstance(t, tuple) else t for t in x_list]
+                show_tokens_merge(img, tmp_list, self.count)
+                self.count += 1
+
+            x_list = remerge_tokens(x_list, self.nh_list, self.nw_list, k=5, merge_type=self.recluster_tran_type[2])
 
         y_list = self.stage3(x_list)
+
+
 
         x_list = []
         for i in range(self.stage4_cfg["num_branches"]):
@@ -1484,7 +1552,18 @@ class HRTCFormer(HRNet):
                 x_list.append(self.transition3[i](y_list[-1]))
             else:
                 x_list.append(y_list[i])
+
+        if self.recluster_tran[3]:
+            if vis:
+                tmp_list = [t[0] if isinstance(t, tuple) else t for t in x_list]
+                show_tokens_merge(img, tmp_list, self.count)
+                self.count += 1
+
+            x_list = remerge_tokens(x_list, self.nh_list, self.nw_list, k=5, merge_type=self.recluster_tran_type[3])
+
         y_list = self.stage4(x_list)
+
+
 
         if self.return_map:
             y_list = self.tran2map(y_list)
@@ -1492,7 +1571,11 @@ class HRTCFormer(HRNet):
         if vis:
             show_tokens_merge(img, x_list, self.count)
             self.count += 1
-            # import matplotlib.pyplot as plt
+            import matplotlib.pyplot as plt
             # plt.close()
+            for i in range(6):
+                ax = plt.subplot(1, 6, i+1)
+                ax.clear()
+
 
         return y_list
