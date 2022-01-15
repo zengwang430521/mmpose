@@ -1203,9 +1203,9 @@ def remerge_tokens(input_lists, nh_list, nw_list,
     remerge_lists.append(input_lists[0])
 
     for i in range(1, level):
-        if merge_type == 'hir':
+        if 'hir' in merge_type:
             pre_dict = remerge_lists[i - 1].copy()
-        elif merge_type == 'step':
+        elif 'step' in merge_type:
             pre_dict = input_lists[i - 1].copy()
         else:
             print('error: unknown merge type')
@@ -1242,10 +1242,15 @@ def remerge_tokens(input_lists, nh_list, nw_list,
         x = token_downup(source_dict=cur_dict, target_dict=remerge_dict)
         remerge_dict['x'] = x
         remerge_lists.append(remerge_dict)
+
         if isinstance(input_lists[i], tuple):
+            # have merged before, remain src_dict
             out_lists.append((remerge_dict, input_lists[i][1]))
         else:
-            out_lists.append((remerge_dict, cur_dict))
+            if merge_type == 'step2' or 'hir2':
+                out_lists.append(remerge_dict)
+            else:
+                out_lists.append((remerge_dict, input_lists[i]))
     return out_lists
 
 
