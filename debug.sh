@@ -13,7 +13,7 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=coco python -u tools/train.py  --launcher="slurm" \
-    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re8_w32_coco_256x192_fine.py \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re8_w32_coco_256x192_fine2.py \
     --work-dir=work_dirs/coco/hrtc_bi_part_re8_32_fine2  -resume-from=work_dirs/coco/hrtc_bi_part_re8_32_fine/epoch_275.pth
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re8_w32_coco_256x192_scratch.py \
