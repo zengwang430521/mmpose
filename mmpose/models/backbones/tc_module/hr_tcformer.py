@@ -369,6 +369,9 @@ class CTM_partpad_dict_BN(nn.Module):
                     'loc_orig': input_dict['loc_orig']
                 }
                 x_down = token_downup(source_dict=input_dict, target_dict=remerge_dict)
+            elif self.cluster_type == 'skip':
+                # just skip cluster
+                x_down, idx_agg_down, agg_weight_down = x, idx_agg, agg_weight
 
         # print('ONLY FOR DEBUG!')
             # if self.level == 3:
@@ -1146,6 +1149,8 @@ class HRTCModule(HRModule):
         )
         self.fuse_layers = self._make_fuse_layers()
         self.relu = nn.ReLU(inplace=True)
+        if vis:
+            self.count = 0
 
     def _make_one_branch(
         self,
@@ -1237,15 +1242,58 @@ class HRTCModule(HRModule):
             k=self.k
         )
 
-    def forward(self, x):
+    def forward(self, x_lists):
         """Forward function."""
         if self.num_branches == 1:
-            return [self.branches[0](x[0])]
+            return [self.branches[0](x_lists[0])]
 
         for i in range(self.num_branches):
-            x[i] = self.branches[i](x[i])
+            if self.remerge_type == 'skip' and i == self.num_branches - 1:
+                # cluster the tokens for the last branch
+                pre_dict = x_lists[i-1].copy() if isinstance(x_lists[i-1], dict) else x_lists[i-1][0].copy()
+                if isinstance(x_lists[i], dict):
+                    cur_dict = x_lists[i].copy()
+                    src_dict = x_lists[i].copy()
+                else:
+                    cur_dict = x_lists[i][0].copy()
+                    src_dict = x_lists[i][1].copy()
 
-        x_fuse = self.fuse_layers(x)
+                # remerge
+                Ns = int(cur_dict['x'].shape[1] * 0.25)
+                x, idx_agg, agg_weight = token_remerge_part(
+                    pre_dict,
+                    Ns=Ns,
+                    weight=None,
+                    k=self.k,
+                    nh_list=self.nh_list,
+                    nw_list=self.nw_list,
+                    level=i,
+                    first_cluster=(i == 1),
+                    ignore_density=self.ignore_density,
+                    output_tokens=False,
+                )
+
+                remerge_dict = {
+                    'x': x,
+                    'idx_agg': idx_agg,
+                    'agg_weight': agg_weight,
+                    'map_size': cur_dict['map_size'],
+                    'loc_orig': cur_dict['loc_orig']
+                }
+
+                x = token_downup(source_dict=cur_dict, target_dict=remerge_dict)
+                remerge_dict['x'] = x
+                x_lists[i] = (remerge_dict, src_dict)
+
+            x_lists[i] = self.branches[i](x_lists[i])
+
+        x_fuse = self.fuse_layers(x_lists)
+
+        if vis and self.num_branches == 4 and self.remerge_type == 'skip':
+            img = torch.rand([x.shape[0], 3, 256, 192], device=x.device, dtype=x.dtype)
+            show_tokens_merge(img, x_fuse, self.count)
+            self.count += 1
+
         return x_fuse
 
 
@@ -1635,14 +1683,14 @@ class HRTCFormer(HRNet):
         if self.return_map:
             y_list = self.tran2map(y_list)
 
-        if vis:
-            show_tokens_merge(img, x_list, self.count)
-            self.count += 1
-            import matplotlib.pyplot as plt
-            # plt.close()
-            for i in range(6):
-                ax = plt.subplot(1, 6, i+1)
-                ax.clear()
+        # if vis:
+        #     show_tokens_merge(img, x_list, self.count)
+        #     self.count += 1
+        #     import matplotlib.pyplot as plt
+        #     # plt.close()
+        #     for i in range(6):
+        #         ax = plt.subplot(1, 6, i+1)
+        #         ax.clear()
 
 
         return y_list

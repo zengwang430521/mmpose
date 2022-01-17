@@ -61,15 +61,6 @@ model = dict(
             drop_path_rate=0.1,
             cluster_tran=[True, True, True, True],     # the first value is useless
             cluster_tran_type=['old', 'old', 'skip', 'skip'],     # the first value is useless
-
-            # cluster_tran_type=['old', 'old', 'old', 'new'],     # the first value is useless
-            # cluster_tran_ignore_density=[False, False, False, True],     # the first value is useless
-
-            # cluster_tran_type=['---', 'old', 'new', 'new'],  # the first value is useless
-            # cluster_tran_ignore_density=[False, False, True, True],  # the first value is useless
-
-            # recluster_tran=[None, False, False, True],   # the first value is useless
-            # recluster_tran_type=['step2'] * 4,
             stage1=dict(
                 num_modules=1,
                 num_branches=1,
