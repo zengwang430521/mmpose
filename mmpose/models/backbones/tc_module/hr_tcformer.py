@@ -255,7 +255,8 @@ class CTM_partpad_dict_BN(nn.Module):
     def __init__(self, sample_ratio, embed_dim, dim_out, drop_rate,
                  k=5, nh_list=None, nw_list=None, level=0,
                  use_agg_weight=True, agg_weight_detach=False, with_act=True,
-                 norm_cfg=None, remain_res=False, cluster=False, first_cluster=False
+                 norm_cfg=None, remain_res=False, cluster=False, first_cluster=False,
+                 cluster_type='old', ignore_density=False
                  ):
         super().__init__()
         # self.sample_num = sample_num
@@ -266,6 +267,10 @@ class CTM_partpad_dict_BN(nn.Module):
         self.conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=2, padding=1)
         self.conv_skip = nn.Linear(embed_dim, dim_out, bias=False)
         self.norm_name, self.norm = build_norm_layer(self.norm_cfg, self.dim_out)
+
+        # print('only for debug')
+        # self.norm = nn.LayerNorm(self.dim_out)
+        # self.norm_name = 'ln'
 
         self.conf = nn.Linear(self.dim_out, 1)
 
@@ -281,13 +286,18 @@ class CTM_partpad_dict_BN(nn.Module):
         self.with_act = with_act
         if self.with_act:
             self.act = nn.ReLU(inplace=False)
+
         self.remain_res = remain_res
         self.cluster = cluster
-        self.have_cluster = first_cluster
+        self.first_cluster = first_cluster
+        self.cluster_type = cluster_type
+        self.ignore_density = ignore_density
 
     def forward(self, input_dict):
         if isinstance(input_dict, tuple) or isinstance(input_dict, list):
             input_dict = input_dict[0]
+
+        input_dict_ori = input_dict.copy()
         input_dict = input_dict.copy()
         x = input_dict['x']
         loc_orig = input_dict['loc_orig']
@@ -307,6 +317,11 @@ class CTM_partpad_dict_BN(nn.Module):
         x_map = self.conv(x_map)
         x = map2token(x_map, N, loc_orig, idx_agg, agg_weight) + self.conv_skip(x)
         x = token_norm(self.norm, self.norm_name, x)
+
+        # print('ONLY FOR DEBUG!')
+        # if self.level < 3:
+        #     x = token_norm(self.norm, self.norm_name, x)
+
         # if self.with_act:
         #     x = self.act(x)
 
@@ -333,10 +348,52 @@ class CTM_partpad_dict_BN(nn.Module):
             num_part = nh * nw
             sample_num = round(sample_num // num_part) * num_part
 
-            x_down, idx_agg_down, agg_weight_down = token_remerge_part(
-                input_dict, Ns=sample_num,  weight=weight, k=self.k,
-                nh_list=self.nh_list, nw_list=self.nw_list, level=self.level,
-                output_tokens=True, first_cluster=self.have_cluster)
+            if self.cluster_type == 'old':
+                x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+                    input_dict, Ns=sample_num,  weight=weight, k=self.k,
+                    nh_list=self.nh_list, nw_list=self.nw_list, level=self.level,
+                    output_tokens=True, first_cluster=self.first_cluster,
+                    ignore_density=self.ignore_density)
+            elif self.cluster_type == 'new':
+                x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+                    input_dict_ori, Ns=sample_num, weight=weight, k=self.k,
+                    nh_list=self.nh_list, nw_list=self.nw_list, level=self.level,
+                    output_tokens=False, first_cluster=self.first_cluster,
+                    ignore_density=self.ignore_density
+                )
+                remerge_dict = {
+                    'x': x_down,
+                    'idx_agg': idx_agg_down,
+                    'agg_weight': agg_weight_down,
+                    'map_size': [H, W],
+                    'loc_orig': input_dict['loc_orig']
+                }
+                x_down = token_downup(source_dict=input_dict, target_dict=remerge_dict)
+
+        # print('ONLY FOR DEBUG!')
+            # if self.level == 3:
+            #     x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+            #         input_dict, Ns=sample_num,  weight=weight, k=self.k,
+            #         nh_list=self.nh_list, nw_list=self.nw_list, level=self.level,
+            #         output_tokens=True, first_cluster=self.first_cluster, ignore_density=True)
+
+            # print('ONLY FOR DEBUG!')
+            # if self.level == 3:
+            #     # remerge
+            #     x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+            #         input_dict_ori, Ns=sample_num, weight=weight, k=self.k,
+            #         nh_list=self.nh_list, nw_list=self.nw_list, level=self.level,
+            #         output_tokens=False, first_cluster=self.first_cluster, ignore_density=True
+            #     )
+            #     remerge_dict = {
+            #         'x': x_down,
+            #         'idx_agg': idx_agg_down,
+            #         'agg_weight': agg_weight_down,
+            #         'map_size': [H, W],
+            #         'loc_orig': input_dict['loc_orig']
+            #     }
+            #     x_down = token_downup(source_dict=input_dict, target_dict=remerge_dict)
+
         else:
             x_down, idx_agg_down, weight_t, _ = token_cluster_grid(
                 input_dict, Ns=None, conf=None, weight=weight)
@@ -1318,6 +1375,9 @@ class HRTCFormer(HRNet):
 
         # cluster
         self.cluster_tran = extra.get('cluster_tran', [False, True, True, True])
+        self.cluster_tran_type = extra.get('cluster_tran_type', ['old'] * 4)
+        self.cluster_tran_ignore_density = extra.get('cluster_tran_ignore_density', [False] * 4)
+
         self.recluster_tran = extra.get('recluster_tran', [False, False, False, False])
         self.recluster_tran_type = extra.get('recluster_tran_type', ['hir'] * 4)
 
@@ -1462,6 +1522,8 @@ class HRTCFormer(HRNet):
                     remain_res=(self.attn_type == 'part'),
                     cluster=self.cluster_tran[num_branches_cur-1],
                     first_cluster=(not self.have_cluster[num_branches_cur-1]),
+                    cluster_type=self.cluster_tran_type[num_branches_cur-1],
+                    ignore_density=self.cluster_tran_ignore_density[num_branches_cur-1],
                 )
                 transition_layers.append(down_layers)
 

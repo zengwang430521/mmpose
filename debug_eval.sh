@@ -3,8 +3,11 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=eval python -u tools/test.py  --launcher="slurm" \
-    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re8_w32_coco_256x192_scratch.py \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtcformer_bi_part_w32_coco_256x192_scratch.py \
     work_dirs/coco/hrtc_bi_part_32/epoch_210.pth
+
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re8_w32_coco_256x192_scratch.py \
+    work_dirs/coco/hrtc_bi_part_re8_32_scratch/epoch_100.pth
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re7_w32_coco_256x192_fine.py \
     work_dirs/coco/hrtc_bi_part_32/epoch_210.pth
