@@ -1683,14 +1683,14 @@ class HRTCFormer(HRNet):
         if self.return_map:
             y_list = self.tran2map(y_list)
 
-        # if vis:
-        #     show_tokens_merge(img, x_list, self.count)
-        #     self.count += 1
-        #     import matplotlib.pyplot as plt
-        #     # plt.close()
-        #     for i in range(6):
-        #         ax = plt.subplot(1, 6, i+1)
-        #         ax.clear()
+        if vis:
+            show_tokens_merge(img, x_list, self.count)
+            self.count += 1
+            import matplotlib.pyplot as plt
+            # plt.close()
+            for i in range(6):
+                ax = plt.subplot(1, 6, i+1)
+                ax.clear()
 
 
         return y_list
