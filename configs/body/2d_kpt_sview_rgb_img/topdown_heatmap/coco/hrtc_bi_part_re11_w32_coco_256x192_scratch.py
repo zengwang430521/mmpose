@@ -4,7 +4,7 @@ load_from=None
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
-checkpoint_config = dict(interval=5, create_symlink=False)
+checkpoint_config = dict(interval=10, create_symlink=False)
 evaluation = dict(interval=10, metric='mAP', key_indicator='AP')
 
 optimizer = dict(
@@ -59,7 +59,12 @@ model = dict(
             nh_list=[8, 4, 2, 1],
             nw_list=[8, 4, 2, 1],
             drop_path_rate=0.1,
-            cluster_tran=[False, True, True, True],
+            cluster_tran=[False, True, True, True],     # the first value is useless
+            cluster_tran_type=['---', 'old', 'old', 'new'],  # the first value is useless
+            cluster_tran_ignore_density=[False, False, False, True],  # the first value is useless
+
+            recluster_tran=[None, False, False, False],   # the first value is useless
+            recluster_tran_type=['step2'] * 4,
             stage1=dict(
                 num_modules=1,
                 num_branches=1,
@@ -70,7 +75,9 @@ model = dict(
                 num_mlp_ratios=[4]),
             stage2=dict(
                 num_modules=1,
-                remerge=[False],
+                # remerge=[True],
+                # remerge_type=['new2'],
+                # ignore_density=[True],
                 num_branches=2,
                 block='TCWINBLOCK',
                 num_blocks=(2, 2),
@@ -81,7 +88,7 @@ model = dict(
             stage3=dict(
                 num_modules=4,
                 remerge=[False, True, False, False],
-                remerge_type=['--', 'new2', '--', '--'],
+                remerge_type=['', 'step2', '', ''],
                 ignore_density=[True, True, True, True],
                 num_branches=3,
                 block='TCWINBLOCK',
@@ -92,7 +99,7 @@ model = dict(
                 num_window_sizes=[7, 7, 7]),
             stage4=dict(
                 num_modules=2,
-                remerge=[False, False],
+                # remerge=[False, False],
                 num_branches=4,
                 block='TCWINBLOCK',
                 num_blocks=(2, 2, 2, 2),
