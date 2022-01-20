@@ -6,7 +6,7 @@ from mmpose.models import build_posenet
 
 
 cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
-           'hrtc_bi_part_re6_w32_coco_256x192_scratch.py'
+           'debug_myhrpvt32_adamw_coco_256x192.py'
 src_file = 'models/hrt_small_coco_256x192.pth'
 out_file = src_file.replace('hrt', 'hrtcformer')
 
@@ -14,11 +14,10 @@ cfg = Config.fromfile(cfg_file)
 model = cfg.model
 model = build_posenet(model)
 
-out_dict = torch.load(out_file)
-
-# try to load
-tmp = model.load_state_dict(out_dict)
-print(tmp)
+# out_dict = torch.load(out_file)
+# # try to load
+# tmp = model.load_state_dict(out_dict)
+# print(tmp)
 
 device = torch.device('cuda')
 model = model.to(device)
@@ -30,6 +29,10 @@ x = cv2.imread('/home/wzeng/mycodes/mmpose_mine/tests/data/coco/000000000785.jpg
 x = cv2.resize(x, [224, 224])
 x = torch.tensor(x).float().to(device).permute(2, 0, 1)[None, ...]
 x = x / 255.0 - 0.5
-y = model.backbone(x)
-z = model.keypoint_head(y)
+
+with torch.autograd.set_detect_anomaly(True):
+    y = model.backbone(x)
+    z = model.keypoint_head(y)
+    l = z.sum()
+    l.backward()
 

@@ -21,6 +21,7 @@ from .tcformer_utils import (
     token_remerge_part
 )
 import math
+import matplotlib.pyplot as plt
 
 vis = False
 
@@ -668,9 +669,12 @@ class TokenFuseLayer(nn.Module):
             fuse_layer = nn.ModuleList(fuse_layer)
             fuse_layers.append(fuse_layer)
         self.fuse_layers = nn.ModuleList(fuse_layers)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=False)
 
     def forward(self, input_lists):
+        # if self.num_out_branches == 1:
+        #     t = 0   # nothing, just for debug
+
         if self.remerge_type == 'new':
             return self.forward_new(input_lists)
         elif self.remerge_type == 'new2':
@@ -831,7 +835,7 @@ class TokenFuseLayer(nn.Module):
 
         for i in range(self.num_out_branches):
 
-            tar_dict = input_lists[i]
+            tar_dict = input_lists[i].copy()
 
             # NOT remerge
             x = tar_dict['x']
@@ -898,14 +902,14 @@ class TokenFuseLayer(nn.Module):
                         x_tmp = F.avg_pool2d(F.pad(x_tmp, [pad, pad, pad, pad], mode='replicate'),
                                              kernel_size=avg_k, stride=1, padding=0)
                         # x2 = F.avg_pool2d(x_tmp, kernel_size=avg_k, stride=1, padding=pad, count_include_pad=False)
-                        ori_dict['x'] += map2token(
+                        ori_dict['x'] = ori_dict['x'] + map2token(
                             x_tmp,
                             ori_dict['x'].shape[1],
                             ori_dict['loc_orig'],
                             ori_dict['idx_agg'],
                             ori_dict['agg_weight'])
                         if self.remerge and i > 0:
-                            remerge_dict['x'] += map2token(
+                            remerge_dict['x'] = remerge_dict['x'] + map2token(
                                 x_tmp,
                                 remerge_dict['x'].shape[1],
                                 remerge_dict['loc_orig'],
@@ -913,14 +917,14 @@ class TokenFuseLayer(nn.Module):
                                 remerge_dict['agg_weight'])
 
                     else:
-                        ori_dict['x'] += token_downup(target_dict=ori_dict, source_dict=src_dict)
+                        ori_dict['x'] = ori_dict['x'] + token_downup(target_dict=ori_dict, source_dict=src_dict)
                         if self.remerge and i > 0:
-                            remerge_dict['x'] += token_downup(target_dict=remerge_dict, source_dict=src_dict)
+                            remerge_dict['x'] = remerge_dict['x'] + token_downup(target_dict=remerge_dict, source_dict=src_dict)
 
                 elif j == i:
                     # the same level
                     if self.remerge and i > 0:
-                        remerge_dict['x'] += token_downup(remerge_dict, src_dict)
+                        remerge_dict['x'] = remerge_dict['x'] + token_downup(target_dict=remerge_dict, source_dict=src_dict)
 
                 else:
                     # down sample
@@ -928,14 +932,14 @@ class TokenFuseLayer(nn.Module):
                     if self.remerge and i > 0:
                         src_dict2 = src_dict.copy()
                         for k in range(i - j):
-                            tar_dict = remerge_lists[k + j + 1]
+                            tar_dict = remerge_lists[k + j + 1].copy()
                             src_dict2 = fuse_link[k](src_dict2, tar_dict)
-                        remerge_dict['x'] += src_dict2['x']
+                        remerge_dict['x'] = remerge_dict['x'] + src_dict2['x']
 
                     for k in range(i - j):
                         tar_dict = ori_lists[k + j + 1]
                         src_dict = fuse_link[k](src_dict, tar_dict)
-                    ori_dict['x'] += src_dict['x']
+                    ori_dict['x'] = ori_dict['x'] + src_dict['x']
 
             ori_dict['x'] = self.relu(ori_dict['x'])
             ori_lists[i] = ori_dict
@@ -1025,14 +1029,14 @@ class TokenFuseLayer(nn.Module):
                         x_tmp = F.avg_pool2d(F.pad(x_tmp, [pad, pad, pad, pad], mode='replicate'),
                                              kernel_size=avg_k, stride=1, padding=0)
                         # x2 = F.avg_pool2d(x_tmp, kernel_size=avg_k, stride=1, padding=pad, count_include_pad=False)
-                        ori_dict['x'] += map2token(
+                        ori_dict['x'] = ori_dict['x'] + map2token(
                             x_tmp,
                             ori_dict['x'].shape[1],
                             ori_dict['loc_orig'],
                             ori_dict['idx_agg'],
                             ori_dict['agg_weight'])
                         if self.remerge and i > 0:
-                            remerge_dict['x'] += map2token(
+                            remerge_dict['x'] = remerge_dict['x'] + map2token(
                                 x_tmp,
                                 remerge_dict['x'].shape[1],
                                 remerge_dict['loc_orig'],
@@ -1040,14 +1044,14 @@ class TokenFuseLayer(nn.Module):
                                 remerge_dict['agg_weight'])
 
                     else:
-                        ori_dict['x'] += token_downup(target_dict=ori_dict, source_dict=src_dict)
+                        ori_dict['x'] = ori_dict['x'] + token_downup(target_dict=ori_dict, source_dict=src_dict)
                         if self.remerge and i > 0:
-                            remerge_dict['x'] += token_downup(target_dict=remerge_dict, source_dict=src_dict)
+                            remerge_dict['x'] = remerge_dict['x'] + token_downup(target_dict=remerge_dict, source_dict=src_dict)
 
                 elif j == i:
                     # the same level
                     if self.remerge and i > 0:
-                        remerge_dict['x'] += token_downup(remerge_dict, src_dict)
+                        remerge_dict['x'] =remerge_dict['x'] + token_downup(remerge_dict, src_dict)
 
                 else:
                     # down sample
@@ -1057,12 +1061,12 @@ class TokenFuseLayer(nn.Module):
                             src_dict2 = src_dict.copy()
                             tar_dict = remerge_lists[k + j + 1]
                             src_dict2 = fuse_link[k](src_dict2, tar_dict)
-                            remerge_dict['x'] += src_dict2['x']
+                            remerge_dict['x'] = remerge_dict['x'] + src_dict2['x']
 
                         tar_dict = ori_lists[k + j + 1]
                         src_dict = fuse_link[k](src_dict, tar_dict)
 
-                    ori_dict['x'] += src_dict['x']
+                    ori_dict['x'] = ori_dict['x'] + src_dict['x']
 
             ori_dict['x'] = self.relu(ori_dict['x'])
             ori_lists[i] = ori_dict
@@ -1152,14 +1156,14 @@ class TokenFuseLayer(nn.Module):
                         x_tmp = F.avg_pool2d(F.pad(x_tmp, [pad, pad, pad, pad], mode='replicate'),
                                              kernel_size=avg_k, stride=1, padding=0)
                         # x2 = F.avg_pool2d(x_tmp, kernel_size=avg_k, stride=1, padding=pad, count_include_pad=False)
-                        ori_dict['x'] += map2token(
+                        ori_dict['x'] = ori_dict['x'] + map2token(
                             x_tmp,
                             ori_dict['x'].shape[1],
                             ori_dict['loc_orig'],
                             ori_dict['idx_agg'],
                             ori_dict['agg_weight'])
                         if self.remerge and i > 0:
-                            remerge_dict['x'] += map2token(
+                            remerge_dict['x'] = remerge_dict['x'] + map2token(
                                 x_tmp,
                                 remerge_dict['x'].shape[1],
                                 remerge_dict['loc_orig'],
@@ -1167,14 +1171,14 @@ class TokenFuseLayer(nn.Module):
                                 remerge_dict['agg_weight'])
 
                     else:
-                        ori_dict['x'] += token_downup(target_dict=ori_dict, source_dict=src_dict)
+                        ori_dict['x'] = ori_dict['x'] + token_downup(target_dict=ori_dict, source_dict=src_dict)
                         if self.remerge and i > 0:
-                            remerge_dict['x'] += token_downup(target_dict=remerge_dict, source_dict=src_dict)
+                            remerge_dict['x'] = remerge_dict['x'] + token_downup(target_dict=remerge_dict, source_dict=src_dict)
 
                 elif j == i:
                     # the same level
                     if self.remerge and i > 0:
-                        remerge_dict['x'] += token_downup(remerge_dict, src_dict)
+                        remerge_dict['x'] = remerge_dict['x'] + token_downup(remerge_dict, src_dict)
 
                 else:
                     # down sample
@@ -1184,12 +1188,12 @@ class TokenFuseLayer(nn.Module):
                             src_dict2 = src_dict.copy()
                             tar_dict = remerge_lists[k + j + 1]
                             src_dict2 = fuse_link[k](src_dict2, tar_dict)
-                            remerge_dict['x'] += src_dict2['x']
+                            remerge_dict['x'] = remerge_dict['x'] + src_dict2['x']
 
                         tar_dict = ori_lists[k + j + 1]
                         src_dict = fuse_link[k](src_dict, tar_dict)
 
-                    ori_dict['x'] += src_dict['x']
+                    ori_dict['x'] = ori_dict['x'] + src_dict['x']
 
             ori_dict['x'] = self.relu(ori_dict['x'])
             ori_lists[i] = ori_dict
@@ -1816,7 +1820,17 @@ class HRTCFormer(HRNet):
         if vis:
             show_tokens_merge(img, x_list, self.count)
             self.count += 1
-            import matplotlib.pyplot as plt
+
+            out = y_list[0]
+            B, C, H, W = out.shape
+            plt.subplot(1, 6, 6)
+
+            # tmp = pca_feature(out.flatten(2).transpose(1, 2)).reshape(B, H, W, -1)
+            # plt.imshow(tmp[0].detach().cpu().float())
+            for i in range(C):
+                plt.imshow(out[0, i].detach().cpu())
+
+
             # plt.close()
             for i in range(6):
                 ax = plt.subplot(1, 6, i+1)

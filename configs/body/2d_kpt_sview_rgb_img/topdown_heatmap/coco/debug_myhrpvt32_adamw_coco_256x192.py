@@ -53,15 +53,19 @@ channel_cfg = dict(
 norm_cfg = dict(type='BN', requires_grad=True)
 model = dict(
     type='TopDown',
+    pretrained='models/hrtcformer_small.pth',
     backbone=dict(
-        type='MyHRPVT',
-        pretrained=None,
-        # pretrained='models/myhrpvt_32_46.pth',
+        type='HRTCFormer',
         in_channels=3,
         norm_cfg=norm_cfg,
         return_map=True,
         extra=dict(
+            attn_type='part',
+            bilinear_upsample=True,
+            nh_list=[8, 4, 2, 1],
+            nw_list=[8, 4, 2, 1],
             drop_path_rate=0.1,
+            cluster_tran=[False, True, True, True],
             stage1=dict(
                 num_modules=1,
                 num_branches=1,
@@ -72,38 +76,37 @@ model = dict(
                 num_mlp_ratios=[4]),
             stage2=dict(
                 num_modules=1,
+                remerge=[False],
                 num_branches=2,
-                remerge=(False, False),
-                block='MYBLOCK',
+                block='TCWINBLOCK',
                 num_blocks=(2, 2),
                 num_channels=(32, 64),
                 num_heads=[1, 2],
                 num_mlp_ratios=[4, 4],
-                sr_ratios=[8, 4]),
+                num_window_sizes=[7, 7]),
             stage3=dict(
                 num_modules=4,
-                remerge=(False, False, False, False),
+                remerge=[False, True, False, False],
+                remerge_type=['--', 'new', '--', '--'],
+                ignore_density=[True, True, True, True],
                 num_branches=3,
-                block='MYBLOCK',
+                block='TCWINBLOCK',
                 num_blocks=(2, 2, 2),
                 num_channels=(32, 64, 128),
                 num_heads=[1, 2, 4],
                 num_mlp_ratios=[4, 4, 4],
-                sr_ratios=[8, 4, 2]),
+                num_window_sizes=[7, 7, 7]),
             stage4=dict(
                 num_modules=2,
-                remerge=(False, False),
+                remerge=[False, False],
                 num_branches=4,
-                block='MYBLOCK',
+                block='TCWINBLOCK',
                 num_blocks=(2, 2, 2, 2),
                 num_channels=(32, 64, 128, 256),
                 num_heads=[1, 2, 4, 8],
                 num_mlp_ratios=[4, 4, 4, 4],
-                sr_ratios=[8, 4, 2, 1],
-            ),
-        )
-
-    ),
+                num_window_sizes=[7, 7, 7, 7])
+        )),
     keypoint_head=dict(
         type='TopdownHeatmapSimpleHead',
         in_channels=32,
@@ -117,7 +120,8 @@ model = dict(
         flip_test=True,
         post_process='default',
         shift_heatmap=True,
-        modulate_kernel=11))
+        modulate_kernel=11)
+)
 
 data_cfg = dict(
     image_size=[192, 256],

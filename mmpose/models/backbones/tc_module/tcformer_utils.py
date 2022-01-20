@@ -2235,8 +2235,8 @@ def pca_feature(x):
         U, S, V = torch.pca_lowrank(x[0].float(), q=3)
         tmp = x @ V
         tmp = tmp - tmp.min(dim=1, keepdim=True)[0]
-        # tmp = tmp / tmp.max(dim=1, keepdim=True)[0]
-        tmp = tmp / tmp.max()
+        tmp = tmp / tmp.max(dim=1, keepdim=True)[0]
+        # tmp = tmp / tmp.max()
     return tmp
 
 
