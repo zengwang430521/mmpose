@@ -681,6 +681,8 @@ class TokenFuseLayer(nn.Module):
             return self.forward_new2(input_lists)
         elif self.remerge_type == 'step2':
             return self.forward_step2(input_lists)
+        elif self.remerge_type == 'none':
+            return self.forward_none(input_lists)
         else:
             return self.forward_old(input_lists)
 
@@ -1207,6 +1209,118 @@ class TokenFuseLayer(nn.Module):
 
         return out_lists
 
+    '''return tuples (tar, src) tar is the input feature, src is the fused feature'''
+    def forward_none(self, input_lists):
+        assert len(input_lists) == self.num_branches
+
+        ori_lists = []
+        remerge_lists = []
+        out_lists = []
+
+        for i in range(self.num_out_branches):
+
+            tar_dict = input_lists[i]
+
+            # NOT remerge
+            x = tar_dict['x']
+            idx_agg = tar_dict['idx_agg']
+            agg_weight = tar_dict['agg_weight']
+
+            ori_dict = {
+                'x': x,
+                'idx_agg': idx_agg,
+                'agg_weight': agg_weight,
+                'map_size': tar_dict['map_size'],
+                'loc_orig': tar_dict['loc_orig']
+            }
+            ori_lists.append(ori_dict)
+
+            if self.remerge:
+                if i == 0:
+                    remerge_lists.append(ori_dict.copy())
+                    remerge_dict = ori_dict.copy()
+                else:
+                    # remerge
+                    x, idx_agg, agg_weight = token_remerge_part(
+                        # remerge_lists[-1],
+                        ori_lists[i-1],
+                        Ns=tar_dict['x'].shape[1],
+                        weight=None,
+                        k=self.k,
+                        nh_list=self.nh_list,
+                        nw_list=self.nw_list,
+                        level=i,
+                        output_tokens=False,
+                        first_cluster=(i == 1),
+                        ignore_density=self.ignore_density
+                    )
+
+                    remerge_dict = {
+                        'x': x,
+                        'idx_agg': idx_agg,
+                        'agg_weight': agg_weight,
+                        'map_size': tar_dict['map_size'],
+                        'loc_orig': tar_dict['loc_orig']
+                    }
+
+                    remerge_dict['x'] = token_downup(remerge_dict, ori_dict)
+                    remerge_lists.append(remerge_dict)
+
+
+            # source loop
+            for j in range(self.num_branches):
+                src_dict = input_lists[j].copy()
+
+                if j > i:
+                    # upsample, just one step
+                    src_dict = self.fuse_layers[i][j](src_dict)
+
+                    if self.bilinear_upsample:
+                        x_tmp, _ = token2map(
+                            src_dict['x'],
+                            None,
+                            src_dict['loc_orig'],
+                            src_dict['idx_agg'],
+                            ori_dict['map_size'],
+                        )
+                        avg_k = 2 ** (j - i) + 1
+                        pad = (avg_k - 1) // 2
+                        x_tmp = F.avg_pool2d(F.pad(x_tmp, [pad, pad, pad, pad], mode='replicate'),
+                                             kernel_size=avg_k, stride=1, padding=0)
+                        # x2 = F.avg_pool2d(x_tmp, kernel_size=avg_k, stride=1, padding=pad, count_include_pad=False)
+                        ori_dict['x'] = ori_dict['x'] + map2token(
+                            x_tmp,
+                            ori_dict['x'].shape[1],
+                            ori_dict['loc_orig'],
+                            ori_dict['idx_agg'],
+                            ori_dict['agg_weight'])
+
+                    else:
+                        ori_dict['x'] = ori_dict['x'] + token_downup(target_dict=ori_dict, source_dict=src_dict)
+
+                elif j == i:
+                    # the same level
+                    pass
+
+                else:
+                    # down sample
+                    fuse_link = self.fuse_layers[i][j]
+                    for k in range(i - j):
+                        tar_dict = ori_lists[k + j + 1]
+                        src_dict = fuse_link[k](src_dict, tar_dict)
+
+                    ori_dict['x'] = ori_dict['x'] + src_dict['x']
+
+            ori_dict['x'] = self.relu(ori_dict['x'])
+            ori_lists[i] = ori_dict
+
+            if self.remerge:
+                out_lists.append((remerge_dict, ori_dict))
+            else:
+                out_lists.append((input_lists[i], ori_dict))
+
+
+        return out_lists
 
 
 
