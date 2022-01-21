@@ -814,8 +814,10 @@ def show_tokens_merge(x, out, count=0):
     for i in range(1):
         img = x[i].permute(1, 2, 0).detach().cpu()
         ax = plt.subplot(1, num_fig, 1)
+
         ax.clear()
         ax.imshow(img)
+        plt.axis('off')
 
         if save_img:
             fname = f'vis/{count}_img.png'
@@ -838,6 +840,7 @@ def show_tokens_merge(x, out, count=0):
         # idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
         ax = plt.subplot(1, num_fig, num_fig)
         ax.imshow(idx_map[0].permute(1, 2, 0).detach().cpu().float())
+        plt.axis('off')
 
         for lv in range(len(out)):
 
@@ -892,6 +895,7 @@ def show_tokens_merge(x, out, count=0):
             ax = plt.subplot(1, num_fig, lv+2)
             ax.clear()
             ax.imshow(idx_map_our[0].permute(1, 2, 0).detach().cpu().float())
+            plt.axis('off')
 
     # plt.show()
     if save_fig:
