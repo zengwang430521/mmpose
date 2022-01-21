@@ -7,10 +7,22 @@ workflow = [('train', 1)]
 checkpoint_config = dict(interval=50)
 evaluation = dict(interval=50, metric='mAP', save_best='AP')
 
+# optimizer = dict(
+#     type='Adam',
+#     lr=0.0015,
+# )
+
 optimizer = dict(
-    type='Adam',
+    type='AdamW',
     lr=0.0015,
+    betas=(0.9, 0.999),
+    weight_decay=0.01,
+    paramwise_cfg=dict(
+        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
+    )
 )
+
+
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -199,3 +211,6 @@ data = dict(
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),
 )
+
+# fp16 settings
+fp16 = dict(loss_scale='dynamic')
