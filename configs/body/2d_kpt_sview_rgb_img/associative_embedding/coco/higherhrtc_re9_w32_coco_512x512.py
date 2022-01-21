@@ -51,7 +51,7 @@ data_cfg = dict(
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
-    type='TopDown',
+    type='AssociativeEmbedding',
     pretrained='models/hrtcformer_small.pth',
     backbone=dict(
         type='HRTCFormer',
