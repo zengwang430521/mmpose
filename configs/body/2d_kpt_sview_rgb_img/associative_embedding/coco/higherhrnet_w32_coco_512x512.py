@@ -14,7 +14,7 @@ evaluation = dict(interval=50, metric='mAP', save_best='AP')
 
 optimizer = dict(
     type='AdamW',
-    lr=0.0015,
+    lr=0.0015 / 1.732,
     betas=(0.9, 0.999),
     weight_decay=0.01,
     paramwise_cfg=dict(
@@ -187,7 +187,7 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=16,
+    samples_per_gpu=8,
     workers_per_gpu=2,
     train=dict(
         type='BottomUpCocoDataset',
