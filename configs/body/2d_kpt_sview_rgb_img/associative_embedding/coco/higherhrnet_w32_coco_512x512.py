@@ -104,9 +104,7 @@ model = dict(
             pull_loss_factor=[0.001, 0.001],
             with_heatmaps_loss=[True, True],
             heatmaps_loss_factor=[1.0, 1.0])),
-    train_cfg=dict(
-        num_joints=channel_cfg['dataset_joints'],
-        img_size=data_cfg['image_size']),
+    train_cfg=dict(),
     test_cfg=dict(
         num_joints=channel_cfg['dataset_joints'],
         max_num_people=30,
@@ -114,6 +112,7 @@ model = dict(
         with_heatmaps=[True, True],
         with_ae=[True, False],
         project2image=True,
+        align_corners=False,
         nms_kernel=5,
         nms_padding=2,
         tag_per_joint=True,
@@ -175,8 +174,10 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=24,
     workers_per_gpu=2,
+    train_dataloader=dict(samples_per_gpu=24),
+    val_dataloader=dict(samples_per_gpu=1),
+    test_dataloader=dict(samples_per_gpu=1),
     train=dict(
         type='BottomUpCocoDataset',
         ann_file=f'{data_root}/annotations/person_keypoints_train2017.json',
@@ -196,6 +197,6 @@ data = dict(
         ann_file=f'{data_root}/annotations/person_keypoints_val2017.json',
         img_prefix=f'{data_root}/val2017/',
         data_cfg=data_cfg,
-        pipeline=val_pipeline,
+        pipeline=test_pipeline,
         dataset_info={{_base_.dataset_info}}),
 )
