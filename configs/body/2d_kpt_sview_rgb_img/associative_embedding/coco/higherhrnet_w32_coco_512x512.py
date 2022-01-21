@@ -7,22 +7,10 @@ workflow = [('train', 1)]
 checkpoint_config = dict(interval=50)
 evaluation = dict(interval=50, metric='mAP', save_best='AP')
 
-# optimizer = dict(
-#     type='Adam',
-#     lr=0.0015,
-# )
-
 optimizer = dict(
-    type='AdamW',
-    lr=0.0015 / 1.732,
-    betas=(0.9, 0.999),
-    weight_decay=0.01,
-    paramwise_cfg=dict(
-        custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
-    )
+    type='Adam',
+    lr=0.0015,
 )
-
-
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -187,7 +175,7 @@ test_pipeline = val_pipeline
 
 data_root = 'data/coco'
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=24,
     workers_per_gpu=2,
     train=dict(
         type='BottomUpCocoDataset',
@@ -211,6 +199,3 @@ data = dict(
         pipeline=val_pipeline,
         dataset_info={{_base_.dataset_info}}),
 )
-
-# fp16 settings
-fp16 = dict(loss_scale='dynamic')
