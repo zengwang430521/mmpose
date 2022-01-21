@@ -23,7 +23,7 @@ from .tcformer_utils import (
 import math
 import matplotlib.pyplot as plt
 
-vis = True
+vis = False
 
 
 # part wise merge with padding with dict as input and output
