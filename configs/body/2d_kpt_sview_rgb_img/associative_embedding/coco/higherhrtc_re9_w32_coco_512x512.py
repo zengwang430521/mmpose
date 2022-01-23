@@ -4,23 +4,34 @@ load_from = None
 resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
-checkpoint_config = dict(interval=50)
-evaluation = dict(interval=50, metric='mAP', save_best='AP')
+checkpoint_config = dict(interval=10)
+evaluation = dict(interval=10, metric='mAP', save_best='AP')
 
 # optimizer = dict(
 #     type='Adam',
 #     lr=0.0015,
 # )
 
+# optimizer = dict(
+#     type='AdamW',
+#     lr=0.0015/1.732,
+#     betas=(0.9, 0.999),
+#     weight_decay=0.01,
+#     paramwise_cfg=dict(
+#         custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
+#     )
+# )
+
 optimizer = dict(
     type='AdamW',
-    lr=0.0015/1.732,
+    lr=5e-4,
     betas=(0.9, 0.999),
     weight_decay=0.01,
     paramwise_cfg=dict(
         custom_keys={'relative_position_bias_table': dict(decay_mult=0.)}
     )
 )
+
 
 optimizer_config = dict(grad_clip=None)
 # learning policy
