@@ -9,9 +9,9 @@ srun -p mm_human \
 
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
 srun -p pat_earth \
-srun -p mm_human --quotatype=auto\
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=coco python -u tools/train.py  --launcher="slurm" \
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re14_w78_coco_256x192_scratch.py \
