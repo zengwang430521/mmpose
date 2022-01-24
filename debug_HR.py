@@ -6,7 +6,7 @@ from mmpose.models import build_posenet
 
 
 cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
-           'debug_myhrpvt32_adamw_coco_256x192.py'
+           'hrtc_bi_part_re14_w78_coco_256x192_scratch.py'
 src_file = 'models/hrt_small_coco_256x192.pth'
 out_file = src_file.replace('hrt', 'hrtcformer')
 

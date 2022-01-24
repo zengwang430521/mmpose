@@ -62,6 +62,8 @@ model = dict(
             cluster_tran=[False, False, False, True],     # the first value is useless
             cluster_tran_type=['', '', '', 'new'],  # the first value is useless
             cluster_tran_ignore_density=[False, False, False, True],  # the first value is useless
+            use_conf_tran=[False, False, False, False],  # the first value is useless
+
             recluster_tran=[None, False, False, False],   # the first value is useless
             recluster_tran_type=['step2'] * 4,
             stage1=dict(

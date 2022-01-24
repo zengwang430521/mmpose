@@ -257,7 +257,7 @@ class CTM_partpad_dict_BN(nn.Module):
                  k=5, nh_list=None, nw_list=None, level=0,
                  use_agg_weight=True, agg_weight_detach=False, with_act=True,
                  norm_cfg=None, remain_res=False, cluster=False, first_cluster=False,
-                 cluster_type='old', ignore_density=False
+                 cluster_type='old', ignore_density=False, use_conf=True
                  ):
         super().__init__()
         # self.sample_num = sample_num
@@ -273,7 +273,9 @@ class CTM_partpad_dict_BN(nn.Module):
         # self.norm = nn.LayerNorm(self.dim_out)
         # self.norm_name = 'ln'
 
-        self.conf = nn.Linear(self.dim_out, 1)
+        self.use_conf = use_conf
+        if self.use_conf:
+            self.conf = nn.Linear(self.dim_out, 1)
 
         # for density clustering
         self.k = k
@@ -326,8 +328,13 @@ class CTM_partpad_dict_BN(nn.Module):
         # if self.with_act:
         #     x = self.act(x)
 
-        conf = self.conf(x)
-        weight = conf.exp()
+        if self.use_conf:
+            conf = self.conf(x)
+            weight = conf.exp()
+        else:
+            conf = None
+            weight = None
+
         input_dict['x'] = x
         B, N, C = x.shape
 
@@ -347,7 +354,6 @@ class CTM_partpad_dict_BN(nn.Module):
         # tmp = conf
         # tmp_map = token2map(tmp, None, input_dict['loc_orig'], input_dict['idx_agg'], input_dict['map_size'])[0]
         # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
-
 
         if self.cluster:
             sample_num = max(math.ceil(N * self.sample_ratio), 1)
@@ -435,7 +441,12 @@ class CTM_partpad_dict_BN(nn.Module):
             out_dict['x'] = self.act(out_dict['x'])
             input_dict['x'] = self.act(input_dict['x'])
 
-        return out_dict, input_dict
+        if self.use_conf:
+            # we only need input_dict if we want to train conf
+            return out_dict, input_dict
+        else:
+            return out_dict
+
 
 
 class DictLayer(nn.Module):
@@ -1714,6 +1725,7 @@ class HRTCFormer(HRNet):
         self.cluster_tran = extra.get('cluster_tran', [False, True, True, True])
         self.cluster_tran_type = extra.get('cluster_tran_type', ['old'] * 4)
         self.cluster_tran_ignore_density = extra.get('cluster_tran_ignore_density', [False] * 4)
+        self.use_conf = extra.get('use_conf_tran', [True, True, True, True])
 
         self.recluster_tran = extra.get('recluster_tran', [False, False, False, False])
         self.recluster_tran_type = extra.get('recluster_tran_type', ['hir'] * 4)
@@ -1861,6 +1873,7 @@ class HRTCFormer(HRNet):
                     first_cluster=(not self.have_cluster[num_branches_cur-1]),
                     cluster_type=self.cluster_tran_type[num_branches_cur-1],
                     ignore_density=self.cluster_tran_ignore_density[num_branches_cur-1],
+                    use_conf=self.use_conf[num_branches_cur-1]
                 )
                 transition_layers.append(down_layers)
 
