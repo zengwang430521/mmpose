@@ -647,8 +647,10 @@ class TokenFuseLayer(nn.Module):
         self.nw_list = nw_list
         self.k = k
 
-
         self.bilinear_upsample = bilinear_upsample
+        if self.bilinear_upsample == 'mix_ada':
+            self.p = nn.Parameter(torch.zeros(1))
+
         self.norm_cfg = norm_cfg
         self.num_branches = num_branches
         self.num_out_branches = num_branches if multiscale_output else 1
@@ -759,7 +761,7 @@ class TokenFuseLayer(nn.Module):
         device = input_lists[0]['x'].device
         B, N0 = input_lists[0]['idx_agg'].shape
         tmp_weight = input_lists[0]['x'].new_ones([B * N0])
-        if self.bilinear_upsample == 'mix':
+        if self.bilinear_upsample in ['mix', 'mix_ada']:
             for i in range(self.num_branches):
                 N = input_lists[i]['x'].shape[1]
                 idx_agg = input_lists[i]['idx_agg']
@@ -821,7 +823,7 @@ class TokenFuseLayer(nn.Module):
                     # upsample, just one step
                     src_dict = self.fuse_layers[i][j](src_dict)
 
-                    if self.bilinear_upsample == 'mix':
+                    if self.bilinear_upsample in ['mix', 'mix_ada']:
                         x_tmp0, _ = token2map(
                             src_dict['x'],
                             None,
@@ -865,7 +867,10 @@ class TokenFuseLayer(nn.Module):
                             tar_w = src_merged_tokens[idx_tmp.reshape(-1), idx_t_in_s.reshape(-1)].reshape(B, T, 1)
                             tar_w = 1 / tar_w
 
-                        tar_w = (tar_w ** 0.5).clamp(0, 1)
+                        if self.bilinear_upsample == 'mix_ada':
+                            tar_w = (tar_w ** (self.p*0.01 + 1)).clamp(0, 1)
+                        else:
+                            tar_w = (tar_w ** 0.5).clamp(0, 1)
 
                         x_tmp = x_tmp1 * tar_w + x_tmp0 * (1 - tar_w)
 
