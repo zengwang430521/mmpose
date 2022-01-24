@@ -2234,6 +2234,35 @@ def gaussian_filt(x, kernel_size=5, sigma=None):
     return y
 
 
+# gaussian filtering
+def avg_filt(x, kernel_size=5):
+    if kernel_size < 3:
+        return x
+
+    channels = x.shape[1]
+
+    gaussian_kernel = x.new_ones([kernel_size, kernel_size])
+    # Make sure sum of values in gaussian kernel equals 1.
+    gaussian_kernel = gaussian_kernel / torch.sum(gaussian_kernel)
+
+    # Reshape to 2d depthwise convolutional weight
+    gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size).contiguous()
+    gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
+
+    pad = int((kernel_size - 1) // 2)
+
+    x = F.pad(x, (pad, pad, pad, pad), mode='replicate')
+    y = F.conv2d(
+        input=x,
+        weight=gaussian_kernel,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=channels
+    )
+    return y
+
+
 def pca_feature(x):
     with torch.cuda.amp.autocast(enabled=False):
         U, S, V = torch.pca_lowrank(x[0].float(), q=3)
