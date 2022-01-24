@@ -342,6 +342,12 @@ class CTM_partpad_dict_BN(nn.Module):
         # tmp = pca_feature(input_dict['x'].detach().float())
         # tmp_map = token2map(tmp, None, input_dict['loc_orig'], input_dict['idx_agg'], input_dict['map_size'])[0]
         # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
+        #
+        # plt.subplot(1, 2, 1)
+        # tmp = conf
+        # tmp_map = token2map(tmp, None, input_dict['loc_orig'], input_dict['idx_agg'], input_dict['map_size'])[0]
+        # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
+
 
         if self.cluster:
             sample_num = max(math.ceil(N * self.sample_ratio), 1)
@@ -1076,6 +1082,24 @@ class TokenFuseLayer(nn.Module):
                 remerge_dict['x'] = self.relu(remerge_dict['x'])
                 remerge_lists[i] = remerge_dict
                 out_lists.append((remerge_dict, ori_dict))
+
+                # # only for debug
+                # print('only for debug')
+                # plt.subplot(1, 2, 1)
+                # tmp = pca_feature(ori_dict['x'].detach().float())
+                # tmp_map = token2map(tmp, None, ori_dict['loc_orig'], ori_dict['idx_agg'], input_lists[0]['map_size'])[0]
+                # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
+                #
+                # plt.subplot(1, 2, 2)
+                # # tmp_dict = src_dict.copy()
+                # # tmp_dict['x'] = tmp
+                # # tmp = token_downup(remerge_dict, tmp_dict)
+                # tmp = pca_feature(remerge_dict['x'].detach().float())
+                # tmp_map = token2map(tmp, None, remerge_dict['loc_orig'], remerge_dict['idx_agg'], input_lists[0]['map_size'])[0]
+                # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
+                # t = 0
+
+
             else:
                 out_lists.append(ori_dict)
 
@@ -1180,7 +1204,24 @@ class TokenFuseLayer(nn.Module):
                 elif j == i:
                     # the same level
                     if self.remerge and i > 0:
+
                         remerge_dict['x'] = remerge_dict['x'] + token_downup(remerge_dict, src_dict)
+
+                        # # only for debug
+                        # print('only for debug')
+                        # plt.subplot(1, 2, 1)
+                        # tmp = pca_feature(src_dict['x'].detach().float())
+                        # tmp_map = token2map(tmp, None, src_dict['loc_orig'], src_dict['idx_agg'], input_lists[0]['map_size'])[0]
+                        # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
+                        #
+                        # plt.subplot(1, 2, 2)
+                        # tmp_dict = src_dict.copy()
+                        # tmp_dict['x'] = tmp
+                        # tmp = token_downup(remerge_dict, tmp_dict)
+                        # # tmp = pca_feature(tmp.detach().float())
+                        # tmp_map = token2map(tmp, None, remerge_dict['loc_orig'], remerge_dict['idx_agg'], input_lists[0]['map_size'])[0]
+                        # plt.imshow(tmp_map[0].permute(1, 2, 0).detach().cpu().float())
+                        # t = 0
 
                 else:
                     # down sample
