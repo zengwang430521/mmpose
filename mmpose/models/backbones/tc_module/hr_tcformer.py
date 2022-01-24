@@ -649,7 +649,7 @@ class TokenFuseLayer(nn.Module):
 
         self.bilinear_upsample = bilinear_upsample
         if self.bilinear_upsample == 'mix_ada':
-            self.p = nn.Parameter(torch.zeros(1))
+            self.register_parameter('p', nn.Parameter(torch.zeros(1).float()))
 
         self.norm_cfg = norm_cfg
         self.num_branches = num_branches
