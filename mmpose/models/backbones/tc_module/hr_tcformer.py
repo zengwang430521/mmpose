@@ -868,7 +868,7 @@ class TokenFuseLayer(nn.Module):
                             tar_w = 1 / tar_w
 
                         if self.bilinear_upsample == 'mix_ada':
-                            tar_w = (tar_w ** (self.p*0.01 + 1)).clamp(0, 1)
+                            tar_w = (tar_w.detach().float() ** (self.p*0.01 + 1)).clamp(0, 1)
                         else:
                             tar_w = (tar_w ** 0.5).clamp(0, 1)
 
