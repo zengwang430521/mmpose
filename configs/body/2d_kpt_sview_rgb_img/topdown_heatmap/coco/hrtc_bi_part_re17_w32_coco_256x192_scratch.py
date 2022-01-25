@@ -1,4 +1,4 @@
-# use CTM NECK
+'''use CTM NECK'''
 
 
 log_level = 'INFO'
