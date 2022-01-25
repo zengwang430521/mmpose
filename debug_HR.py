@@ -6,7 +6,7 @@ from mmpose.models import build_posenet
 
 
 cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
-           'hrtc_bi_part_re14_w78_coco_256x192_scratch.py'
+           'hrtc_bi_part_re17_w32_coco_256x192_scratch.py'
 src_file = 'models/hrt_small_coco_256x192.pth'
 out_file = src_file.replace('hrt', 'hrtcformer')
 
@@ -32,6 +32,9 @@ x = x / 255.0 - 0.5
 
 with torch.autograd.set_detect_anomaly(True):
     y = model.backbone(x)
+    if model.with_neck:
+        y = model.neck(y)
+
     z = model.keypoint_head(y)
     l = z.sum()
     l.backward()

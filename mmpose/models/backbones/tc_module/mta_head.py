@@ -207,6 +207,8 @@ class MTA(BaseModule):
                 self.add_extra_convs = 'on_input'
             else:
                 self.add_extra_convs = 'on_output'
+        else:
+            self.add_extra_convs = 'on_output'
 
         self.extra_convs = nn.ModuleList()
         extra_levels = num_outs - (self.end_level + 1 - self.start_level)
