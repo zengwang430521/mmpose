@@ -4,12 +4,12 @@ srun -p pat_earth \
 srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=eval python -u tools/test.py  --launcher="slurm" \
+    configs/den0fs_part_large_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_210.pth --launcher="slurm"
+
     configs/den0fs_part_debug_large_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_210.pth --launcher="slurm"
 
     configs/den0fs_large_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_210.pth --launcher="slurm"
 
-
-    configs/den0fs_part_large_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_210.pth --launcher="slurm"
 
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re10_w32_coco_256x192_scratch.py \
     work_dirs/coco/hrtc_bi_part_re10_32/epoch_40.pth

@@ -29,8 +29,8 @@ from .utils_mine import DPC_flops,DPC_part_flops, token2map_flops, map2token_flo
 from .tc_module.tcformer_utils import token_remerge_part
 
 
-# vis = False
-vis = True
+vis = False
+# vis = True
 
 
 
