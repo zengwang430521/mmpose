@@ -37,7 +37,8 @@ except ImportError:
 W, H = 288, 384
 input_shape = (3, W, H)
 # config = 'configs/debug_den0fs_large_fine0_384x288.py'
-config = 'configs/den0fs_part_large_fine0_384x288.py'
+# config = 'configs/den0fs_part_large_fine0_384x288.py'
+config = 'configs/den0fs_part_debug_large_fine0_384x288.py'
 
 
 cfg = Config.fromfile(config)

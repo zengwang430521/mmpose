@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p pat_earth \
+srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=eval python -u tools/test.py  --launcher="slurm" \
+    configs/den0fs_large_debug_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_210.pth --launcher="slurm"
+
     configs/den0fs_large_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_210.pth --launcher="slurm"
 
 
