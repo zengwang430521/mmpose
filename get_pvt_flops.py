@@ -21,10 +21,11 @@ except ImportError:
 # # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re17_w32_coco_256x192_scratch.py '
 # # config = 'configs/pvtv2_0.py'
 # # config = 'configs/den0f_fine_adamw.py'
+# # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
+# #            'hrtc_bi_part_re17_w32_coco_256x192_scratch.py'
 # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
-#            'hrtc_bi_part_re17_w32_coco_256x192_scratch.py'
+#            'hrtc_bi_part_re14_w32_coco_256x192_scratch.py'
 #
-
 
 # W, H = 256, 256
 # input_shape = (3, W, H)
@@ -41,8 +42,6 @@ config = 'configs/den0fs_part_large_fine0_384x288.py'
 
 cfg = Config.fromfile(config)
 cfg.model.backbone.pretrained = None
-# from mmpose.models.backbones.pvt_v2_3h2_density_fix_sparse import mypvt3h2_density0fs_large_part
-# m = mypvt3h2_density0fs_large_part()
 model = build_posenet(cfg.model)
 model = model.cuda()
 model.eval()
