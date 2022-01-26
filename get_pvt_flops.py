@@ -13,17 +13,17 @@ except ImportError:
 
 
 
-W, H = 192, 256
-input_shape = (3, W, H)
-
-# config = 'configs/pvt3h2_den0f_att_adamw.py'
-# config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/den0f_small_adamw_coco_256x192.py'
-# config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re17_w32_coco_256x192_scratch.py '
-# config = 'configs/pvtv2_0.py'
-# config = 'configs/den0f_fine_adamw.py'
-config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
-           'hrtc_bi_part_re17_w32_coco_256x192_scratch.py'
-
+# W, H = 192, 256
+# input_shape = (3, W, H)
+#
+# # config = 'configs/pvt3h2_den0f_att_adamw.py'
+# # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/den0f_small_adamw_coco_256x192.py'
+# # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re17_w32_coco_256x192_scratch.py '
+# # config = 'configs/pvtv2_0.py'
+# # config = 'configs/den0f_fine_adamw.py'
+# config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
+#            'hrtc_bi_part_re17_w32_coco_256x192_scratch.py'
+#
 
 
 # W, H = 256, 256
@@ -33,11 +33,16 @@ config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
 # config = '/home/wzeng/mycodes/mmpose_mine/configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py'
 
 
-# W, H = 288, 384
-# input_shape = (3, W, H)
+W, H = 288, 384
+input_shape = (3, W, H)
 # config = 'configs/debug_den0fs_large_fine0_384x288.py'
+config = 'configs/den0fs_part_large_fine0_384x288.py'
+
 
 cfg = Config.fromfile(config)
+cfg.model.backbone.pretrained = None
+# from mmpose.models.backbones.pvt_v2_3h2_density_fix_sparse import mypvt3h2_density0fs_large_part
+# m = mypvt3h2_density0fs_large_part()
 model = build_posenet(cfg.model)
 model = model.cuda()
 model.eval()

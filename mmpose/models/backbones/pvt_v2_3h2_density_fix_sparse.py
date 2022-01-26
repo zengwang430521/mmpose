@@ -25,7 +25,8 @@ from .utils_mine import map2token_agg_sparse_nearest as map2token_agg_fast_neare
 # from .utils_mine import token2map_agg_sparse_new as token2map_agg_mat
 # from .utils_mine import map2token_agg_sparse_nearest_new as map2token_agg_fast_nearest
 from ..builder import BACKBONES
-from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
+from .utils_mine import DPC_flops,DPC_part_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
+from .tc_module.tcformer_utils import token_remerge_part
 vis = False
 # vis = True
 
@@ -277,7 +278,8 @@ class DownLayer(nn.Module):
         self.conf_scale = conf_scale
         self.conf_density = conf_density
 
-    def forward(self, x, pos_orig, idx_agg, agg_weight, H, W, N_grid, grid_merge=False):
+    def forward(self, x, pos_orig, idx_agg, agg_weight, H, W, N_grid, grid_merge=False,
+                part_cluster=False, nh_list=[1, 1, 1, 1], nw_list=[1,1,1,1], lv=1):
         # x, mask = token2map(x, pos, [H, W], 1, 2, return_mask=True)
         # x = self.conv(x, mask)
 
@@ -313,6 +315,28 @@ class DownLayer(nn.Module):
             idx_agg_down = F.interpolate(idx_agg_down.float(), [H*2, W*2], mode='nearest').long()
             idx_agg_down = idx_agg_down.reshape(-1)[None, :].repeat([B, 1])
 
+            agg_weight_down = agg_weight * weight_t
+            agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+
+        elif part_cluster:
+            input_dict = {'x': x,
+                          'loc_orig': pos_orig,
+                          'idx_agg': idx_agg,
+                          'agg_weight': agg_weight,
+                          'map_size': [H, W]}
+
+            _, _, H, W = x_map.shape
+            B, N, C = x.shape
+            sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
+            if sample_num < N_grid:
+                sample_num = N_grid
+
+            x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+                input_dict, Ns=sample_num,  weight=weight, k=self.k,
+                nh_list=nh_list, nw_list=nw_list, level=lv,
+                output_tokens=True, first_cluster=lv==1,
+                ignore_density=False)
+
         else:
             _, _, H, W = x_map.shape
             B, N, C = x.shape
@@ -328,8 +352,8 @@ class DownLayer(nn.Module):
                 # loc_orig=pos_orig, map_size=[H // sr_ratio, W // sr_ratio]
             )
 
-        agg_weight_down = agg_weight * weight_t
-        agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+            agg_weight_down = agg_weight * weight_t
+            agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
 
         x_down = self.block(x_down, idx_agg_down, agg_weight_down, pos_orig,
                             x, idx_agg, agg_weight, H, W, conf_source=conf)
@@ -345,7 +369,8 @@ class MyPVT(nn.Module):
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
                  depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], num_stages=4, linear=False,
                  k=3, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0.25, conf_density=False,
-                 pretrained=None
+                 pretrained=None,
+                 nh_list=[1, 1, 1, 1], nw_list=[1, 1, 1, 1], part_cluster=False
                  ):
         super().__init__()
         self.num_classes = num_classes
@@ -357,6 +382,9 @@ class MyPVT(nn.Module):
         self.sample_ratio = 0.25
         self.sr_ratios = sr_ratios
         self.mlp_ratios = mlp_ratios
+        self.nh_list = nh_list
+        self.nw_list = nw_list
+        self.part_cluster = part_cluster
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
         cur = 0
@@ -471,7 +499,10 @@ class MyPVT(nn.Module):
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
 
-            x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid, grid_merge=i==0)  # down sample
+            x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid,
+                                                 grid_merge=i==0,
+                                                 nh_list=self.nh_list, nw_list=self.nw_list,
+                                                 lv=i, part_cluster=self.part_cluster)  # down sample
             H, W = H // 2, W // 2
 
             for j, blk in enumerate(block):
@@ -502,7 +533,13 @@ class MyPVT(nn.Module):
 
             if stage > 0:
                 # cluster flops
-                flops += DPC_flops(N, dim)
+                if self.part_cluster:
+                    nh, nw = self.nh_list[stage], self.nw_list[stage]
+                    N_part = N // (nh * nw)
+                    flops += DPC_part_flops(N, N_part, dim)
+                else:
+                    flops += DPC_flops(N, dim)
+
                 flops += map2token_flops(N0, dim_up) + token2map_flops(N0, dim)
                 N = N * self.sample_ratio
                 h, w = h // 2, w // 2
@@ -562,4 +599,16 @@ class mypvt3h2_density0fs_large(MyPVT):
             qkv_bias=True,
             norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
             k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
+            **kwargs)
+
+
+@BACKBONES.register_module()
+class mypvt3h2_density0fs_large_part(MyPVT):
+    def __init__(self, **kwargs):
+        super().__init__(
+            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
+            qkv_bias=True,
+            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
+            k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
+            part_cluster=True, nh_list=[8, 4, 2, 1], nw_list=[8, 4, 2, 1],
             **kwargs)
