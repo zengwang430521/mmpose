@@ -77,6 +77,7 @@ class TopDownMpiiDataset(Kpt2dSviewRgbImgTopDownDataset):
             dataset_info=dataset_info,
             coco_style=False,
             test_mode=test_mode)
+        self.ann_info['use_different_joint_weights'] = False
 
         self.db = self._get_db()
         self.image_set = set(x['image_file'] for x in self.db)
