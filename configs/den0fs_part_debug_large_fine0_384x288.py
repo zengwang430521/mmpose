@@ -143,7 +143,7 @@ data = dict(
     samples_per_gpu=8,
     workers_per_gpu=2,
     val_dataloader=dict(samples_per_gpu=8),
-    test_dataloader=dict(samples_per_gpu=32),
+    test_dataloader=dict(samples_per_gpu=16),
     train=dict(
         type='TopDownCocoWholeBodyDataset',
         ann_file=f'{data_root}/annotations/coco_wholebody_train_v1.0.json',
