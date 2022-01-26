@@ -25,7 +25,9 @@ except ImportError:
 # #            'hrtc_bi_part_re17_w32_coco_256x192_scratch.py'
 # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
 #            'hrtc_bi_part_re14_w32_coco_256x192_scratch.py'
-#
+
+
+
 
 # W, H = 256, 256
 # input_shape = (3, W, H)

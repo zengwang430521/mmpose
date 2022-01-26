@@ -25,10 +25,12 @@ from .utils_mine import map2token_agg_sparse_nearest as map2token_agg_fast_neare
 # from .utils_mine import token2map_agg_sparse_new as token2map_agg_mat
 # from .utils_mine import map2token_agg_sparse_nearest_new as map2token_agg_fast_nearest
 from ..builder import BACKBONES
-from .utils_mine import DPC_flops,DPC_part_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
+from .utils_mine import DPC_flops,DPC_part_flops, token2map_flops, map2token_flops, downup_flops, sra_flops, token_remerge_part0
 from .tc_module.tcformer_utils import token_remerge_part
-vis = False
-# vis = True
+
+
+# vis = False
+vis = True
 
 
 
@@ -331,7 +333,7 @@ class DownLayer(nn.Module):
             if sample_num < N_grid:
                 sample_num = N_grid
 
-            x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+            x_down, idx_agg_down, agg_weight_down = token_remerge_part0(
                 input_dict, Ns=sample_num,  weight=weight, k=self.k,
                 nh_list=nh_list, nw_list=nw_list, level=lv,
                 output_tokens=True, first_cluster=lv==1,
@@ -435,6 +437,8 @@ class MyPVT(nn.Module):
 
         self.apply(self._init_weights)
         self.init_weights(pretrained)
+        if vis:
+            self.count = 0
 
     def init_weights(self, pretrained=None):
         if isinstance(pretrained, str):
@@ -512,7 +516,8 @@ class MyPVT(nn.Module):
             outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
 
         if vis:
-            show_tokens_merge(img, outs, N_grid)
+            show_tokens_merge(img, outs, N_grid, self.count)
+            self.count += 1
 
         return outs
 
