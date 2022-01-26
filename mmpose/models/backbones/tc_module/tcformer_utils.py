@@ -482,6 +482,16 @@ def DPC_flops(N, C):
     return flops
 
 
+def DPC_part_flops(N, Np, C):
+    flops = 0
+
+    flops += N * Np * C  # dist_matrix
+    flops += N * 5  # density
+    flops += N * Np  # dist
+    flops += N * C  # gather
+    return flops
+
+
 def map2token_flops(N0, C):
     return N0 * (2 + 1 + 1 + C)
 

@@ -18,7 +18,7 @@ from .tcformer_utils import (
     map2token, token2map, token_downup, get_grid_loc,
     token_cluster_part_pad, token_cluster_part_follow,
     show_tokens_merge, token_cluster_grid, pca_feature,
-    token_remerge_part, avg_filt
+    token_remerge_part, avg_filt, DPC_part_flops
 )
 import math
 import matplotlib.pyplot as plt
@@ -2252,3 +2252,89 @@ class HRTCFormer(HRNet):
 
 
         return y_list
+
+    def get_extra_flops(self, H, W):
+        flops = 0
+        h, w = H // 4, W // 4
+        N0 = h * w
+
+        N_list = [N0 // 4**i for i in range(4)]
+        num_channels = self.stage4_cfg['num_channels']
+        mlp_ratios = self.stage4_cfg['num_mlp_ratios']
+        nh_list = self.extra['nh_list']
+        nw_list = self.extra['nw_list']
+
+        attn_flops = []
+        t2m_flops = []
+        m2t_flops = []
+
+        if self.attn_type == 'part':
+            for i in range(4):
+                N = N_list[i]
+                C = num_channels[i]
+                nh, nw = nh_list[i], nw_list[i]
+                N_part = N // (nh*nw)
+                tmp = N * N_part * C * 2
+                attn_flops.append(tmp)
+
+                if i > 0:
+                    # transfer between token
+                    t2m_flops.append(N0*(C*mlp_ratios[i]+5))
+                    m2t_flops.append(N0*(C*mlp_ratios[i]+5))
+                else:
+                    t2m_flops.append(0)
+                    m2t_flops.append(0)
+
+
+        else:
+            print('NOT REALIZED FLOPS COMPUTATION FOR ATTN_TYPE: ' + self.attn_type)
+
+        # fuse_flops
+        fuse_flops = [0]  # stage1 has no fuse
+
+        tmp = N0 * num_channels[0] * 3 + N0 * num_channels[1] * 1
+        fuse_flops.append(tmp)
+
+        tmp = N0 * num_channels[0] * 8 + N0 * num_channels[1] * 4 + N0 * num_channels[2] * 2
+        fuse_flops.append(tmp)
+
+        tmp = N0 * num_channels[0] * 15 + N0 * num_channels[1] * 9 + N0 * num_channels[2] * 5 + N0 * num_channels[3] * 3
+        fuse_flops.append(tmp)
+
+
+
+        # attn and fuse per stage
+        attn_flops_stages = [0]
+        fuse_flops_stages = [0]
+        for s, stage_cfg in zip(range(2, 5), [self.stage2_cfg, self.stage3_cfg, self.stage4_cfg]):
+            depth = stage_cfg['num_modules'] * stage_cfg['num_blocks'][0]
+            per_depth_attn_flops = 0
+            for i in range(s):
+                # include transform between token and feature
+                per_depth_attn_flops += attn_flops[i] + m2t_flops[i] + t2m_flops[i]
+            attn_flops_stage = depth * per_depth_attn_flops
+            if self.use_conf[s-1]:
+                # because of cluster and conf the first transformer us emore src tokens
+                attn_flops_stage += attn_flops[s-1] * 3
+            attn_flops_stages.append(attn_flops_stage)
+
+            fuse_flops_stages.append(fuse_flops[s-1] * stage_cfg['num_modules'])
+
+        # cluster
+        cluster_flops = [0]
+        for i in range(1, 4):
+            if self.cluster_tran[i]:
+                N = N_list[i-1]
+                nh, nw = nh_list[i], nw_list[i]
+                N_part = N // (nh * nw)
+                C = num_channels[i]
+                cluster_flop = DPC_part_flops(N, N_part, C)
+            else:
+                cluster_flop = 0
+
+            cluster_flops.append(cluster_flop)
+
+
+        flops = sum(attn_flops_stages) + sum(fuse_flops_stages) + sum(cluster_flops)
+
+        return flops
