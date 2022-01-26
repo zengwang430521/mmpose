@@ -332,12 +332,18 @@ class DownLayer(nn.Module):
             sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
             if sample_num < N_grid:
                 sample_num = N_grid
-
-            x_down, idx_agg_down, agg_weight_down = token_remerge_part0(
-                input_dict, Ns=sample_num,  weight=weight, k=self.k,
-                nh_list=nh_list, nw_list=nw_list, level=lv,
-                output_tokens=True, first_cluster=lv==1,
-                ignore_density=False)
+            if part_cluster == '0':
+                x_down, idx_agg_down, agg_weight_down = token_remerge_part0(
+                    input_dict, Ns=sample_num,  weight=weight, k=self.k,
+                    nh_list=nh_list, nw_list=nw_list, level=lv,
+                    output_tokens=True, first_cluster=lv==1,
+                    ignore_density=False)
+            else:
+                x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+                    input_dict, Ns=sample_num,  weight=weight, k=self.k,
+                    nh_list=nh_list, nw_list=nw_list, level=lv,
+                    output_tokens=True, first_cluster=lv==1,
+                    ignore_density=False)
 
         else:
             _, _, H, W = x_map.shape
@@ -618,6 +624,17 @@ class mypvt3h2_density0fs_large_part(MyPVT):
             part_cluster=True, nh_list=[8, 4, 2, 1], nw_list=[8, 4, 2, 1],
             **kwargs)
 
+
+@BACKBONES.register_module()
+class mypvt3h2_density0fs_large_part0(MyPVT):
+    def __init__(self, **kwargs):
+        super().__init__(
+            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
+            qkv_bias=True,
+            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
+            k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
+            part_cluster='0', nh_list=[8, 4, 2, 1], nw_list=[8, 4, 2, 1],
+            **kwargs)
 
 
 @BACKBONES.register_module()
