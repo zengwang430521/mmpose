@@ -87,8 +87,8 @@ data_cfg = dict(
     nms_thr=1.0,
     oks_thr=0.9,
     vis_thr=0.2,
-    # use_gt_bbox=False,
-    use_gt_bbox=True,
+    use_gt_bbox=False,
+    # use_gt_bbox=True,
     det_bbox_thr=0.0,
     bbox_file='data/coco/person_detection_results/'
     'COCO_val2017_detections_AP_H_56_person.json',
@@ -143,7 +143,7 @@ data = dict(
     samples_per_gpu=8,
     workers_per_gpu=2,
     val_dataloader=dict(samples_per_gpu=8),
-    test_dataloader=dict(samples_per_gpu=1),
+    test_dataloader=dict(samples_per_gpu=32),
     train=dict(
         type='TopDownCocoWholeBodyDataset',
         ann_file=f'{data_root}/annotations/coco_wholebody_train_v1.0.json',
