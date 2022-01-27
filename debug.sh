@@ -14,6 +14,9 @@ srun -p pat_earth \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/mpii/hrtc_re18_w32_mpii_256x256.py \
+    --work-dir=work_dirs/mpii/hrtc_re18_w32
+
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/mpii/hrtc_re17_w32_mpii_256x256.py \
     --work-dir=work_dirs/mpii/hrtc_re17_w32
 
