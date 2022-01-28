@@ -18,7 +18,9 @@ from .utils_mine import (
 from .utils_mine import token_cluster_density_fixbug as token_cluster_density
 # from utils_mine import token2map_agg_sparse as token2map_agg_mat
 from ..builder import BACKBONES
-from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops
+from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops, token_remerge_part0
+from .tc_module.tcformer_utils import token_remerge_part
+
 
 vis = False
 # vis = True
@@ -269,7 +271,8 @@ class DownLayer(nn.Module):
         self.conf_scale = conf_scale
         self.conf_density = conf_density
 
-    def forward(self, x, pos_orig, idx_agg, agg_weight, H, W, N_grid):
+    def forward(self, x, pos_orig, idx_agg, agg_weight, H, W, N_grid, grid_merge=False,
+                part_cluster=False, nh_list=[1, 1, 1, 1], nw_list=[1,1,1,1], lv=1):
         # x, mask = token2map(x, pos, [H, W], 1, 2, return_mask=True)
         # x = self.conv(x, mask)
 
@@ -286,19 +289,70 @@ class DownLayer(nn.Module):
         conf = self.conf(x)
         weight = conf.exp()
 
-        _, _, H, W = x_map.shape
-        B, N, C = x.shape
-        sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
-        if sample_num < N_grid:
-            sample_num = N_grid
 
-        x_down, idx_agg_down, weight_t = token_cluster_density(
-            x, sample_num, idx_agg, weight, True, conf,
-            k=self.k, dist_assign=self.dist_assign, ada_dc=self.ada_dc,
-            use_conf=self.use_conf, conf_scale=self.conf_scale, conf_density=self.conf_density)
 
-        agg_weight_down = agg_weight * weight_t
-        agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+        if grid_merge:
+            mean_weight = weight.reshape(B, 1, H, W)
+            mean_weight = F.avg_pool2d(mean_weight, kernel_size=2)
+            mean_weight = F.interpolate(mean_weight, [H, W], mode='nearest')
+            mean_weight = mean_weight.reshape(B, H*W, 1)
+            norm_weight = weight / (mean_weight + 1e-6)
+
+            x_down = x * norm_weight
+            x_down = x_down.reshape(B, H, W, -1).permute(0, 3, 1, 2)
+            x_down = F.avg_pool2d(x_down, kernel_size=2)
+            x_down = x_down.flatten(2).permute(0, 2, 1)
+
+            weight_t = norm_weight / 4
+
+            _, _, H, W = x_map.shape
+            idx_agg_down = torch.arange(H*W, device=x.device).reshape(1, 1, H, W)
+            idx_agg_down = F.interpolate(idx_agg_down.float(), [H*2, W*2], mode='nearest').long()
+            idx_agg_down = idx_agg_down.reshape(-1)[None, :].repeat([B, 1])
+
+            agg_weight_down = agg_weight * weight_t
+            agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+
+        elif part_cluster:
+            input_dict = {'x': x,
+                          'loc_orig': pos_orig,
+                          'idx_agg': idx_agg,
+                          'agg_weight': agg_weight,
+                          'map_size': [H, W]}
+
+            _, _, H, W = x_map.shape
+            B, N, C = x.shape
+            sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
+            if sample_num < N_grid:
+                sample_num = N_grid
+            if part_cluster == '0':
+                x_down, idx_agg_down, agg_weight_down = token_remerge_part0(
+                    input_dict, Ns=sample_num,  weight=weight, k=self.k,
+                    nh_list=nh_list, nw_list=nw_list, level=lv,
+                    output_tokens=True, first_cluster=lv==1,
+                    ignore_density=False)
+            else:
+                x_down, idx_agg_down, agg_weight_down = token_remerge_part(
+                    input_dict, Ns=sample_num,  weight=weight, k=self.k,
+                    nh_list=nh_list, nw_list=nw_list, level=lv,
+                    output_tokens=True, first_cluster=lv==1,
+                    ignore_density=False)
+
+        else:
+            _, _, H, W = x_map.shape
+            B, N, C = x.shape
+            sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
+            if sample_num < N_grid:
+                sample_num = N_grid
+
+            x_down, idx_agg_down, weight_t = token_cluster_density(
+                x, sample_num, idx_agg, weight, True, conf,
+                k=self.k, dist_assign=self.dist_assign, ada_dc=self.ada_dc,
+                use_conf=self.use_conf, conf_scale=self.conf_scale, conf_density=self.conf_density)
+
+            agg_weight_down = agg_weight * weight_t
+            agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+
 
         x_down = self.block(x_down, idx_agg_down, agg_weight_down, pos_orig,
                             x, idx_agg, agg_weight, H, W, conf_source=conf)
@@ -314,7 +368,8 @@ class MyPVT(nn.Module):
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
                  depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], num_stages=4, linear=False,
                  k=3, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0.25, conf_density=False,
-                 pretrained=None
+                 pretrained=None,
+                 nh_list=[1, 1, 1, 1], nw_list=[1, 1, 1, 1], part_cluster=False
                  ):
         super().__init__()
         self.num_classes = num_classes
@@ -326,6 +381,10 @@ class MyPVT(nn.Module):
         self.sample_ratio = 0.25
         self.sr_ratios = sr_ratios
         self.mlp_ratios = mlp_ratios
+        self.nh_list = nh_list
+        self.nw_list = nw_list
+        self.part_cluster = part_cluster
+
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
         cur = 0
@@ -439,7 +498,12 @@ class MyPVT(nn.Module):
             down_layers = getattr(self, f"down_layers{i}")
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
-            x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid)  # down sample
+            # x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid)  # down sample
+            x, idx_agg, agg_weight = down_layers(x, loc_orig, idx_agg, agg_weight, H, W, N_grid,
+                                                 grid_merge=i==0,
+                                                 nh_list=self.nh_list, nw_list=self.nw_list,
+                                                 lv=i, part_cluster=self.part_cluster)  # down sample
+
             H, W = H // 2, W // 2
 
             for j, blk in enumerate(block):
@@ -539,4 +603,16 @@ class mypvt3h2_density0f_large(MyPVT):
             qkv_bias=True,
             norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
             k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
+            **kwargs)
+
+
+@BACKBONES.register_module()
+class mypvt3h2_density0f_small_part0(MyPVT):
+    def __init__(self, **kwargs):
+        super().__init__(
+            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4],
+            qkv_bias=True,
+            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+            k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
+            part_cluster='0', nh_list=[8, 4, 2, 1], nw_list=[8, 4, 2, 1],
             **kwargs)
