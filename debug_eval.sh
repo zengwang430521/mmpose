@@ -4,8 +4,12 @@ srun -p pat_earth \
 srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=eval python -u tools/test.py  --launcher="slurm" \
-    configs/pvt3h2_den0f_part0_att_adamw.py \
-    work_dirs/den0f_att_16/latest.pth
+   configs/pvt3h2_den0f_part0_att_adamw.py work_dirs/fine_att/latest.pth
+
+
+    configs/pvt3h2_den0f_att_adamw.py work_dirs/den0f_att_16/latest.pth
+
+    configs/den0fs_part0_large_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_210.pth --launcher="slurm"
 
 
     configs/den0fs_part0_large_fine0_384x288.py work_dirs/den0fs_large_384_16/epoch_210.pth --launcher="slurm"

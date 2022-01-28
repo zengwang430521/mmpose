@@ -18,7 +18,7 @@ from .utils_mine import (
 from .utils_mine import token_cluster_density_fixbug as token_cluster_density
 # from utils_mine import token2map_agg_sparse as token2map_agg_mat
 from ..builder import BACKBONES
-from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops, token_remerge_part0
+from .utils_mine import DPC_flops, token2map_flops, map2token_flops, downup_flops, sra_flops, token_remerge_part0, DPC_part_flops
 from .tc_module.tcformer_utils import token_remerge_part
 
 
@@ -535,10 +535,17 @@ class MyPVT(nn.Module):
 
             if stage > 0:
                 # cluster flops
-                flops += DPC_flops(N, dim)
+                if self.part_cluster:
+                    nh, nw = self.nh_list[stage], self.nw_list[stage]
+                    N_part = N // (nh * nw)
+                    flops += DPC_part_flops(N, N_part, dim)
+                else:
+                    flops += DPC_flops(N, dim)
+
                 flops += map2token_flops(N0, dim_up) + token2map_flops(N0, dim)
                 N = N * self.sample_ratio
                 h, w = h // 2, w // 2
+
 
             # attn flops
             flops += sra_flops(h, w, sr, dim) * depth
