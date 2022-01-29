@@ -648,7 +648,7 @@ class TokenFuseLayer(nn.Module):
         self.k = k
 
         self.bilinear_upsample = bilinear_upsample
-        if self.bilinear_upsample == 'mix_ada':
+        if self.bilinear_upsample in ['mix_ada', 'mix_ada2']:
             self.register_parameter('p', nn.Parameter(torch.zeros(1).float()))
 
         self.norm_cfg = norm_cfg
@@ -972,6 +972,132 @@ class TokenFuseLayer(nn.Module):
                         #     plt.imshow(c_map4[0].permute(1,2,0).detach().cpu().float())
                         #
                         #     t = 0
+
+                    elif self.bilinear_upsample in ['mix_ada2']:
+                        x_tmp0, _ = token2map(
+                            src_dict['x'],
+                            None,
+                            src_dict['loc_orig'],
+                            src_dict['idx_agg'],
+                            out_dict['map_size'],
+                        )
+                        avg_k = 2 ** (j - i) + 1
+                        pad = (avg_k - 1) // 2
+                        x_tmp0 = F.avg_pool2d(F.pad(x_tmp0, [pad, pad, pad, pad], mode='replicate'),
+                                             kernel_size=avg_k, stride=1, padding=0)
+
+                        # x2 = F.avg_pool2d(x_tmp, kernel_size=avg_k, stride=1, padding=pad, count_include_pad=False)
+                        x_tmp0 = map2token(
+                            x_tmp0,
+                            out_dict['x'].shape[1],
+                            out_dict['loc_orig'],
+                            out_dict['idx_agg'],
+                            out_dict['agg_weight'])
+
+                        x_tmp1 = token_downup(out_dict, src_dict)   # without avg
+
+                        tar_w = F.sigmoid(self.p)
+                        x_tmp = x_tmp1 * tar_w + x_tmp0 * (1 - tar_w)
+
+
+                        # # only for debug
+                        # print('only for debug')
+                        # if avg_k >= 1:
+                        #     print(i)
+                        #     print(j)
+                        #     print(avg_k)
+                        #
+                        #     c0 = pca_feature(src_dict['x'].float())
+                        #     tmpc_dict = src_dict.copy()
+                        #     tmpc_dict['x'] = c0
+                        #
+                        #     c_map0, _ = token2map(
+                        #         c0,
+                        #         None,
+                        #         src_dict['loc_orig'],
+                        #         src_dict['idx_agg'],
+                        #         out_dict['map_size'],
+                        #     )
+                        #
+                        #     c_map1 = F.avg_pool2d(F.pad(c_map0, [pad, pad, pad, pad], mode='replicate'),
+                        #                          kernel_size=avg_k, stride=1, padding=0)
+                        #
+                        #     c1 = map2token(
+                        #         c_map1,
+                        #         out_dict['x'].shape[1],
+                        #         out_dict['loc_orig'],
+                        #         out_dict['idx_agg'],
+                        #         out_dict['agg_weight'])
+                        #
+                        #     c2 = token_downup(out_dict, tmpc_dict)
+                        #
+                        #     c3 = c2 * tar_w + c1 * (1 - tar_w)
+                        #
+                        #
+                        #     c_map0, _ = token2map(
+                        #         c0,
+                        #         None,
+                        #         src_dict['loc_orig'],
+                        #         src_dict['idx_agg'],
+                        #         input_lists[0]['map_size'],
+                        #     )
+                        #
+                        #     c_map1, _ = token2map(
+                        #         c1,
+                        #         None,
+                        #         out_dict['loc_orig'],
+                        #         out_dict['idx_agg'],
+                        #         input_lists[0]['map_size'],
+                        #     )
+                        #
+                        #     c_map2, _ = token2map(
+                        #         c2,
+                        #         None,
+                        #         out_dict['loc_orig'],
+                        #         out_dict['idx_agg'],
+                        #         input_lists[0]['map_size'],
+                        #     )
+                        #
+                        #     c_map3, _ = token2map(
+                        #         c3,
+                        #         None,
+                        #         out_dict['loc_orig'],
+                        #         out_dict['idx_agg'],
+                        #         input_lists[0]['map_size'],
+                        #     )
+                        #
+                        #     c_map4, _ = token2map(
+                        #         c0,
+                        #         None,
+                        #         src_dict['loc_orig'],
+                        #         src_dict['idx_agg'],
+                        #         src_dict['map_size'],
+                        #     )
+                        #     c_map4 = F.interpolate(c_map4, out_dict['map_size'], mode='bilinear')
+                        #     # c_map4 = F.interpolate(c_map4, input_lists[0]['map_size'], mode='nearest')
+                        #
+                        #     w_map0, _ = token2map(
+                        #         tar_w,
+                        #         None,
+                        #         out_dict['loc_orig'],
+                        #         out_dict['idx_agg'],
+                        #         input_lists[0]['map_size'])
+                        #
+                        #     plt.subplot(2, 3, 1)
+                        #     plt.imshow(c_map0[0].permute(1,2,0).detach().cpu().float())
+                        #     plt.subplot(2, 3, 2)
+                        #     plt.imshow(c_map1[0].permute(1,2,0).detach().cpu().float())
+                        #     plt.subplot(2, 3, 3)
+                        #     plt.imshow(c_map2[0].permute(1,2,0).detach().cpu().float())
+                        #     plt.subplot(2, 3, 4)
+                        #     plt.imshow(w_map0[0, 0].detach().cpu().float())
+                        #     plt.subplot(2, 3, 5)
+                        #     plt.imshow(c_map3[0].permute(1,2,0).detach().cpu().float())
+                        #     plt.subplot(2, 3, 6)
+                        #     plt.imshow(c_map4[0].permute(1,2,0).detach().cpu().float())
+                        #
+                        #     t = 0
+
 
                     elif self.bilinear_upsample:
                         x_tmp, _ = token2map(
@@ -2235,14 +2361,14 @@ class HRTCFormer(HRNet):
             show_tokens_merge(img, x_list, self.count)
             self.count += 1
 
-            out = y_list[0]
-            B, C, H, W = out.shape
-            plt.subplot(1, 6, 6)
-
-            # tmp = pca_feature(out.flatten(2).transpose(1, 2)).reshape(B, H, W, -1)
-            # plt.imshow(tmp[0].detach().cpu().float())
-            for i in range(C):
-                plt.imshow(out[0, i].detach().cpu())
+            # out = y_list[0]
+            # B, C, H, W = out.shape
+            # plt.subplot(1, 6, 6)
+            #
+            # # tmp = pca_feature(out.flatten(2).transpose(1, 2)).reshape(B, H, W, -1)
+            # # plt.imshow(tmp[0].detach().cpu().float())
+            # for i in range(C):
+            #     plt.imshow(out[0, i].detach().cpu())
 
 
             # plt.close()

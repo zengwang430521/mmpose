@@ -5,8 +5,11 @@ from mmcv import Config
 from mmpose.models import build_posenet
 
 
-cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
-           'hrtc_bi_part_re18_w32_coco_256x192_scratch.py'
+# cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
+#            'hrtc_bi_part_re18_w32_coco_256x192_scratch.py'
+cfg_file = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/mpii/' \
+           'hrtc_re20_w32_mpii_256x256.py'
+
 src_file = 'models/hrt_small_coco_256x192.pth'
 out_file = src_file.replace('hrt', 'hrtcformer')
 
