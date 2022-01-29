@@ -286,6 +286,12 @@ class DownLayer(nn.Module):
         x_map = self.conv(x_map)
         x = map2token_agg_fast_nearest(x_map, N, pos_orig, idx_agg, agg_weight) + self.conv_skip(x)
         x = self.norm(x)
+
+        # for counting time
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        start.record()
+
         conf = self.conf(x)
         weight = conf.exp()
 
@@ -352,6 +358,12 @@ class DownLayer(nn.Module):
 
             agg_weight_down = agg_weight * weight_t
             agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+
+
+        end.record()
+        torch.cuda.synchronize()
+        print('lv {0} cluster time: '.format(lv))
+        print(start.elapsed_time(end))
 
 
         x_down = self.block(x_down, idx_agg_down, agg_weight_down, pos_orig,
