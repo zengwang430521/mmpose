@@ -58,8 +58,8 @@ model = dict(
             nh_list=[8, 4, 2, 1],
             nw_list=[8, 4, 2, 1],
             drop_path_rate=0.1,
-            cluster_tran=[False, True, True, True],     # the first value is useless
-            cluster_tran_type=['', '', '', 'new'],  # the first value is useless
+            cluster_tran=[False, False, False, True],     # the first value is useless
+            cluster_tran_type=['', 'old', 'old', 'new'],  # the first value is useless
             cluster_tran_ignore_density=[False, False, False, True],  # the first value is useless
 
             recluster_tran=[None, False, False, False],   # the first value is useless
