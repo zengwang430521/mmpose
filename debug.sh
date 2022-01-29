@@ -14,6 +14,9 @@ srun -p mm_human --quotatype=auto\
 srun -p pat_earth \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re20_w32_coco_256x192_scratch.py \
+    --work-dir=work_dirs/coco/hrtc_bi_part_re20_32
+
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/mpii/hrtc_re20_w32_mpii_256x256.py \
     --work-dir=work_dirs/mpii/hrtc_re20_w32
 
