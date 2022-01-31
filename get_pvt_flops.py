@@ -13,12 +13,12 @@ except ImportError:
 
 
 
-# W, H = 192, 256
-# input_shape = (3, W, H)
-#
-# # config = 'configs/pvt3h2_den0f_att_adamw.py'
-# config = 'configs/pvt3h2_den0f_part0_att_adamw.py'
+W, H = 192, 256
+input_shape = (3, W, H)
 
+# config = 'configs/pvt3h2_den0f_att_adamw.py'
+# config = 'configs/pvt3h2_den0f_part0_att_adamw.py'
+#
 # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/den0f_small_adamw_coco_256x192.py'
 # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re17_w32_coco_256x192_scratch.py '
 # config = 'configs/pvtv2_0.py'
@@ -27,16 +27,19 @@ except ImportError:
 #            'hrtc_bi_part_re17_w32_coco_256x192_scratch.py'
 # config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/' \
 #            'hrtc_bi_part_re14_w32_coco_256x192_scratch.py'
-# cfg = Config.fromfile(config)
 
+config = 'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re19_w32_coco_256x192_scratch.py'
 
-
-W, H = 256, 256
-input_shape = (3, W, H)
-# config = 'configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py'
-# config = 'configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/den0_tiny_wflw_256x256.py'
-config = '/home/wzeng/mycodes/mmpose_mine/configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/mpii/hrtc_re18_w32_mpii_256x256.py'
 cfg = Config.fromfile(config)
+
+
+
+# W, H = 256, 256
+# input_shape = (3, W, H)
+# # config = 'configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/att1_den0f_tiny_wflw_256x256.py'
+# # config = 'configs/face/2d_kpt_sview_rgb_img/topdown_heatmap/wflw/den0_tiny_wflw_256x256.py'
+# config = '/home/wzeng/mycodes/mmpose_mine/configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/mpii/hrtc_re18_w32_mpii_256x256.py'
+# cfg = Config.fromfile(config)
 
 
 # W, H = 288, 384
@@ -82,13 +85,13 @@ print('!!!Please be cautious if you use the results in papers. '
 
 
 
-
-from mmcv.cnn.utils.flops_counter import get_model_complexity_info
-
-model.forward = model.forward_dummy
-
-flops1, params1 = get_model_complexity_info(encoder, (3, 2048), as_strings=False)
-flops2, params2 = get_model_complexity_info(decoder, (3, 2048), as_strings=False)
+#
+# from mmcv.cnn.utils.flops_counter import get_model_complexity_info
+#
+# model.forward = model.forward_dummy
+#
+# flops1, params1 = get_model_complexity_info(encoder, (3, 2048), as_strings=False)
+# flops2, params2 = get_model_complexity_info(decoder, (3, 2048), as_strings=False)
 
 
 #
