@@ -6,6 +6,11 @@ srun -p mm_human \
     --job-name=ae_att_coco python -u tools/train.py  --work-dir=work_dirs/ae_att_coco --launcher="slurm" \
     configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0_small_coco_512x512.py
 
+srun -p pat_earth \
+    --ntasks=16 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re19_w32_coco_256x192_scratch_16.py \
+    --work-dir=work_dirs/coco/hrtc_bi_part_re19_32_16gpu --resume-from=work_dirs/coco/hrtc_bi_part_re19_32/epoch_105.pth
 
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
 srun -p mm_human \
