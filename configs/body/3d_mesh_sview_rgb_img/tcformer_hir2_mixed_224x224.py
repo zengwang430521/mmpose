@@ -123,59 +123,34 @@ test_pipeline = val_pipeline
 
 len2d_eft = [1000, 14810, 9428, 28344]
 data = dict(
-    samples_per_gpu=32,
-    workers_per_gpu=2,
-
-    train=dict(
-        type='MeshMixDataset',
-        configs=[
-            dict(
-                ann_file='data/mesh_annotation_files/h36m_train_new.npz',
-                img_prefix='data/h36m_train',
-                data_cfg=data_cfg,
-                pipeline=train_pipeline),
-            dict(
-                ann_file='data/mesh_annotation_files/'
-                'mpi_inf_3dhp_train.npz',
-                img_prefix='data/mpi_inf_3dhp',
-                data_cfg=data_cfg,
-                pipeline=train_pipeline),
-            dict(
-                ann_file='data/mesh_annotation_files/'
-                         '3dpw_train.npz',
-                img_prefix='data/3DPW',
-                data_cfg=data_cfg,
-                pipeline=train_pipeline),
-            dict(
-                ann_file='data/mesh_annotation_files/'
-                'lsp_dataset_original_train.npz',
-                img_prefix='data/lsp_dataset_original',
-                data_cfg=data_cfg,
-                pipeline=train_pipeline),
-            dict(
-                ann_file='data/mesh_annotation_files/mpii_train_eft.npz',
-                img_prefix='data/mpii',
-                data_cfg=data_cfg,
-                pipeline=train_pipeline),
-            dict(
-                ann_file='data/mesh_annotation_files/hr-lspet_train_eft.npz',
-                img_prefix='data/hr-lspet',
-                data_cfg=data_cfg,
-                pipeline=train_pipeline),
-            dict(
-                ann_file='data/mesh_annotation_files/coco_2014_train_eft.npz',
-                img_prefix='data/coco',
-                data_cfg=data_cfg,
-                pipeline=train_pipeline)
-        ],
-        partition=[0.3, 0.1, 0.2] + [0.4 * l / sum(len2d_eft) for l in len2d_eft]
-    ),
-
-    # samples_per_gpu=2,
-    # workers_per_gpu=0,
+    # samples_per_gpu=32,
+    # workers_per_gpu=2,
     # train=dict(
     #     type='MeshMixDataset',
     #     configs=[
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/h36m_train_new.npz',
+    #             img_prefix='data/h36m_train',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline),
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/'
+    #             'mpi_inf_3dhp_train.npz',
+    #             img_prefix='data/mpi_inf_3dhp',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline),
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/'
+    #                      '3dpw_train.npz',
+    #             img_prefix='data/3DPW',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline),
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/'
+    #             'lsp_dataset_original_train.npz',
+    #             img_prefix='data/lsp_dataset_original',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline),
     #         dict(
     #             ann_file='data/mesh_annotation_files/mpii_train_eft.npz',
     #             img_prefix='data/mpii',
@@ -186,10 +161,34 @@ data = dict(
     #             img_prefix='data/hr-lspet',
     #             data_cfg=data_cfg,
     #             pipeline=train_pipeline),
-    #
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/coco_2014_train_eft.npz',
+    #             img_prefix='data/coco',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline)
     #     ],
-    #     partition=[0.5, 0.5]
+    #     partition=[0.3, 0.1, 0.2] + [0.4 * l / sum(len2d_eft) for l in len2d_eft]
     # ),
+
+    samples_per_gpu=2,
+    workers_per_gpu=0,
+    train=dict(
+        type='MeshMixDataset',
+        configs=[
+            dict(
+                ann_file='data/mesh_annotation_files/mpii_train_eft.npz',
+                img_prefix='data/mpii',
+                data_cfg=data_cfg,
+                pipeline=train_pipeline),
+            dict(
+                ann_file='data/mesh_annotation_files/hr-lspet_train_eft.npz',
+                img_prefix='data/hr-lspet',
+                data_cfg=data_cfg,
+                pipeline=train_pipeline),
+
+        ],
+        partition=[0.5, 0.5]
+    ),
 
 
 
