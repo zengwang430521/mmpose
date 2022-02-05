@@ -61,8 +61,8 @@ class MeshH36MDataset(MeshBaseDataset):
     def _report_metric(self, res_file):
         """Keypoint evaluation.
 
-        Report mean per joint position error (MPJPE) and mean per joint
-        position error after rigid alignment (MPJPE-PA)
+        Report mean per joint position error (mpjpe) and mean per joint
+        position error after rigid alignment (p-mpjpe)
         """
 
         with open(res_file, 'r') as fin:
@@ -96,8 +96,8 @@ class MeshH36MDataset(MeshBaseDataset):
             alignment='procrustes')
 
         info_str = []
-        info_str.append(('MPJPE', mpjpe * 1000))
-        info_str.append(('MPJPE-PA', mpjpe_pa * 1000))
+        info_str.append(('mpjpe', mpjpe * 1000))
+        info_str.append(('p-mpjpe', mpjpe_pa * 1000))
         return info_str
 
 
@@ -156,8 +156,8 @@ class Mesh3DPWDataset(MeshBaseDataset):
     def _report_metric(self, res_file):
         """Keypoint evaluation.
 
-        Report mean per joint position error (MPJPE) and mean per joint
-        position error after rigid alignment (MPJPE-PA)
+        Report mean per joint position error (mpjpe) and mean per joint
+        position error after rigid alignment (p-mpjpe)
         """
 
         with open(res_file, 'r') as fin:
@@ -194,15 +194,15 @@ class Mesh3DPWDataset(MeshBaseDataset):
             alignment='procrustes')
 
         info_str = []
-        info_str.append(('MPJPE', mpjpe * 1000))
-        info_str.append(('MPJPE-PA', mpjpe_pa * 1000))
+        info_str.append(('mpjpe', mpjpe * 1000))
+        info_str.append(('p-mpjpe', mpjpe_pa * 1000))
 
 
         error_vertices = [pred['error_vertices'] for pred in preds]
         error_vertices = np.array(error_vertices)
         mpvpe = error_vertices.mean()
-        info_str.append(('MPVPE', mpvpe * 1000))
+        info_str.append(('mpvpe', mpvpe * 1000))
 
-        info_str.append(('-MPJPE-PA', -mpjpe_pa * 1000))
+        # info_str.append(('-p-mpjpe', -mpjpe_pa * 1000))
 
         return info_str

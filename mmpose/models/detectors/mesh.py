@@ -192,9 +192,14 @@ class ParametricMesh(BasePose):
             losses['adv_loss'] = loss_adv
 
         loss, log_vars = self._parse_losses(losses)
-        optimizer['generator'].zero_grad()
-        loss.backward()
-        optimizer['generator'].step()
+        if self.with_gan:
+            optimizer['generator'].zero_grad()
+            loss.backward()
+            optimizer['generator'].step()
+        else:
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
         outputs = dict(
             loss=loss,

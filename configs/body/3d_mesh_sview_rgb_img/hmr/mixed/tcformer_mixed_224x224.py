@@ -4,8 +4,7 @@ resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
 checkpoint_config = dict(interval=10)
-
-evaluation = dict(interval=10, metric='joint_error', save_best='-MPJPE-PA')
+evaluation = dict(interval=5, metric='joint_error', save_best='p-mpjpe')
 
 use_adversarial_train = False
 
@@ -13,7 +12,14 @@ use_adversarial_train = False
 #     generator=dict(type='Adam', lr=2.5e-4),
 #     discriminator=dict(type='Adam', lr=1e-4))
 
-optimizer = dict(type='Adam', lr=2.5e-4)
+# optimizer = dict(type='Adam', lr=2.5e-
+
+optimizer = dict(
+    type='AdamW',
+    lr=2.5e-4,
+    betas=(0.9, 0.999),
+    weight_decay=0.01,
+)
 
 optimizer_config = None
 
@@ -114,9 +120,10 @@ test_pipeline = val_pipeline
 
 len2d_eft = [1000, 14810, 9428, 28344]
 data = dict(
-    # samples_per_gpu=32,
-    samples_per_gpu=2,
-    workers_per_gpu=0,
+    samples_per_gpu=32,
+    workers_per_gpu=2,
+    # samples_per_gpu=2,
+    # workers_per_gpu=0,
     train=dict(
         type='MeshMixDataset',
         configs=[
@@ -161,6 +168,27 @@ data = dict(
         ],
         partition=[0.3, 0.1, 0.2] + [0.4 * l / sum(len2d_eft) for l in len2d_eft]
     ),
+
+    # train=dict(
+    #     type='MeshMixDataset',
+    #     configs=[
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/mpii_train_eft.npz',
+    #             img_prefix='data/mpii',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline),
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/hr-lspet_train_eft.npz',
+    #             img_prefix='data/hr-lspet',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline),
+    #
+    #     ],
+    #     partition=[0.5, 0.5]
+    # ),
+
+
+
     val=dict(
         type='Mesh3DPWDataset',
         ann_file='data/mesh_annotation_files/3dpw_test.npz',
