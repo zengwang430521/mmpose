@@ -21,7 +21,9 @@ optimizer = dict(
     weight_decay=0.01,
 )
 
-optimizer_config = None
+# optimizer_config = None
+optimizer_config = dict(grad_clip=None)
+
 
 lr_config = dict(policy='Fixed', by_epoch=False)
 
