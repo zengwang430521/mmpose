@@ -16,16 +16,17 @@ use_adversarial_train = False
 
 optimizer = dict(
     type='AdamW',
-    lr=2.5e-4,
+    lr=5e-4,
     betas=(0.9, 0.999),
     weight_decay=0.01,
 )
-
-# optimizer_config = None
 optimizer_config = dict(grad_clip=None)
-
-
-lr_config = dict(policy='Fixed', by_epoch=False)
+lr_config = dict(
+    policy='step',
+    warmup='linear',
+    warmup_iters=500,
+    warmup_ratio=0.001,
+    step=[70])
 
 total_epochs = 100
 log_config = dict(
