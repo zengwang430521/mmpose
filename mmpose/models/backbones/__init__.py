@@ -47,6 +47,8 @@ from .hrt import HRT
 from .tc_module.tcformer_partpad import tcformer_partpad_small, tcformer_partpad_small2
 from .tc_module.mta_head import MTA
 from .tc_module.hr_tcformer import HRTCFormer
+from .tc_module.tcformer import tcformer_small
+from .tc_module.tcformer_partpad import tcformer_partpad_small
 
 
 __all__ = [

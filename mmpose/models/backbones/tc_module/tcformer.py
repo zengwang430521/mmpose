@@ -85,7 +85,7 @@ class TCFormer(nn.Module):
             setattr(self, f"norm{i + 1}", norm)
 
         # classification head
-        self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
+        # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
 
         self.apply(self._init_weights)
         self.init_weights(pretrained)
@@ -167,11 +167,12 @@ class TCFormer(nn.Module):
             self.count += 1
 
         # return outs
-        return x.mean(dim=1)
+        # return x.mean(dim=1)
+        return outs
 
     def forward(self, x):
         x = self.forward_features(x)
-        x = self.head(x)
+        # x = self.head(x)
         return x
 
     def get_extra_flops(self, H, W):

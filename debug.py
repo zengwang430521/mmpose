@@ -1,4 +1,5 @@
-
+from tests.test_models.test_mesh_forward import test_parametric_mesh_forward
+test_parametric_mesh_forward()
 
 
 # from tests.test_model.test_mesh_forward import test_parametric_mesh_forward

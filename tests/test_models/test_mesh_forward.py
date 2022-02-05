@@ -18,35 +18,67 @@ def test_parametric_mesh_forward():
     generate_smpl_weight_file(tmpdir.name)
 
     # Test ParametricMesh without discriminator
+    # model_cfg = dict(
+    #     pretrained=None,
+    #     backbone=dict(type='ResNet', depth=50),
+    #     mesh_head=dict(
+    #         type='HMRMeshHead',
+    #         in_channels=2048,
+    #         smpl_mean_params='tests/data/smpl/smpl_mean_params.npz'),
+    #     disc=None,
+    #     smpl=dict(
+    #         type='SMPL',
+    #         smpl_path=tmpdir.name,
+    #         joints_regressor=osp.join(tmpdir.name,
+    #                                   'test_joint_regressor.npy')),
+    #     train_cfg=dict(disc_step=1),
+    #     test_cfg=dict(
+    #         flip_test=False,
+    #         post_process='default',
+    #         shift_heatmap=True,
+    #         modulate_kernel=11),
+    #     loss_mesh=dict(
+    #         type='MeshLoss',
+    #         joints_2d_loss_weight=1,
+    #         joints_3d_loss_weight=1,
+    #         vertex_loss_weight=1,
+    #         smpl_pose_loss_weight=1,
+    #         smpl_beta_loss_weight=1,
+    #         focal_length=5000,
+    #         img_res=256),
+    #     loss_gan=None)
+
     model_cfg = dict(
-        pretrained=None,
-        backbone=dict(type='ResNet', depth=50),
+        backbone=dict(type='tcformer_small', pretrained='models/checkpoint_tcformer.pth'),
+        neck=dict(type='HirAttNeck2'),
         mesh_head=dict(
             type='HMRMeshHead',
-            in_channels=2048,
-            smpl_mean_params='tests/data/smpl/smpl_mean_params.npz'),
-        disc=None,
+            in_channels=512,
+            smpl_mean_params='models/smpl/smpl_mean_params.npz',
+        ),
+        disc=dict(),
         smpl=dict(
             type='SMPL',
-            smpl_path=tmpdir.name,
-            joints_regressor=osp.join(tmpdir.name,
-                                      'test_joint_regressor.npy')),
-        train_cfg=dict(disc_step=1),
-        test_cfg=dict(
-            flip_test=False,
-            post_process='default',
-            shift_heatmap=True,
-            modulate_kernel=11),
+            smpl_path='models/smpl',
+            joints_regressor='models/smpl/joints_regressor_cmr.npy'),
+        train_cfg=dict(disc_step=0),
+        test_cfg=dict(),
         loss_mesh=dict(
             type='MeshLoss',
-            joints_2d_loss_weight=1,
-            joints_3d_loss_weight=1,
-            vertex_loss_weight=1,
-            smpl_pose_loss_weight=1,
-            smpl_beta_loss_weight=1,
+            joints_2d_loss_weight=100,
+            joints_3d_loss_weight=1000,
+            vertex_loss_weight=20,
+            smpl_pose_loss_weight=30,
+            smpl_beta_loss_weight=0.2,
             focal_length=5000,
             img_res=256),
-        loss_gan=None)
+        # loss_gan=dict(
+        #     type='GANLoss',
+        #     gan_type='lsgan',
+        #     real_label_val=1.0,
+        #     fake_label_val=0.0,
+        #     loss_weight=1)
+    )
 
     detector = ParametricMesh(**model_cfg)
     detector.init_weights()

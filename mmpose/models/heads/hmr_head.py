@@ -19,7 +19,7 @@ class HMRMeshHead(nn.Module):
         n_iter (int): The iterations of estimating delta parameters
     """
 
-    def __init__(self, in_channels, smpl_mean_params=None, n_iter=3):
+    def __init__(self, in_channels, smpl_mean_params=None, n_iter=3, input_index=0):
         super().__init__()
 
         self.in_channels = in_channels
@@ -55,16 +55,25 @@ class HMRMeshHead(nn.Module):
         self.register_buffer('init_shape', init_shape)
         self.register_buffer('init_cam', init_cam)
 
+        self.input_index = input_index
+
     def forward(self, x):
         """Forward function.
 
         x is the image feature map and is expected to be in shape (batch size x
         channel number x height x width)
         """
+        if isinstance(x, tuple) or isinstance(x, list):
+            x = x[self.input_index]
+        if isinstance(x, dict):
+            x = x['x']
+        if x.dim() > 2:
+            # extract the global feature vector by average along
+            # spatial dimension.
+            # x = x.mean(dim=-1).mean(dim=-1)
+            x = x.flatten(2).mean(dim=-1)
+
         batch_size = x.shape[0]
-        # extract the global feature vector by average along
-        # spatial dimension.
-        x = x.mean(dim=-1).mean(dim=-1)
 
         init_pose = self.init_pose.expand(batch_size, -1)
         init_shape = self.init_shape.expand(batch_size, -1)

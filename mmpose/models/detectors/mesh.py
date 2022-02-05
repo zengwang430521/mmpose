@@ -9,6 +9,7 @@ from mmpose.models.misc.discriminator import SMPLDiscriminator
 from .. import builder
 from ..builder import POSENETS
 from .base import BasePose
+from mmpose.core.evaluation import keypoint_mpjpe
 
 
 def set_requires_grad(nets, requires_grad=False):
@@ -48,6 +49,7 @@ class ParametricMesh(BasePose):
                  backbone,
                  mesh_head,
                  smpl,
+                 neck=None,
                  disc=None,
                  loss_gan=None,
                  loss_mesh=None,
@@ -58,7 +60,14 @@ class ParametricMesh(BasePose):
 
         self.backbone = builder.build_backbone(backbone)
         self.mesh_head = builder.build_head(mesh_head)
-        self.generator = torch.nn.Sequential(self.backbone, self.mesh_head)
+
+        self.with_neck = neck is not None
+        if self.with_neck:
+            self.neck = builder.build_neck(neck)
+            self.generator = torch.nn.Sequential(self.backbone, self.neck, self.mesh_head)
+        else:
+            self.generator = torch.nn.Sequential(self.backbone, self.mesh_head)
+
 
         self.smpl = builder.build_mesh_model(smpl)
 
@@ -110,7 +119,7 @@ class ParametricMesh(BasePose):
         pred_pose, pred_beta, pred_camera = pred_smpl
 
         # optimize discriminator (if have)
-        if self.train_cfg['disc_step'] > 0 and self.with_gan:
+        if self.with_gan and self.train_cfg['disc_step'] > 0:
             set_requires_grad(self.discriminator, True)
             fake_data = (pred_camera.detach(), pred_pose.detach(),
                          pred_beta.detach())
@@ -242,15 +251,54 @@ class ParametricMesh(BasePose):
         pred_out = self.smpl(
             betas=pred_beta,
             body_pose=pred_pose[:, 1:],
-            global_orient=pred_pose[:, :1])
-        pred_vertices, pred_joints_3d = pred_out['vertices'], pred_out[
-            'joints']
+            global_orient=pred_pose[:, :1],
+        )
+        pred_vertices, pred_joints_3d = pred_out['vertices'], pred_out['joints']
 
         all_preds = {}
         all_preds['keypoints_3d'] = pred_joints_3d.detach().cpu().numpy()
         all_preds['smpl_pose'] = pred_pose.detach().cpu().numpy()
         all_preds['smpl_beta'] = pred_beta.detach().cpu().numpy()
         all_preds['camera'] = pred_camera.detach().cpu().numpy()
+
+        if 'beta' in kwargs.keys():
+            gt_beta = kwargs['beta']
+            gt_pose = kwargs['pose']
+            gt_out = self.smpl(
+                betas=gt_beta,
+                body_pose=gt_pose[:, 3:],
+                global_orient=gt_pose[:, :3],
+                gender=kwargs['gender'],
+            )
+            gt_vertices, gt_joints_3d = gt_out['vertices'], gt_out['joints']
+            all_preds['keypoints_3d_gt_mesh'] = gt_joints_3d.detach().cpu().numpy()
+
+            error_vertices = pred_vertices - gt_vertices
+            error_vertices = error_vertices.norm(p=2, dim=-1).mean(dim=-1)
+            all_preds['error_vertices'] = error_vertices.detach().cpu().numpy()
+
+            # # we only evaluate on 14 lsp joints
+            # joint_mapper = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18]
+            # pred_joints_3d = pred_joints_3d[:, joint_mapper, :]
+            # pred_pelvis = (pred_joints_3d[:, 2] + pred_joints_3d[:, 3]) / 2
+            # pred_joints_3d = pred_joints_3d - pred_pelvis[:, None, :]
+            #
+            # gt_joints_3d = gt_joints_3d[:, joint_mapper, :]
+            # gt_pelvis = (gt_joints_3d[:, 2] + gt_joints_3d[:, 3]) / 2
+            # gt_joints_3d = gt_joints_3d - gt_pelvis[:, None, :]            # # we only evaluate on 14 lsp joints
+            # joint_mapper = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18]
+            # pred_joints_3d = pred_joints_3d[:, joint_mapper, :]
+            # pred_pelvis = (pred_joints_3d[:, 2] + pred_joints_3d[:, 3]) / 2
+            # pred_joints_3d = pred_joints_3d - pred_pelvis[:, None, :]
+            #
+            # gt_joints_3d = gt_joints_3d[:, joint_mapper, :]
+            # gt_pelvis = (gt_joints_3d[:, 2] + gt_joints_3d[:, 3]) / 2
+            # gt_joints_3d = gt_joints_3d - gt_pelvis[:, None, :]
+
+            # error_joints = pred_joints_3d - gt_joints_3d
+            # error_joints = error_joints.norm(p=2, dim=-1).mean(dim=-1) * 1000
+            # all_preds['error_joints'] = error_joints.detach().cpu().numpy()
+
 
         if return_vertices:
             all_preds['vertices'] = pred_vertices.detach().cpu().numpy()

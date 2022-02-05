@@ -64,6 +64,9 @@ class MeshBaseDataset(Dataset, metaclass=ABCMeta):
         self.iuv_prefix = os.path.join(self.img_prefix, f'{uv_type}_IUV_gt')
         self.db = self._get_db(ann_file)
 
+        print('ONLY FOR DEBUG')
+        self.db = self.db[:10]
+
     def _get_db(self, ann_file):
         """Load dataset."""
         data = np.load(ann_file)
