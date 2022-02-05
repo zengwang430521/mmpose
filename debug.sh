@@ -15,6 +15,9 @@ srun -p pat_earth \
 srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/body/3d_mesh_sview_rgb_img/tcformer_hir2_mixed_224x224.py --work-dir=work_dirs/mesh/hir2
+
+
     configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrtc_bi_part_re18_w32_coco_256x192_scratch.py \
     --work-dir=work_dirs/coco/hrtc_bi_part_re18_32_again
 
