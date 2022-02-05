@@ -197,9 +197,7 @@ class ParametricMesh(BasePose):
             loss.backward()
             optimizer['generator'].step()
         else:
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            pass
 
         outputs = dict(
             loss=loss,
