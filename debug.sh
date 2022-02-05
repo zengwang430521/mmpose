@@ -7,6 +7,10 @@ srun -p mm_human \
     configs/body/2d_kpt_sview_rgb_img/associative_embedding/coco/den0_small_coco_512x512.py
 
 
+srun -p mm_human --quotatype=auto\
+    --ntasks=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/body/3d_mesh_sview_rgb_img/tcformer_hir2_mixed_224x224.py --work-dir=work_dirs/debug
 
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
 srun -p mm_human \

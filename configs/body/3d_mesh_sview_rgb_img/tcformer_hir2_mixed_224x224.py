@@ -12,7 +12,7 @@ use_adversarial_train = False
 #     generator=dict(type='Adam', lr=2.5e-4),
 #     discriminator=dict(type='Adam', lr=1e-4))
 
-# optimizer = dict(type='Adam', lr=2.5e-
+# optimizer = dict(type='Adam', lr=2.5e-4
 
 optimizer = dict(
     type='AdamW',
@@ -122,8 +122,7 @@ len2d_eft = [1000, 14810, 9428, 28344]
 data = dict(
     samples_per_gpu=32,
     workers_per_gpu=2,
-    # samples_per_gpu=2,
-    # workers_per_gpu=0,
+
     train=dict(
         type='MeshMixDataset',
         configs=[
@@ -169,6 +168,8 @@ data = dict(
         partition=[0.3, 0.1, 0.2] + [0.4 * l / sum(len2d_eft) for l in len2d_eft]
     ),
 
+    # samples_per_gpu=2,
+    # workers_per_gpu=0,
     # train=dict(
     #     type='MeshMixDataset',
     #     configs=[
