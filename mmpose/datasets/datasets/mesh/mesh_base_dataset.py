@@ -108,11 +108,14 @@ class MeshBaseDataset(Dataset, metaclass=ABCMeta):
         if 'pose' in data.keys() and 'shape' in data.keys():
             _poses = data['pose'].astype(np.float32)
             _betas = data['shape'].astype(np.float32)
-            has_smpl = 1
+            _has_smpl = np.ones((dataset_len), dtype=np.int)
         else:
             _poses = np.zeros((dataset_len, 72), dtype=np.float32)
             _betas = np.zeros((dataset_len, 10), dtype=np.float32)
-            has_smpl = 0
+            _has_smpl = np.zeros((dataset_len), dtype=np.int)
+
+        if 'has_smpl' in data.keys():
+            _has_smpl = data['has_smpl'].astype(np.int)
 
         # Get gender data, if available
         if 'gender' in data.keys():
@@ -124,10 +127,11 @@ class MeshBaseDataset(Dataset, metaclass=ABCMeta):
         # Get IUV image, if available
         if 'iuv_names' in data.keys():
             _iuv_names = data['iuv_names']
-            has_iuv = has_smpl
+            _has_iuv = _has_smpl
         else:
             _iuv_names = [''] * dataset_len
-            has_iuv = 0
+            _has_iuv = np.zeros((dataset_len), dtype=np.int)
+
 
         for i in range(len(_imgnames)):
             newitem = cp.deepcopy(tmpl)
@@ -140,10 +144,10 @@ class MeshBaseDataset(Dataset, metaclass=ABCMeta):
             newitem['joints_3d_visible'] = _joints_3d[i, :, -1][:, None]
             newitem['pose'] = _poses[i]
             newitem['beta'] = _betas[i]
-            newitem['has_smpl'] = has_smpl
+            newitem['has_smpl'] = _has_smpl[i]
             newitem['gender'] = _genders[i]
             newitem['iuv_file'] = os.path.join(self.iuv_prefix, _iuv_names[i])
-            newitem['has_iuv'] = has_iuv
+            newitem['has_iuv'] = _has_iuv[i]
             gt_db.append(newitem)
         return gt_db
 

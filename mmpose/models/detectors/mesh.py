@@ -68,7 +68,6 @@ class ParametricMesh(BasePose):
         else:
             self.generator = torch.nn.Sequential(self.backbone, self.mesh_head)
 
-
         self.smpl = builder.build_mesh_model(smpl)
 
         self.with_gan = disc is not None and loss_gan is not None
@@ -203,7 +202,6 @@ class ParametricMesh(BasePose):
             num_samples=len(next(iter(data_batch.values()))))
 
         return outputs
-
 
 
     def forward_train(self, *args, **kwargs):
