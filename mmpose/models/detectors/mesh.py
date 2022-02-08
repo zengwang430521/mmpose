@@ -155,8 +155,7 @@ class ParametricMesh(BasePose):
             betas=pred_beta,
             body_pose=pred_pose[:, 1:],
             global_orient=pred_pose[:, :1])
-        pred_vertices, pred_joints_3d = pred_out['vertices'], pred_out[
-            'joints']
+        pred_vertices, pred_joints_3d = pred_out['vertices'], pred_out['joints']
 
         gt_beta = data_batch['beta']
         gt_pose = data_batch['pose']
@@ -192,12 +191,11 @@ class ParametricMesh(BasePose):
             losses['adv_loss'] = loss_adv
 
         loss, log_vars = self._parse_losses(losses)
+
         if self.with_gan:
             optimizer['generator'].zero_grad()
             loss.backward()
             optimizer['generator'].step()
-        else:
-            pass
 
         outputs = dict(
             loss=loss,
@@ -205,6 +203,8 @@ class ParametricMesh(BasePose):
             num_samples=len(next(iter(data_batch.values()))))
 
         return outputs
+
+
 
     def forward_train(self, *args, **kwargs):
         """Forward function for training.
