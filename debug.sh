@@ -10,6 +10,12 @@ srun -p mm_human \
 srun -p mm_human --quotatype=auto\
     --ntasks=4 --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_3dhp.py --work-dir=work_dirs/mesh/check/3dhp
+
+    configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_lspeteft.py --work-dir=work_dirs/mesh/check/lspeteft
+
+    configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_3dpw.py --work-dir=work_dirs/mesh/check/3dpw
+
     configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_mpiieft.py --work-dir=work_dirs/mesh/check/mpiieft
 
     configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_cocoeft.py --work-dir=work_dirs/mesh/check/cocoeft
