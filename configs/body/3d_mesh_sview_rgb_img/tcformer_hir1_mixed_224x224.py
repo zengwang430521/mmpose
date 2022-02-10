@@ -44,7 +44,7 @@ img_res = 224
 model = dict(
     type='ParametricMesh',
     backbone=dict(type='tcformer_small', pretrained='models/checkpoint_tcformer.pth'),
-    neck=dict(type='HirAttNeck2'),
+    neck=dict(type='HirAttNeck1'),
     mesh_head=dict(
         type='HMRMeshHead',
         in_channels=512,
