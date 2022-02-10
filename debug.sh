@@ -10,9 +10,10 @@ srun -p mm_human \
 srun -p mm_human --quotatype=auto\
     --ntasks=4 --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_mpiieft.py --work-dir=work_dirs/mesh/check/mpiieft
+
     configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_cocoeft.py --work-dir=work_dirs/mesh/check/cocoeft
 
-    configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_mpiieft.py --work-dir=work_dirs/mesh/check/mpiieft
 
 
 srun -p pat_earth -x SH-IDC1-10-198-4-[90,91,100-103,116-119] \
