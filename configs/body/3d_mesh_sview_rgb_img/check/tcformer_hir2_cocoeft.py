@@ -129,8 +129,8 @@ data = dict(
     workers_per_gpu=2,
     train=dict(
         type='MeshBaseDataset',
-        ann_file='data/mesh_annotation_files/mpii_train_eft.npz',
-        img_prefix='data/mpii',
+        ann_file='data/mesh_annotation_files/coco_2014_train_eft.npz',
+        img_prefix='data/coco',
         data_cfg=data_cfg,
         pipeline=train_pipeline),
 
