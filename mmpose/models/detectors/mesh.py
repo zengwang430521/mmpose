@@ -203,7 +203,6 @@ class ParametricMesh(BasePose):
 
         return outputs
 
-
     def forward_train(self, *args, **kwargs):
         """Forward function for training.
 

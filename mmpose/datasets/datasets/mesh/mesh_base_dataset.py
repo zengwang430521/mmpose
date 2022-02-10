@@ -5,10 +5,12 @@ from abc import ABCMeta
 
 import numpy as np
 from torch.utils.data import Dataset
+from mmpose.datasets.builder import DATASETS
 
 from mmpose.datasets.pipelines import Compose
 
 
+@DATASETS.register_module()
 class MeshBaseDataset(Dataset, metaclass=ABCMeta):
     """Base dataset for 3D human mesh estimation task. In 3D humamesh
     estimation task, all datasets share this BaseDataset for training and have
