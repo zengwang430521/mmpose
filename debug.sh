@@ -33,6 +33,8 @@ srun -p pat_earth \
 srun -p mm_human --quotatype=auto\
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/body/3d_mesh_sview_rgb_img/res50_mixed2_224x224.py --work-dir=work_dirs/mesh/res50
+
     configs/body/3d_mesh_sview_rgb_img/tcformer_hir1_mixed_224x224.py --work-dir=work_dirs/mesh/hir1
 
     configs/body/3d_mesh_sview_rgb_img/tcformer_hir2_mixed_224x224.py --work-dir=work_dirs/mesh/hir2
