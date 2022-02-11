@@ -154,10 +154,17 @@ data = dict(
         partition=[0.3, 0.1, 0.2] + [0.4 * l / sum(len2d_eft) for l in len2d_eft]
     ),
 
+    val=dict(
+        type='Mesh3DPWDataset',
+        ann_file='data/mesh_annotation_files/3dpw_test.npz',
+        img_prefix='data/3DPW',
+        data_cfg=data_cfg,
+        pipeline=test_pipeline,
+    ),
     test=dict(
-        type='MeshH36MDataset',
-        ann_file='data/mesh_annotation_files/h36m_valid_protocol2.npz',
-        img_prefix='data/Human3.6M',
+        type='Mesh3DPWDataset',
+        ann_file='data/mesh_annotation_files/3dpw_test.npz',
+        img_prefix='data/3DPW',
         data_cfg=data_cfg,
         pipeline=test_pipeline,
     ),
