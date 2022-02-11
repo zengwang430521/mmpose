@@ -4,16 +4,31 @@ resume_from = None
 dist_params = dict(backend='nccl')
 workflow = [('train', 1)]
 checkpoint_config = dict(interval=10)
+evaluation = dict(interval=5, metric='joint_error', save_best='p-mpjpe')
 
-use_adversarial_train = True
+use_adversarial_train = False
+
+# optimizer = dict(
+#     generator=dict(type='Adam', lr=2.5e-4),
+#     discriminator=dict(type='Adam', lr=1e-4))
+
+# optimizer = dict(type='Adam', lr=2.5e-4
 
 optimizer = dict(
-    generator=dict(type='Adam', lr=2.5e-4),
-    discriminator=dict(type='Adam', lr=1e-4))
+    type='AdamW',
+    lr=5e-4,
+    betas=(0.9, 0.999),
+    weight_decay=0.01,
+)
+# optimizer_config = dict(grad_clip=None)
+optimizer_config = dict()
 
-optimizer_config = None
-
-lr_config = dict(policy='Fixed', by_epoch=False)
+lr_config = dict(
+    policy='step',
+    # warmup='linear',
+    # warmup_iters=500,
+    # warmup_ratio=0.001,
+    step=[70])
 
 total_epochs = 100
 log_config = dict(
@@ -51,13 +66,13 @@ model = dict(
         smpl_beta_loss_weight=0.2,
         focal_length=5000,
         img_res=img_res),
-    loss_gan=dict(
-        type='GANLoss',
-        gan_type='lsgan',
-        real_label_val=1.0,
-        fake_label_val=0.0,
-        loss_weight=1))
-
+    # loss_gan=dict(
+    #     type='GANLoss',
+    #     gan_type='lsgan',
+    #     real_label_val=1.0,
+    #     fake_label_val=0.0,
+    #     loss_weight=1)
+)
 data_cfg = dict(
     image_size=[img_res, img_res],
     iuv_size=[img_res // 4, img_res // 4],
@@ -98,16 +113,18 @@ val_pipeline = [
     dict(
         type='Collect',
         keys=[
-            'img',
+            'img', 'joints_2d', 'joints_2d_visible', 'joints_3d',
+            'joints_3d_visible', 'pose', 'beta', 'has_smpl', 'gender'
         ],
         meta_keys=['image_file', 'center', 'scale', 'rotation']),
 ]
 
 test_pipeline = val_pipeline
-len2d_eft = [1000, 14810, 9428, 28344]
 
+
+len2d_eft = [1000, 14810, 9428, 28344]
 data = dict(
-    samples_per_gpu=32,
+    samples_per_gpu=64,
     workers_per_gpu=2,
     train=dict(
         type='MeshMixDataset',
@@ -154,6 +171,28 @@ data = dict(
         partition=[0.3, 0.1, 0.2] + [0.4 * l / sum(len2d_eft) for l in len2d_eft]
     ),
 
+    # samples_per_gpu=2,
+    # workers_per_gpu=0,
+    # train=dict(
+    #     type='MeshMixDataset',
+    #     configs=[
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/mpii_train_eft.npz',
+    #             img_prefix='data/mpii',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline),
+    #         dict(
+    #             ann_file='data/mesh_annotation_files/hr-lspet_train_eft.npz',
+    #             img_prefix='data/hr-lspet',
+    #             data_cfg=data_cfg,
+    #             pipeline=train_pipeline),
+    #
+    #     ],
+    #     partition=[0.5, 0.5]
+    # ),
+
+
+
     val=dict(
         type='Mesh3DPWDataset',
         ann_file='data/mesh_annotation_files/3dpw_test.npz',
@@ -168,4 +207,12 @@ data = dict(
         data_cfg=data_cfg,
         pipeline=test_pipeline,
     ),
+
+    # test=dict(
+    #     type='MeshH36MDataset',
+    #     ann_file='data/mesh_annotation_files/h36m_valid_protocol2.npz',
+    #     img_prefix='data/Human3.6M',
+    #     data_cfg=data_cfg,
+    #     pipeline=test_pipeline,
+    # ),
 )
