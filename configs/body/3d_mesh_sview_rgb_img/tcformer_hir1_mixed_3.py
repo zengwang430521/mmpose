@@ -166,4 +166,11 @@ data = dict(
         data_cfg=data_cfg,
         pipeline=test_pipeline,
     ),
+    val=dict(
+        type='Mesh3DPWDataset',
+        ann_file='data/mesh_annotation_files/3dpw_test.npz',
+        img_prefix='data/3DPW',
+        data_cfg=data_cfg,
+        pipeline=test_pipeline,
+    ),
 )
