@@ -32,6 +32,7 @@ class SMPL(nn.Module):
 
         self.smpl_neutral = SMPL_(
             model_path=smpl_path,
+            create_betas=False,
             create_global_orient=False,
             create_body_pose=False,
             create_transl=False,

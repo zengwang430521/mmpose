@@ -81,6 +81,7 @@ class ParametricMesh(BasePose):
 
         self.loss_mesh = builder.build_loss(loss_mesh)
         self.init_weights(pretrained=pretrained)
+        set_requires_grad(self.smpl, False)
 
     def init_weights(self, pretrained=None):
         """Weight initialization for model."""
@@ -112,13 +113,14 @@ class ParametricMesh(BasePose):
             outputs (dict): Dict with loss, information for logger,
             the number of samples.
         """
+        set_requires_grad(self.generator, True)
 
         img = data_batch['img']
         pred_smpl = self.generator(img)
         pred_pose, pred_beta, pred_camera = pred_smpl
 
         # optimize discriminator (if have)
-        if self.with_gan and self.train_cfg['disc_step'] > 0:
+        if self.with_gan and getattr(self.train_cfg, 'disc_step', -1) > 0:
             set_requires_grad(self.discriminator, True)
             fake_data = (pred_camera.detach(), pred_pose.detach(),
                          pred_beta.detach())

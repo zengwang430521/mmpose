@@ -50,12 +50,13 @@ model = dict(
         in_channels=512,
         smpl_mean_params='models/smpl/smpl_mean_params.npz',
     ),
-    disc=dict(),
+    disc=None,
+    loss_gan=None,
     smpl=dict(
         type='SMPL',
         smpl_path='models/smpl',
         joints_regressor='models/smpl/joints_regressor_cmr.npy'),
-    train_cfg=dict(disc_step=0),
+    train_cfg=dict(),
     test_cfg=dict(),
     loss_mesh=dict(
         type='MeshLoss',
@@ -101,7 +102,7 @@ train_pipeline = [
         meta_keys=['image_file', 'center', 'scale', 'rotation']),
 ]
 
-train_adv_pipeline = [dict(type='Collect', keys=['mosh_theta'], meta_keys=[])]
+# train_adv_pipeline = [dict(type='Collect', keys=['mosh_theta'], meta_keys=[])]
 
 val_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -129,7 +130,7 @@ data = dict(
     workers_per_gpu=0,
     train=dict(
         type='MeshBaseDataset',
-        ann_file='data/mesh_annotation_files/mpii_train_eft.npz',
+        ann_file='data/mesh_annotation_files/mpii_train.npz',
         img_prefix='data/mpii',
         data_cfg=data_cfg,
         pipeline=train_pipeline),
