@@ -34,6 +34,8 @@ srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/hrtw32_coco_wholebody_384x288.py --work-dir=work_dirs/wholebody/hrtw32_384
+
     configs/pvtv2_coco_wholebody_384x288.py --work-dir=work_dirs/wholebody/pvtv2_s_384
 
     configs/body/3d_mesh_sview_rgb_img/tcformer_hir2_mixed_224x224.py --work-dir=work_dirs/mesh/hir2
