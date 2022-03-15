@@ -10,6 +10,7 @@ srun -p mm_human \
 srun -p mm_human --quotatype=auto\
     --ntasks=4 --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+
     configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_h36m.py --work-dir=work_dirs/mesh/check/h36m
 
     configs/body/3d_mesh_sview_rgb_img/check/tcformer_hir2_lsp.py --work-dir=work_dirs/mesh/check/lsp
@@ -33,6 +34,8 @@ srun -p mm_human --quotatype=auto\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
+    configs/pvtv2_coco_wholebody_384x288.py --work-dir=work_dirs/wholebody/pvtv2_s_384
+
     configs/body/3d_mesh_sview_rgb_img/tcformer_hir2_mixed_224x224.py --work-dir=work_dirs/mesh/hir2
 
 
