@@ -98,7 +98,8 @@ val_pipeline = [
     dict(
         type='Collect',
         keys=[
-            'img',
+            'img', 'joints_2d', 'joints_2d_visible', 'joints_3d',
+            'joints_3d_visible', 'pose', 'beta', 'has_smpl', 'gender'
         ],
         meta_keys=['image_file', 'center', 'scale', 'rotation']),
 ]
