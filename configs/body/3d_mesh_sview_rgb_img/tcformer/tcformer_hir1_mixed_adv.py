@@ -105,6 +105,7 @@ val_pipeline = [
 
 test_pipeline = val_pipeline
 
+len2d_eft = [1000, 14810, 9428, 28344]
 data = dict(
     samples_per_gpu=32,
     workers_per_gpu=2,
