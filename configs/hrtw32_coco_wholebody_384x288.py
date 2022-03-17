@@ -45,7 +45,7 @@ channel_cfg = dict(
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    # pretrained='/path/to/hrt_small.pth', # Set the path to pretrained backbone here
+    pretrained='models/hrt_small.pth',  # Set the path to pretrained backbone here
     backbone=dict(
         type='HRT',
         in_channels=3,

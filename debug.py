@@ -344,3 +344,7 @@ B, H, W, C = 1, 257, 192, 3
 img = torch.zeros([B, C, H, W], device=device)
 
 out = model(img)
+
+
+
+
