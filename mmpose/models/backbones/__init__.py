@@ -21,6 +21,7 @@ from .tcn import TCN
 from .vgg import VGG
 from .vipnas_resnet import ViPNAS_ResNet
 from .pvt_v2 import pvt_v2_b2, pvt_v2_b1
+from .pvt import pvt_small
 from .pvt_v2_20_2 import mypvt20_2_small
 from .pvt_v2_3f12_1 import mypvt3f12_1_small
 from .pvt_v2_3f12_2 import mypvt3f12_2_small
