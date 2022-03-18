@@ -45,7 +45,10 @@ channel_cfg = dict(
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='TopDown',
-    backbone=dict(type='mypvt3h2_density0v_small', pretrained='models/3h2_density0_small.pth',),
+    backbone=dict(type='mypvt3h2_density0v_small',
+                  # pretrained='models/3h2_density0_small.pth'
+                  pretrained=None
+                  ),
     neck=dict(
         type='AttenNeck',
         in_channels=[64, 128, 320, 512],
@@ -73,8 +76,8 @@ model = dict(
 
 
 data_cfg = dict(
-    # image_size=[192*4, 256*4],
-    image_size=[192, 256],
+    image_size=[192*4, 256*4],
+    # image_size=[192, 256],
     heatmap_size=[48, 64],
     num_output_channels=channel_cfg['num_output_channels'],
     num_joints=channel_cfg['dataset_joints'],

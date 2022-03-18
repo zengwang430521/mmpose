@@ -23,7 +23,7 @@ from .tc_module.tcformer_utils import token_remerge_part
 
 
 vis = False
-vis = True
+# vis = True
 
 
 

@@ -69,51 +69,56 @@ def single_gpu_vis(model, data_loader):
     dataset = data_loader.dataset
     prog_bar = mmcv.ProgressBar(len(dataset))
 
-    # # for i in [1272, 260, 563,968,974,993,1272,1736,1895, 2280, 2405, 2556, 2570, 2605, 2833, 2850,2950, 3580, 3590, 4710, 4798, 5055, 5248, 6032]:
-    # # for i in [913,918,921,1079,2802,2838,3318,5055,6308,2424,2556]:
-    #
-    # # for i in [2424, 2556, 250, 260]:
+    # hand and face compare
+    for i in [14, 53, 426, 702, 751, 993, 1043, 1764, 2018,
+     2084, 2094, 2217, 2251, 2255, 2611, 3318, 4017,4457, 4588, 4849, 4974, 5945, 5951,
+     6000, 6032, 6320]:
+
+    # for i in [1272, 260, 563,968,974,993,1272,1736,1895, 2280, 2405, 2556, 2570, 2605, 2833, 2850,2950, 3580, 3590, 4710, 4798, 5055, 5248, 6032]:
+    # for i in [913,918,921,1079,2802,2838,3318,5055,6308,2424,2556]:
+
+    # for i in [2424, 2556, 250, 260]:
     # for i in [62, 87, 250, 563, 581,740,968,993, 1114,1762,1900, 2085,2098,2147, 2251, 2557,2571,2821,
     #           2839,2950, 3207,3217, 3332, 3580, 3635, 3675,3779,3954,4054,4222, 4710, 4786, 4810, 5055,
     #           913, 918, 921, 1079, 1272, 2424, 2556, 2802, 2838, 3318, 5055, 6308, 5378, 5484, 5951, 6018]:
-    #
-    # # for i in [3332, 5055, 3675, 3779, 2251, 2950, 1762,3954, 6018, 5484, 3635]:
-    # # for i in [935, 1547]:   # face
-    # # for i in [1272, 2424, 3318]: # coco
-    # # for i in [331, 338, 359, 494, 675, 901, 937, 1259, 1279, 1294, 1547]:   # face
-    # # for i in [2018, 2032,2094,2255,2424,2556,2938,2954]:  # coco compare
-    #
-    # # for i in [14, 53,250,581,1041,1359,1490,1770,2016,2018,2032,2084,2821,3207,3590,3657,3659,3815,4490,4497]:  # compare
-    #
-    #     data = data_loader.collate_fn([dataset[i]])
-    #     # # for save hr image
-    #     # x = data['img']
-    #     # IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
-    #     # IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
-    #     # x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
-    #     # img = x[0].permute(1, 2, 0).detach().cpu()
-    #     # count = i
-    #     # fname = f'vis/{count}_img.png'
-    #     # import cv2
-    #     # cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
-    #
-    #     model.module.backbone.batch_count = i
-    #     with torch.no_grad():
-    #         result = model(return_loss=False, **data)
-    #     results.append(result)
+
+    # for i in [3332, 5055, 3675, 3779, 2251, 2950, 1762,3954, 6018, 5484, 3635]:
+    # for i in [935, 1547]:   # face
+    # for i in [1272, 2424, 3318]: # coco
+    # for i in [331, 338, 359, 494, 675, 901, 937, 1259, 1279, 1294, 1547]:   # face
+    # for i in [2018, 2032,2094,2255,2424,2556,2938,2954]:  # coco compare
+
+    # for i in [14, 53,250,581,1041,1359,1490,1770,2016,2018,2032,2084,2821,3207,3590,3657,3659,3815,4490,4497]:  # compare
+
+        data = data_loader.collate_fn([dataset[i]])
+        # for save hr image
+        x = data['img']
+        IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
+        IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
+        x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+        img = x[0].permute(1, 2, 0).detach().cpu()
+        count = i
+        fname = f'vis/{count}_img.png'
+        import cv2
+        cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
+
+        # model.module.backbone.batch_count = i
+        # with torch.no_grad():
+        #     result = model(return_loss=False, **data)
+        # results.append(result)
 
 
-    for (i, data) in enumerate(data_loader):
-        if i % 1 == 0:
-            scale = data['img_metas'].data[0][0]['scale']
-            # filter black edges
-            img = data['img']
-            if scale[0] > 1 and scale[1] > 1:
-                if no_black_edge(img):
-                    model.module.backbone.batch_count = i
-                    with torch.no_grad():
-                        result = model(return_loss=False, **data)
-                    results.append(result)
+    # for (i, data) in enumerate(data_loader):
+    #     if i % 1 == 0:
+    #         scale = data['img_metas'].data[0][0]['scale']
+    #         # filter black edges
+    #         img = data['img']
+    #         if scale[0] > 1 and scale[1] > 1:
+    #             if no_black_edge(img):
+    #                 model.module.backbone.batch_count = i
+    #                 with torch.no_grad():
+    #                     result = model(return_loss=False, **data)
+    #                 results.append(result)
 
     # for (i, data) in enumerate(data_loader):
     #     if i % 1 == 0:
