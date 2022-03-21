@@ -134,6 +134,7 @@ class PyramidVisionTransformer(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.depths = depths
+        # self.F4 = F4
 
         # patch_embed
         self.patch_embed1 = PatchEmbed(img_size=img_size, patch_size=patch_size, in_chans=in_chans,
@@ -184,22 +185,20 @@ class PyramidVisionTransformer(nn.Module):
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
             sr_ratio=sr_ratios[3])
             for i in range(depths[3])])
-        self.norm = norm_layer(embed_dims[3])
-
-        # cls_token
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dims[3]))
-
-        # classification head
-        # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
 
         # init weights
         trunc_normal_(self.pos_embed1, std=.02)
         trunc_normal_(self.pos_embed2, std=.02)
         trunc_normal_(self.pos_embed3, std=.02)
         trunc_normal_(self.pos_embed4, std=.02)
-        trunc_normal_(self.cls_token, std=.02)
         self.apply(self._init_weights)
+
         self.init_weights(pretrained)
+
+    def init_weights(self, pretrained=None):
+        if isinstance(pretrained, str):
+            logger = get_root_logger()
+            load_checkpoint(self, pretrained, map_location='cpu', strict=False, logger=logger)
 
     def reset_drop_path(self, drop_path_rate):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(self.depths))]
@@ -219,11 +218,6 @@ class PyramidVisionTransformer(nn.Module):
         for i in range(self.depths[3]):
             self.block4[i].drop_path.drop_prob = dpr[cur + i]
 
-    def init_weights(self, pretrained=None):
-        if isinstance(pretrained, str):
-            logger = get_root_logger()
-            load_checkpoint(self, pretrained, map_location='cpu', strict=False, logger=logger)
-
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
@@ -233,33 +227,23 @@ class PyramidVisionTransformer(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    @torch.jit.ignore
-    def no_weight_decay(self):
-        # return {'pos_embed', 'cls_token'} # has pos_embed may be better
-        return {'cls_token'}
-
-    def get_classifier(self):
-        return self.head
-
-    def reset_classifier(self, num_classes, global_pool=''):
-        self.num_classes = num_classes
-        self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
-
-    # def _get_pos_embed(self, pos_embed, patch_embed, H, W):
-    #     if H * W == self.patch_embed1.num_patches:
-    #         return pos_embed
-    #     else:
-    #         return F.interpolate(
-    #             pos_embed.reshape(1, patch_embed.H, patch_embed.W, -1).permute(0, 3, 1, 2),
-    #             size=(H, W), mode="bilinear").reshape(1, -1, H * W).permute(0, 2, 1)
+    def _get_pos_embed(self, pos_embed, patch_embed, H, W):
+        if H * W == self.patch_embed1.num_patches:
+            return pos_embed
+        else:
+            return F.interpolate(
+                pos_embed.reshape(1, patch_embed.H, patch_embed.W, -1).permute(0, 3, 1, 2),
+                size=(H, W), mode="bilinear").reshape(1, -1, H * W).permute(0, 2, 1)
 
     def forward_features(self, x):
-        B = x.shape[0]
         outs = []
+
+        B = x.shape[0]
 
         # stage 1
         x, (H, W) = self.patch_embed1(x)
-        x = x + self.pos_embed1
+        pos_embed1 = self._get_pos_embed(self.pos_embed1, self.patch_embed1, H, W)
+        x = x + pos_embed1
         x = self.pos_drop1(x)
         for blk in self.block1:
             x = blk(x, H, W)
@@ -268,7 +252,8 @@ class PyramidVisionTransformer(nn.Module):
 
         # stage 2
         x, (H, W) = self.patch_embed2(x)
-        x = x + self.pos_embed2
+        pos_embed2 = self._get_pos_embed(self.pos_embed2, self.patch_embed2, H, W)
+        x = x + pos_embed2
         x = self.pos_drop2(x)
         for blk in self.block2:
             x = blk(x, H, W)
@@ -277,7 +262,8 @@ class PyramidVisionTransformer(nn.Module):
 
         # stage 3
         x, (H, W) = self.patch_embed3(x)
-        x = x + self.pos_embed3
+        pos_embed3 = self._get_pos_embed(self.pos_embed3, self.patch_embed3, H, W)
+        x = x + pos_embed3
         x = self.pos_drop3(x)
         for blk in self.block3:
             x = blk(x, H, W)
@@ -286,26 +272,19 @@ class PyramidVisionTransformer(nn.Module):
 
         # stage 4
         x, (H, W) = self.patch_embed4(x)
-        cls_tokens = self.cls_token.expand(B, -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
-        x = x + self.pos_embed4
+        pos_embed4 = self._get_pos_embed(self.pos_embed4[:, 1:], self.patch_embed4, H, W)
+        x = x + pos_embed4
         x = self.pos_drop4(x)
         for blk in self.block4:
             x = blk(x, H, W)
-
-        x = self.norm(x)
         x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
         outs.append(x)
 
-        # return x[:, 0]
         return outs
 
     def forward(self, x):
         x = self.forward_features(x)
-        # x = self.head(x)
-
         return x
-
 
 def _conv_filter(state_dict, patch_size=16):
     """ convert patch embedding weight from manual patchify + linear proj to conv"""
