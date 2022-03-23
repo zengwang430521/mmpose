@@ -25,7 +25,7 @@ class SMPL(nn.Module):
             regressor weight are stored.
     """
 
-    def __init__(self, smpl_path, joints_regressor):
+    def __init__(self, smpl_path, joints_regressor, joints_regressor_eval=None):
         super().__init__()
 
         assert has_smpl, 'Please install smplx to use SMPL.'
@@ -58,10 +58,18 @@ class SMPL(nn.Module):
             np.load(joints_regressor), dtype=torch.float)[None, ...]
         self.register_buffer('joints_regressor', joints_regressor)
 
+        # to use different regressor for train and eval
+        if joints_regressor_eval is not None:
+            joints_regressor_eval = torch.tensor(
+                np.load(joints_regressor_eval), dtype=torch.float)[None, ...]
+            self.register_buffer('joints_regressor_eval', joints_regressor_eval)
+        else:
+            self.joints_regressor_eval = self.joints_regressor
+
         self.num_verts = self.smpl_neutral.get_num_verts()
         self.num_joints = self.joints_regressor.shape[1]
 
-    def smpl_forward(self, model, **kwargs):
+    def smpl_forward(self, model, is_train=True, **kwargs):
         """Apply a specific SMPL model with given model parameters.
 
         Note:
@@ -86,8 +94,12 @@ class SMPL(nn.Module):
         else:
             smpl_out = model(**kwargs)
             output['vertices'] = smpl_out.vertices
-            output['joints'] = torch.matmul(
-                self.joints_regressor.to(device), output['vertices'])
+            if is_train:
+                joints_regressor = self.joints_regressor.to(device)
+            else:
+                joints_regressor = self.joints_regressor_eval.to(device)
+
+            output['joints'] = torch.matmul(joints_regressor, output['vertices'])
         return output
 
     def get_faces(self):
@@ -106,7 +118,8 @@ class SMPL(nn.Module):
                 body_pose,
                 global_orient,
                 transl=None,
-                gender=None):
+                gender=None,
+                is_Train=True):
         """Forward function.
 
         Note:
@@ -148,7 +161,9 @@ class SMPL(nn.Module):
                 body_pose=body_pose[mask],
                 global_orient=global_orient[mask],
                 transl=transl[mask] if transl is not None else None,
-                pose2rot=pose2rot)
+                pose2rot=pose2rot,
+                is_train=is_Train
+            )
             output['vertices'][mask] = _out['vertices']
             output['joints'][mask] = _out['joints']
 
@@ -159,7 +174,9 @@ class SMPL(nn.Module):
                 body_pose=body_pose[mask],
                 global_orient=global_orient[mask],
                 transl=transl[mask] if transl is not None else None,
-                pose2rot=pose2rot)
+                pose2rot=pose2rot,
+                is_train=is_Train
+            )
             output['vertices'][mask] = _out['vertices']
             output['joints'][mask] = _out['joints']
 
@@ -170,7 +187,9 @@ class SMPL(nn.Module):
                 body_pose=body_pose[mask],
                 global_orient=global_orient[mask],
                 transl=transl[mask] if transl is not None else None,
-                pose2rot=pose2rot)
+                pose2rot=pose2rot,
+                is_train=is_Train
+            )
             output['vertices'][mask] = _out['vertices']
             output['joints'][mask] = _out['joints']
         else:
@@ -180,6 +199,8 @@ class SMPL(nn.Module):
                 body_pose=body_pose,
                 global_orient=global_orient,
                 transl=transl,
-                pose2rot=pose2rot)
+                pose2rot=pose2rot,
+                is_train=is_Train
+            )
 
         return output

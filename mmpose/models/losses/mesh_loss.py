@@ -246,6 +246,37 @@ class MeshLoss(nn.Module):
 
         return losses
 
+@LOSSES.register_module()
+class MeshLoss2(MeshLoss):
+    """Mix loss for 3D human mesh. It is composed of loss on 2D joints, 3D
+    joints, mesh vertices and smpl paramters (if any).
+
+    Args:
+        joints_2d_loss_weight (float): Weight for loss on 2D joints.
+        joints_3d_loss_weight (float): Weight for loss on 3D joints.
+        vertex_loss_weight (float): Weight for loss on 3D verteices.
+        smpl_pose_loss_weight (float): Weight for loss on SMPL
+            pose parameters.
+        smpl_beta_loss_weight (float): Weight for loss on SMPL
+            shape parameters.
+        img_res (int): Input image resolution.
+        focal_length (float): Focal length of camera model. Default=5000.
+    """
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+        # Per-vertex loss on the mesh
+        self.criterion_vertex = nn.L1Loss(reduction='none')
+
+        # Joints (2D and 3D) loss
+        self.criterion_joints_2d = nn.L1Loss(reduction='none')
+        self.criterion_joints_3d = nn.L1Loss(reduction='none')
+
+        # Loss for SMPL parameter regression
+        self.criterion_regr = nn.MSELoss(reduction='none')
+
+
 
 @LOSSES.register_module()
 class GANLoss(nn.Module):

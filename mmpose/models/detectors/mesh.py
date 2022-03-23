@@ -254,6 +254,7 @@ class ParametricMesh(BasePose):
             betas=pred_beta,
             body_pose=pred_pose[:, 1:],
             global_orient=pred_pose[:, :1],
+            is_train=False
         )
         pred_vertices, pred_joints_3d = pred_out['vertices'], pred_out['joints']
 
