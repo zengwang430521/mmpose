@@ -155,7 +155,8 @@ class ParametricMesh(BasePose):
         pred_out = self.smpl(
             betas=pred_beta,
             body_pose=pred_pose[:, 1:],
-            global_orient=pred_pose[:, :1])
+            global_orient=pred_pose[:, :1],
+        )
         pred_vertices, pred_joints_3d = pred_out['vertices'], pred_out['joints']
 
         gt_beta = data_batch['beta']
@@ -254,7 +255,7 @@ class ParametricMesh(BasePose):
             betas=pred_beta,
             body_pose=pred_pose[:, 1:],
             global_orient=pred_pose[:, :1],
-            is_train=False
+            joint_train=False
         )
         pred_vertices, pred_joints_3d = pred_out['vertices'], pred_out['joints']
 

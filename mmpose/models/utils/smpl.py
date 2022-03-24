@@ -69,7 +69,7 @@ class SMPL(nn.Module):
         self.num_verts = self.smpl_neutral.get_num_verts()
         self.num_joints = self.joints_regressor.shape[1]
 
-    def smpl_forward(self, model, is_train=True, **kwargs):
+    def smpl_forward(self, model, joint_train=True, **kwargs):
         """Apply a specific SMPL model with given model parameters.
 
         Note:
@@ -94,7 +94,7 @@ class SMPL(nn.Module):
         else:
             smpl_out = model(**kwargs)
             output['vertices'] = smpl_out.vertices
-            if is_train:
+            if joint_train:
                 joints_regressor = self.joints_regressor.to(device)
             else:
                 joints_regressor = self.joints_regressor_eval.to(device)
@@ -119,7 +119,7 @@ class SMPL(nn.Module):
                 global_orient,
                 transl=None,
                 gender=None,
-                is_Train=True):
+                joint_train=True):
         """Forward function.
 
         Note:
@@ -162,7 +162,7 @@ class SMPL(nn.Module):
                 global_orient=global_orient[mask],
                 transl=transl[mask] if transl is not None else None,
                 pose2rot=pose2rot,
-                is_train=is_Train
+                joint_train=joint_train
             )
             output['vertices'][mask] = _out['vertices']
             output['joints'][mask] = _out['joints']
@@ -175,7 +175,7 @@ class SMPL(nn.Module):
                 global_orient=global_orient[mask],
                 transl=transl[mask] if transl is not None else None,
                 pose2rot=pose2rot,
-                is_train=is_Train
+                joint_train=joint_train
             )
             output['vertices'][mask] = _out['vertices']
             output['joints'][mask] = _out['joints']
@@ -188,7 +188,7 @@ class SMPL(nn.Module):
                 global_orient=global_orient[mask],
                 transl=transl[mask] if transl is not None else None,
                 pose2rot=pose2rot,
-                is_train=is_Train
+                joint_train=joint_train
             )
             output['vertices'][mask] = _out['vertices']
             output['joints'][mask] = _out['joints']
@@ -200,7 +200,7 @@ class SMPL(nn.Module):
                 global_orient=global_orient,
                 transl=transl,
                 pose2rot=pose2rot,
-                is_train=is_Train
+                joint_train=joint_train
             )
 
         return output
