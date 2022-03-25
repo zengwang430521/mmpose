@@ -35,7 +35,7 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     --job-name=train python -u tools/train.py  --launcher="slurm" \
     configs/body/3d_mesh_sview_rgb_img/tcformer/tcformer_hir1_mixed_adv_3.py --work-dir=work_dirs/mesh/hir1_adv_3 \
-    --resume-from=work_dirs/coco/work_dirs/mesh/hir1_adv_3/latest.pth
+    --resume-from=work_dirs/mesh/hir1_adv_3/latest.pth
 
     configs/body/3d_mesh_sview_rgb_img/tcformer/tcformer_hir1_mixed_adv_4.py --work-dir=work_dirs/mesh/hir1_adv_4
 
