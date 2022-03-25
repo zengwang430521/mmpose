@@ -273,6 +273,7 @@ class ParametricMesh(BasePose):
                 body_pose=gt_pose[:, 3:],
                 global_orient=gt_pose[:, :3],
                 gender=kwargs['gender'],
+                joint_train=False
             )
             gt_vertices, gt_joints_3d = gt_out['vertices'], gt_out['joints']
             all_preds['keypoints_3d_gt_mesh'] = gt_joints_3d.detach().cpu().numpy()
