@@ -629,7 +629,8 @@ class HirAttNeck1(nn.Module):
 
 
 
-# MTA neck for human mesh task, only output a global feature vector
+# MTA neck for human mesh task, only output a global feature vector,
+# add norm
 @NECKS.register_module()
 class HirAttNeck2(nn.Module):
     def __init__(self,
@@ -646,8 +647,8 @@ class HirAttNeck2(nn.Module):
         self.num_heads = num_heads
         self.query_channels = query_channels
         self.mlps = nn.ModuleList()
-        # self.norm1s = nn.ModuleList()
-        # self.norm2s = nn.ModuleList()
+        self.norm1s = nn.ModuleList()
+        self.norm2s = nn.ModuleList()
 
         drop = 0.0
 
@@ -695,8 +696,7 @@ class HirAttNeck2(nn.Module):
             B, N, C = x.shape
             num_head = self.num_heads[i]
 
-            # q = self.norm1s[i](query)
-            q = query
+            q = self.norm1s[i](query)
             q = self.qs[i](q).reshape(B, 1, num_head, C // num_head).permute(0, 2, 1, 3)
             kv = self.kvs[i](x).reshape(B, -1, 2, num_head, C // num_head).permute(2, 0, 3, 1, 4)
             k, v = kv[0], kv[1]
@@ -708,8 +708,7 @@ class HirAttNeck2(nn.Module):
             x = (attn @ v).transpose(1, 2).reshape(B, 1, C)
             x = self.linears[i](x)
             out = out + x
-            # out = out + self.mlps[i](self.norm2s[i](out))
-            out = out + self.mlps[i](out)
+            out = out + self.mlps[i](self.norm2s[i](out))
             query = out
 
         return out.squeeze(1)
